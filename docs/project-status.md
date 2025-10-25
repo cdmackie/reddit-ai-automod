@@ -51,8 +51,9 @@ _None currently_
 2. Install Devvit CLI
 3. Create test subreddit (< 200 members)
 4. Register Reddit app credentials
-5. Initialize git repository with .gitignore
-6. Create initial Devvit app structure
+5. Create initial Devvit app structure
+6. Set up project structure per architecture.md
+7. Implement basic event handlers
 
 ---
 
@@ -85,6 +86,14 @@ _None currently_
 - Predefined rules cover 80% of use cases
 - Custom rules allow community-specific needs
 - Flexibility without requiring coding
+
+### Git Strategy - 2025-10-25
+**Decision**: Exclude CLAUDE.md and research files from git
+**Rationale**:
+- CLAUDE.md is development workflow guide (local only)
+- Research files are AI-generated reference docs (local only)
+- Keep git repository clean with only essential project docs
+- Dev meta files remain locally for assistant use
 
 ---
 
@@ -173,12 +182,18 @@ _None yet - project not yet implemented_
 
 ## Communication Log
 
-### 2025-10-25
+### 2025-10-25 - Session 1
 - Initial project discussion
 - Confirmed platform choice: Devvit
 - Confirmed AI providers: OpenAI + Gemini
-- Completed planning phase
-- Awaiting approval to proceed
+- Completed comprehensive planning phase
+- Created all planning documentation (7 files)
+- Initialized git repository
+- Configured .gitignore to exclude dev meta files (CLAUDE.md, research files)
+- Removed development meta files from git tracking
+- 5 commits completed
+- Planning phase complete ✅
+- Repository ready for Phase 1 implementation
 
 ---
 
