@@ -1,5 +1,11 @@
 # Reddit AI Automod - Git Ignore File
 
+# Development meta files (not for git)
+CLAUDE.md
+.claude/
+.cursor/
+.aider*
+
 # Environment variables and secrets
 .env
 .env.local
@@ -103,10 +109,18 @@ dump.rdb
 .yarn/install-state.gz
 .pnp.*
 
-# Research files (already committed, but keep generated files out)
+# Research files (keep generated files out)
 research/*.json
 research/*.csv
 research/cache/
+00_START_HERE.txt
+API_COMPARISON.csv
+API_RESEARCH_INDEX.md
+CONTENT_MODERATION_API_RESEARCH.md
+IMPLEMENTATION_GUIDE.md
+QUICK_PRICING_REFERENCE.md
+RESEARCH_OVERVIEW.txt
+RESEARCH_SUMMARY.md
 
 # Database files (if using local SQLite for testing)
 *.db
