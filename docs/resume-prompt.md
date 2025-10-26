@@ -80,6 +80,11 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 - ✅ **ContentSanitizer** (src/ai/sanitizer.ts) - **DONE 2025-10-26**
   - Removes PII before AI analysis (emails, phones, SSNs, credit cards, URLs)
   - 93 comprehensive tests passing
+- ✅ **AIResponseValidator** (src/ai/validator.ts) - **DONE 2025-10-26**
+  - Zod runtime schema validation for all AI responses
+  - Strict validation with detailed error reporting
+  - Partial validation for recovery scenarios
+  - 42 comprehensive tests passing, 90.62% coverage
 - ❌ AI Provider Clients (Claude, OpenAI, DeepSeek)
 - ❌ Provider Selector (primary/fallback logic)
 - ❌ AI analysis prompts (dating detection, scammer patterns, age estimation)
