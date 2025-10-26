@@ -3,9 +3,9 @@
 ## Quick Context
 Reddit AI Automod is a Devvit-based **user profiling & analysis system** that uses AI (Claude 3.5 Haiku or OpenAI gpt-4o-mini) to detect problematic posters: romance scammers, dating seekers, underage users, and spammers. Built with TypeScript, Redis storage, trust scoring, and strict cost controls.
 
-**Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI)
-**AI Providers**: Claude 3.5 Haiku (primary), OpenAI gpt-4o-mini (fallback)
-**Current Phase**: Phase 2 - AI Integration (Ready to Start)
+**Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI/DeepSeek)
+**AI Providers**: Claude 3.5 Haiku (primary), OpenAI gpt-4o-mini (fallback), DeepSeek V3 (testing)
+**Current Phase**: Phase 2 - AI Integration (Started 2025-10-26)
 **Phase 1 Status**: COMPLETE ✅
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
@@ -76,12 +76,17 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 - ✅ Trust score system (0-100 score, "trusted user" flag)
 - ✅ Handler integration (trust check → profile fetch → score calculation)
 
-**What's Missing** (Phase 2 - Next to Build):
-- ❌ OpenAI API integration (gpt-4o-mini)
+**What's Missing** (Phase 2 - In Progress):
+- ✅ **ContentSanitizer** (src/ai/sanitizer.ts) - **DONE 2025-10-26**
+  - Removes PII before AI analysis (emails, phones, SSNs, credit cards, URLs)
+  - 93 comprehensive tests passing
+- ❌ AI Provider Clients (Claude, OpenAI, DeepSeek)
+- ❌ Provider Selector (primary/fallback logic)
 - ❌ AI analysis prompts (dating detection, scammer patterns, age estimation)
 - ❌ Cost tracking system (daily limits, monthly totals)
 - ❌ Budget enforcement (default $5/day limit)
 - ❌ AI result caching (24h TTL)
+- ❌ AI Analyzer (orchestrates everything)
 
 **Reddit Infrastructure**:
 - Test sub: r/AiAutomod ✅
