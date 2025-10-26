@@ -358,10 +358,10 @@ _None currently_
 ## Notes
 
 - **Major Architecture Change**: Pivoted from generic rule engine to focused user profiling system
-- **Current Status**: Foundation complete, ready to build user profiling components
-- **Next Focus**: User profile fetcher + post history analyzer + trust score system
+- **Current Status**: Phase 1 complete, user profiling system operational, ready for AI integration
+- **Next Focus**: OpenAI integration, AI analysis prompts, cost tracking, budget enforcement
 - **Cost Tracking**: Critical requirement, will be built into every AI call
 - **Testing Strategy**: Start with FLAG-only mode, transition to auto-actions after validation
 - **Target Subs**: FriendsOver40/50 (dating/scammer detection) + bitcointaxes (spam detection)
 - **Documentation**: All planning docs updated to reflect new architecture
-- **Git**: Working on develop branch, will merge to main after Phase 1 complete
+- **Git**: Working on main branch, pushed to GitHub (https://github.com/cdmackie/reddit-ai-automod)
