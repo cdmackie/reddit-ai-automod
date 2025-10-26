@@ -105,9 +105,14 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 - ✅ **DeepSeek Client** (src/ai/deepseek.ts) - **DONE 2025-10-26**
   - DeepSeek V3 via OpenAI-compatible API
   - Low-cost option
-- ❌ **ProviderSelector** (src/ai/selector.ts) - IN PROGRESS
-  - Multi-provider management and failover
-- ❌ **AI Analyzer** (src/ai/analyzer.ts)
+- ✅ **ProviderSelector** (src/ai/selector.ts) - **DONE 2025-10-26**
+  - Priority-based provider selection (Claude → OpenAI → DeepSeek)
+  - Circuit breaker integration (skip OPEN circuits)
+  - Health check caching (5 minute TTL)
+  - A/B testing support for Week 2
+  - Graceful degradation when all providers down
+  - 10/12 tests passing ✅
+- ❌ **AI Analyzer** (src/ai/analyzer.ts) - NEXT
   - Orchestrates provider selection, caching, analysis
 
 **Reddit Infrastructure**:

@@ -1,0 +1,539 @@
+/**
+ * AI Provider Selector
+ *
+ * Intelligently selects which AI provider to use based on health status,
+ * circuit breaker state, and priority configuration. Implements automatic
+ * failover between Claude, OpenAI, and DeepSeek providers.
+ *
+ * Selection Strategy:
+ * 1. Get enabled providers sorted by priority (Claude → OpenAI → DeepSeek)
+ * 2. Check circuit breaker state for each provider
+ * 3. Skip providers with OPEN circuits
+ * 4. Check health status (cached for 5 minutes)
+ * 5. Return first healthy provider with CLOSED or HALF_OPEN circuit
+ * 6. Return null if all providers unavailable (caller handles degradation)
+ *
+ * @module ai/selector
+ *
+ * @example
+ * ```typescript
+ * const selector = ProviderSelector.getInstance(context);
+ *
+ * // Select best available provider
+ * const provider = await selector.selectProvider();
+ * if (provider === null) {
+ *   console.error('All AI providers unavailable - degrading to trust scores');
+ *   // Handle degradation
+ * } else {
+ *   const result = await provider.analyze(request);
+ * }
+ *
+ * // Check all provider health
+ * const healthStatus = await selector.checkAllProviders();
+ * console.log('Claude healthy:', healthStatus.claude.healthy);
+ * console.log('Circuit state:', healthStatus.claude.circuitState);
+ * ```
+ */
+
+import { Devvit } from '@devvit/public-api';
+import { IAIProvider } from './provider.js';
+import { ClaudeProvider } from './claude.js';
+import { OpenAIProvider } from './openai.js';
+import { DeepSeekProvider } from './deepseek.js';
+import { CircuitBreaker } from './circuitBreaker.js';
+import { AIProviderType, ProviderHealthStatus } from '../types/ai.js';
+import { AI_CONFIG, getEnabledProviders } from '../config/ai.js';
+
+/**
+ * Provider Selector - Intelligent AI provider selection with automatic failover
+ *
+ * Singleton class that manages provider selection based on:
+ * - Provider priority configuration (Claude #1, OpenAI #2, DeepSeek #3)
+ * - Circuit breaker state (skip OPEN circuits)
+ * - Health check results (cached for 5 minutes)
+ * - A/B testing configuration (for Week 2 testing)
+ *
+ * Key features:
+ * - Automatic failover to healthy providers
+ * - Circuit breaker integration for fault tolerance
+ * - Health check caching to reduce overhead
+ * - A/B testing support for provider comparison
+ * - Graceful degradation when all providers down
+ */
+export class ProviderSelector {
+  /**
+   * A/B testing enabled flag
+   * When true, selectProvider uses distribution-based selection
+   * When false (default), uses priority-based selection
+   */
+  private abTestEnabled: boolean = false;
+
+  /**
+   * A/B testing distribution percentages
+   * Must sum to 100. Default: 100% Claude, 0% others
+   * Example: { claude: 40, openai: 30, deepseek: 30 }
+   */
+  private abTestDistribution: Record<AIProviderType, number> = {
+    claude: 100,
+    openai: 0,
+    deepseek: 0,
+  };
+
+  /**
+   * Private constructor - use getInstance() instead
+   * @param context - Devvit context for Redis and Secrets Manager access
+   */
+  private constructor(private context: Devvit.Context) {}
+
+  /**
+   * Singleton instances keyed by Devvit context
+   * Ensures one ProviderSelector per context
+   */
+  private static instances = new Map<any, ProviderSelector>();
+
+  /**
+   * Get or create ProviderSelector instance for this context
+   *
+   * Uses singleton pattern to ensure consistent state within a context.
+   * Each Devvit context gets its own ProviderSelector instance.
+   *
+   * @param context - Devvit context containing Redis and Secrets Manager
+   * @returns Singleton ProviderSelector instance for this context
+   *
+   * @example
+   * ```typescript
+   * // In a Devvit trigger handler
+   * export async function onPostSubmit(event: PostSubmit, context: Devvit.Context) {
+   *   const selector = ProviderSelector.getInstance(context);
+   *   const provider = await selector.selectProvider();
+   *   // Use provider...
+   * }
+   * ```
+   */
+  static getInstance(context: Devvit.Context): ProviderSelector {
+    if (!this.instances.has(context)) {
+      this.instances.set(context, new ProviderSelector(context));
+    }
+    return this.instances.get(context)!;
+  }
+
+  /**
+   * Select the best available AI provider based on priority and health
+   *
+   * Selection algorithm:
+   * 1. Get enabled providers sorted by priority (Claude → OpenAI → DeepSeek)
+   * 2. For each provider in priority order:
+   *    a. Check if provider is healthy (health check + circuit breaker)
+   *    b. If healthy, create and return provider instance
+   *    c. If unhealthy, log skip reason and try next provider
+   * 3. If all providers unhealthy, return null
+   *
+   * Health checks are cached for 5 minutes to reduce overhead.
+   * Providers with OPEN circuits are automatically skipped.
+   *
+   * @returns Promise resolving to provider instance, or null if all unavailable
+   *
+   * @example
+   * ```typescript
+   * const selector = ProviderSelector.getInstance(context);
+   * const provider = await selector.selectProvider();
+   *
+   * if (provider === null) {
+   *   console.error('All AI providers unavailable');
+   *   // Degrade to trust-score-only mode
+   * } else {
+   *   console.log('Selected provider:', provider.type);
+   *   const result = await provider.analyze(request);
+   * }
+   * ```
+   */
+  async selectProvider(): Promise<IAIProvider | null> {
+    // Get enabled providers sorted by priority
+    const enabledProviders = getEnabledProviders();
+
+    if (enabledProviders.length === 0) {
+      console.error('[ProviderSelector] No enabled providers configured');
+      return null;
+    }
+
+    console.log(
+      `[ProviderSelector] Checking providers in priority order: ${enabledProviders.join(' → ')}`
+    );
+
+    // Try each provider in priority order
+    for (const providerType of enabledProviders) {
+      try {
+        // Check if provider is healthy
+        const isHealthy = await this.isProviderHealthy(providerType);
+
+        if (!isHealthy) {
+          console.log(
+            `[ProviderSelector] Skipping ${providerType} - unhealthy or circuit open`
+          );
+          continue;
+        }
+
+        // Provider is healthy, create instance
+        const provider = await this.getProviderInstance(providerType);
+        const priority = AI_CONFIG.providers[providerType].priority;
+
+        console.log(
+          `[ProviderSelector] Selected ${providerType} (priority ${priority})`
+        );
+        return provider;
+      } catch (error) {
+        console.error(
+          `[ProviderSelector] Error checking ${providerType}:`,
+          error
+        );
+        // Continue to next provider
+      }
+    }
+
+    // All providers unavailable
+    console.error('[ProviderSelector] All providers unavailable');
+    return null;
+  }
+
+  /**
+   * Health check all enabled providers and return detailed status
+   *
+   * Performs health checks on all enabled providers and returns comprehensive
+   * status including circuit breaker state, recent failures, and response time.
+   *
+   * Process:
+   * 1. Get all enabled providers from configuration
+   * 2. For each provider:
+   *    - Get circuit breaker state
+   *    - If circuit OPEN, mark unhealthy (skip health check)
+   *    - If circuit CLOSED/HALF_OPEN, perform health check
+   *    - Cache result in Redis with 5 minute TTL
+   * 3. Return ProviderHealthStatus for each provider
+   *
+   * Results are cached to avoid excessive health checks.
+   *
+   * @returns Promise resolving to health status for each provider
+   *
+   * @example
+   * ```typescript
+   * const selector = ProviderSelector.getInstance(context);
+   * const healthStatus = await selector.checkAllProviders();
+   *
+   * // Check each provider
+   * for (const [provider, status] of Object.entries(healthStatus)) {
+   *   console.log(`${provider}:`);
+   *   console.log(`  Healthy: ${status.healthy}`);
+   *   console.log(`  Circuit: ${status.circuitState}`);
+   *   console.log(`  Failures: ${status.recentFailures}`);
+   * }
+   *
+   * // Check if any provider is healthy
+   * const anyHealthy = Object.values(healthStatus).some(s => s.healthy);
+   * if (!anyHealthy) {
+   *   console.error('All providers down!');
+   * }
+   * ```
+   */
+  async checkAllProviders(): Promise<
+    Record<AIProviderType, ProviderHealthStatus>
+  > {
+    const enabledProviders = getEnabledProviders();
+    const circuitBreaker = CircuitBreaker.getInstance(this.context);
+    const healthStatus: Partial<Record<AIProviderType, ProviderHealthStatus>> =
+      {};
+
+    console.log(
+      `[ProviderSelector] Health checking providers: ${enabledProviders.join(', ')}`
+    );
+
+    // Check each enabled provider
+    for (const providerType of enabledProviders) {
+      try {
+        // Get circuit breaker state
+        const circuitState = await circuitBreaker.getState(providerType);
+
+        let healthy = false;
+        let avgResponseTimeMs: number | undefined = undefined;
+
+        // If circuit is OPEN, don't perform health check
+        if (circuitState.state === 'OPEN') {
+          console.log(
+            `[ProviderSelector] ${providerType} circuit OPEN - marking unhealthy`
+          );
+          healthy = false;
+        } else {
+          // Circuit is CLOSED or HALF_OPEN, perform health check
+          try {
+            const startTime = Date.now();
+            const provider = await this.getProviderInstance(providerType);
+            healthy = await provider.healthCheck();
+            avgResponseTimeMs = Date.now() - startTime;
+
+            // Cache health check result
+            const cacheKey = `provider:health:${providerType}`;
+            const cacheValue = healthy ? 'healthy' : 'unhealthy';
+            await this.context.redis.set(cacheKey, cacheValue, {
+              expiration: new Date(
+                Date.now() + AI_CONFIG.caching.healthCheckTTL * 1000
+              ),
+            });
+
+            console.log(
+              `[ProviderSelector] Health check for ${providerType}: ${healthy} (${avgResponseTimeMs}ms)`
+            );
+          } catch (error) {
+            console.error(
+              `[ProviderSelector] Health check failed for ${providerType}:`,
+              error
+            );
+            healthy = false;
+          }
+        }
+
+        // Build health status
+        healthStatus[providerType] = {
+          provider: providerType,
+          healthy,
+          lastCheckTime: Date.now(),
+          circuitState: circuitState.state,
+          recentFailures: circuitState.failureCount,
+          avgResponseTimeMs,
+        };
+      } catch (error) {
+        console.error(
+          `[ProviderSelector] Error checking ${providerType}:`,
+          error
+        );
+
+        // Default to unhealthy on error
+        healthStatus[providerType] = {
+          provider: providerType,
+          healthy: false,
+          lastCheckTime: Date.now(),
+          circuitState: 'OPEN',
+          recentFailures: 0,
+        };
+      }
+    }
+
+    return healthStatus as Record<AIProviderType, ProviderHealthStatus>;
+  }
+
+  /**
+   * Enable A/B testing mode for provider selection
+   *
+   * When enabled, selectProvider will use the distribution percentages
+   * instead of priority-based selection. This allows testing different
+   * providers against each other to compare quality and cost.
+   *
+   * Distribution must sum to 100. Same user ID always gets same provider
+   * (consistent hashing) to ensure fair comparison.
+   *
+   * Note: Not implemented in Phase 1.2 - prepared for Week 2 testing.
+   *
+   * @param enabled - Enable or disable A/B testing
+   * @param distribution - Percentage distribution across providers (must sum to 100)
+   *
+   * @example
+   * ```typescript
+   * const selector = ProviderSelector.getInstance(context);
+   *
+   * // Enable A/B testing: 40% Claude, 30% OpenAI, 30% DeepSeek
+   * selector.setABTestMode(true, {
+   *   claude: 40,
+   *   openai: 30,
+   *   deepseek: 30
+   * });
+   *
+   * // Disable A/B testing (back to priority-based)
+   * selector.setABTestMode(false, {
+   *   claude: 100,
+   *   openai: 0,
+   *   deepseek: 0
+   * });
+   * ```
+   */
+  setABTestMode(
+    enabled: boolean,
+    distribution: Record<AIProviderType, number>
+  ): void {
+    // Validate distribution sums to 100
+    const sum = Object.values(distribution).reduce((a, b) => a + b, 0);
+    if (Math.abs(sum - 100) > 0.01) {
+      console.warn(
+        `[ProviderSelector] A/B test distribution sums to ${sum}, expected 100`
+      );
+    }
+
+    this.abTestEnabled = enabled;
+    this.abTestDistribution = distribution;
+
+    console.log(
+      `[ProviderSelector] A/B testing ${enabled ? 'enabled' : 'disabled'}`
+    );
+    if (enabled) {
+      console.log('[ProviderSelector] Distribution:', distribution);
+    }
+  }
+
+  /**
+   * Create provider instance with API key from Secrets Manager
+   *
+   * Retrieves API key from Devvit Secrets Manager and creates the
+   * appropriate provider client instance (Claude, OpenAI, or DeepSeek).
+   *
+   * API keys are stored in Devvit settings:
+   * - Claude: ANTHROPIC_API_KEY
+   * - OpenAI: OPENAI_API_KEY
+   * - DeepSeek: DEEPSEEK_API_KEY
+   *
+   * @param type - Provider type to instantiate
+   * @returns Promise resolving to provider instance
+   * @throws Error if API key is missing or invalid
+   * @private
+   *
+   * @example
+   * ```typescript
+   * // Internal use only - called by selectProvider()
+   * const provider = await this.getProviderInstance('claude');
+   * const result = await provider.analyze(request);
+   * ```
+   */
+  private async getProviderInstance(type: AIProviderType): Promise<IAIProvider> {
+    // Get API key from Secrets Manager
+    let apiKey: string | undefined;
+
+    switch (type) {
+      case 'claude':
+        apiKey = await this.context.settings.get('ANTHROPIC_API_KEY');
+        break;
+      case 'openai':
+        apiKey = await this.context.settings.get('OPENAI_API_KEY');
+        break;
+      case 'deepseek':
+        apiKey = await this.context.settings.get('DEEPSEEK_API_KEY');
+        break;
+    }
+
+    if (!apiKey) {
+      throw new Error(
+        `Missing API key for provider ${type}. Please configure in Devvit settings.`
+      );
+    }
+
+    // Create provider instance
+    switch (type) {
+      case 'claude':
+        return new ClaudeProvider(apiKey);
+      case 'openai':
+        return new OpenAIProvider(apiKey);
+      case 'deepseek':
+        return new DeepSeekProvider(apiKey);
+    }
+  }
+
+  /**
+   * Check if a single provider is healthy
+   *
+   * Checks provider health using cached results when available.
+   * Cache TTL is 5 minutes (AI_CONFIG.caching.healthCheckTTL).
+   *
+   * Health check logic:
+   * 1. Check Redis cache for recent health check result
+   * 2. If cached, return cached result
+   * 3. If not cached, check circuit breaker state
+   * 4. If circuit OPEN, return false (unhealthy)
+   * 5. If circuit CLOSED/HALF_OPEN, perform health check
+   * 6. Cache result and return
+   *
+   * @param type - Provider type to check
+   * @returns Promise resolving to true if healthy, false otherwise
+   * @private
+   *
+   * @example
+   * ```typescript
+   * // Internal use only - called by selectProvider()
+   * const isHealthy = await this.isProviderHealthy('claude');
+   * if (isHealthy) {
+   *   const provider = await this.getProviderInstance('claude');
+   *   // Use provider...
+   * }
+   * ```
+   */
+  private async isProviderHealthy(type: AIProviderType): Promise<boolean> {
+    try {
+      // Check cache first
+      const cacheKey = `provider:health:${type}`;
+      const cachedHealth = await this.context.redis.get(cacheKey);
+
+      if (cachedHealth !== undefined) {
+        const healthy = cachedHealth === 'healthy';
+        console.log(
+          `[ProviderSelector] Using cached health for ${type}: ${healthy}`
+        );
+        return healthy;
+      }
+
+      // Not cached, check circuit breaker state
+      const circuitBreaker = CircuitBreaker.getInstance(this.context);
+      const circuitState = await circuitBreaker.getState(type);
+
+      // If circuit is OPEN, don't perform health check
+      if (circuitState.state === 'OPEN') {
+        console.log(
+          `[ProviderSelector] ${type} circuit OPEN - skipping health check`
+        );
+
+        // Cache unhealthy result
+        await this.context.redis.set(cacheKey, 'unhealthy', {
+          expiration: new Date(
+            Date.now() + AI_CONFIG.caching.healthCheckTTL * 1000
+          ),
+        });
+
+        return false;
+      }
+
+      // Circuit is CLOSED or HALF_OPEN, perform health check
+      try {
+        const provider = await this.getProviderInstance(type);
+        const healthy = await provider.healthCheck();
+
+        // Cache result
+        const cacheValue = healthy ? 'healthy' : 'unhealthy';
+        await this.context.redis.set(cacheKey, cacheValue, {
+          expiration: new Date(
+            Date.now() + AI_CONFIG.caching.healthCheckTTL * 1000
+          ),
+        });
+
+        console.log(`[ProviderSelector] Health check for ${type}: ${healthy}`);
+        return healthy;
+      } catch (error) {
+        console.error(
+          `[ProviderSelector] Health check failed for ${type}:`,
+          error
+        );
+
+        // Cache unhealthy result
+        await this.context.redis.set(cacheKey, 'unhealthy', {
+          expiration: new Date(
+            Date.now() + AI_CONFIG.caching.healthCheckTTL * 1000
+          ),
+        });
+
+        return false;
+      }
+    } catch (error) {
+      // Redis error or other unexpected error
+      console.error(
+        `[ProviderSelector] Error checking health for ${type}:`,
+        error
+      );
+
+      // Default to healthy on error (fail open)
+      // This prevents Redis issues from blocking all providers
+      return true;
+    }
+  }
+}
