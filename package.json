@@ -1,6 +1,6 @@
 {
-  "name": "reddit-ai-automod",
-  "version": "0.1.0",
+  "name": "ai-automod-app",
+  "version": "0.0.0",
   "description": "AI-powered moderation tool for Reddit using Devvit",
   "main": "src/main.tsx",
   "scripts": {
@@ -19,13 +19,15 @@
     "automod"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "devDependencies": {
-    "@devvit/public-api": "^0.12.1",
-    "@devvit/protos": "^0.12.1",
+    "@devvit/public-api": "0.12.1",
+    "@devvit/protos": "0.12.1",
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "devvit": "^0.12.1"
-  }
+    "devvit": "0.12.1"
+  },
+  "type": "module",
+  "private": true
 }

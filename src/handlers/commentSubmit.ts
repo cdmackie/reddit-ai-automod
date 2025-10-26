@@ -32,7 +32,7 @@ export async function handleCommentSubmit(
 
   const author = comment.authorName || '[deleted]';
   const body = comment.body || '';
-  const subredditName = (await comment.getSubreddit()).name;
+  const subredditName = comment.subredditName || 'unknown';
 
   console.log(`[CommentSubmit] Processing comment: ${commentId} by u/${author}`);
   console.log(`[CommentSubmit] Subreddit: r/${subredditName}`);

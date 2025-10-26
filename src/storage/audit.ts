@@ -33,13 +33,10 @@ export class AuditLogger {
       entry.contentId
     );
 
-    // Store the audit log
-    await this.storage.set(key, auditEntry);
-
-    // Also store in a list for the content item (append to array)
-    const existingLogs = await this.getLogsForContent(entry.contentId) || [];
-    existingLogs.push(auditEntry);
-    await this.storage.set(key, existingLogs);
+    // Store the audit log as an array
+    const existingLogs = await this.getLogsForContent(entry.contentId);
+    const logs = existingLogs ? [...existingLogs, auditEntry] : [auditEntry];
+    await this.storage.set(key, logs);
   }
 
   /**

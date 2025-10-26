@@ -32,7 +32,7 @@ export async function handlePostSubmit(
 
   const author = post.authorName || '[deleted]';
   const title = post.title || '';
-  const subredditName = (await post.getSubreddit()).name;
+  const subredditName = post.subredditName || 'unknown';
 
   console.log(`[PostSubmit] Processing post: ${postId} by u/${author}`);
   console.log(`[PostSubmit] Subreddit: r/${subredditName}`);
