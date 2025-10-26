@@ -32,7 +32,9 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.67.0",
     "devvit": "0.12.1",
+    "openai": "^6.7.0",
     "zod": "^4.1.12"
   },
   "type": "module",
