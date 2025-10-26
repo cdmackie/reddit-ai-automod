@@ -4,7 +4,7 @@
 Reddit AI Automod is a Devvit-based moderation tool that uses AI (OpenAI + Gemini) to automate content moderation with both predetermined and custom rules. Built with TypeScript, Redis storage, and a hybrid two-stage AI strategy for cost efficiency.
 
 **Stack**: Reddit Devvit (TypeScript), Redis, OpenAI API, Google Gemini API
-**Current Phase**: Phase 1 - Foundation & Setup (In Progress)
+**Current Phase**: Phase 1 - Foundation & Setup (Complete ✅) | Phase 2 - Rule Engine Core (Ready to Start)
 
 ---
 
@@ -29,7 +29,7 @@ Reddit AI Automod is a Devvit-based moderation tool that uses AI (OpenAI + Gemin
 - ✅ 5 commits completed
 - ✅ Repository clean and ready for Phase 1
 
-### Phase 1: Foundation & Setup (In Progress - 2025-10-25)
+### Phase 1: Foundation & Setup (Complete ✅ - 2025-10-25)
 - ✅ Organized research files into docs/research/
 - ✅ Installed Node.js v20.19.5
 - ✅ Installed Devvit CLI v0.12.1 globally
@@ -39,18 +39,29 @@ Reddit AI Automod is a Devvit-based moderation tool that uses AI (OpenAI + Gemin
 - ✅ Installed all npm dependencies (403 packages)
 - ✅ Created main.tsx entry point
 - ✅ Initialized git branch strategy (main + develop)
-- ✅ Committed initial structure (6 total commits)
-- ✅ Switched to develop branch for ongoing work
+- ✅ Created test subreddit r/AiAutomod
+- ✅ Created bot account u/aiautomodapp (moderator)
+- ✅ Authenticated Devvit CLI (devvit login)
+- ✅ Created developer account at developers.reddit.com
+- ✅ Registered app "AI-Automod-App"
+- ✅ Implemented type definitions (events.ts, storage.ts, config.ts)
+- ✅ Implemented Redis storage layer (redis.ts, audit.ts)
+- ✅ Implemented PostSubmit event handler
+- ✅ Implemented CommentSubmit event handler
+- ✅ Deployed to playtest subreddit r/ai_automod_app_dev
+- ✅ Fixed API compatibility issues (post.subredditName, audit array handling)
+- ✅ Tested with real Reddit events (3 posts, 1 comment)
+- ✅ Committed working foundation to develop branch (7 total commits)
 
 ---
 
 ## Current State
 
-**Status**: Phase 1 foundation complete, ready to implement event handlers and storage layer
+**Status**: Phase 1 complete ✅ - Event handlers and storage layer working. Ready for Phase 2: Rule Engine Core
 
 **What Exists**:
 - `/home/cdm/redditmod/CLAUDE.md` - Development best practices (local only, not in git)
-- `/home/cdm/redditmod/.git/` - Git repository (6 commits: 5 on main, 1 Devvit structure)
+- `/home/cdm/redditmod/.git/` - Git repository (7 commits on develop branch)
 - `/home/cdm/redditmod/.gitignore` - Comprehensive exclusion rules
 - `/home/cdm/redditmod/README.md` - Project overview
 - `/home/cdm/redditmod/package.json` - Devvit dependencies configured
@@ -58,57 +69,75 @@ Reddit AI Automod is a Devvit-based moderation tool that uses AI (OpenAI + Gemin
 - `/home/cdm/redditmod/devvit.yaml` - Devvit app configuration
 - `/home/cdm/redditmod/node_modules/` - 403 packages installed (not in git)
 - `/home/cdm/redditmod/docs/` - All planning documents + research/ subfolder
-  - `predetermined-rules.md` - 20 pre-built moderation rules
-  - `custom-rule-system.md` - Custom rule builder design
-  - `architecture.md` - Complete technical architecture
-  - `implementation-plan.md` - 6-phase development plan
-  - `project-status.md` - Updated with Phase 1 progress
-  - `resume-prompt.md` - This file
-  - `research/` - All research files moved here
-- `/home/cdm/redditmod/src/` - Modular source structure with READMEs
-  - `main.tsx` - Entry point with basic Devvit setup
-  - `handlers/` - Event handlers (empty, ready for implementation)
-  - `rules/` - Rule engine (empty, ready for implementation)
-  - `ai/` - AI integrations (empty, ready for implementation)
-  - `storage/` - Redis layer (empty, ready for implementation)
-  - `types/` - Type definitions (empty, ready for implementation)
-  - `utils/` - Utilities (empty, ready for implementation)
-  - `config/` - Configuration (empty, ready for implementation)
+- `/home/cdm/redditmod/src/` - Modular source structure
+  - `main.tsx` - Entry point with event handler registration ✅
+  - `handlers/postSubmit.ts` - PostSubmit event handler ✅
+  - `handlers/commentSubmit.ts` - CommentSubmit event handler ✅
+  - `storage/redis.ts` - Redis storage abstraction layer ✅
+  - `storage/audit.ts` - Audit logging system ✅
+  - `types/events.ts` - Event type definitions ✅
+  - `types/storage.ts` - Storage type definitions ✅
+  - `types/config.ts` - Configuration types ✅
+  - `rules/` - Rule engine (ready for Phase 2 implementation)
+  - `ai/` - AI integrations (ready for Phase 3 implementation)
+  - `utils/` - Utilities (ready for implementation as needed)
+  - `config/` - Configuration (ready for implementation as needed)
+
+**Reddit Infrastructure**:
+- Test subreddit: r/AiAutomod ✅
+- Bot account: u/aiautomodapp (moderator) ✅
+- Playtest subreddit: r/ai_automod_app_dev (auto-created by Devvit) ✅
+- App registration: "AI-Automod-App" ✅
+- Deployment: Active and capturing events ✅
 
 **What Doesn't Exist Yet**:
-- Test subreddit (needs creation)
-- Reddit app credentials (needs registration)
-- .env file for API keys (needs creation)
-- Event handler implementations
-- Redis storage layer implementation
-- Type definitions
-- Any actual moderation logic
+- .env file for AI API keys (OpenAI, Gemini) - needed for Phase 3
+- Rule matching engine - Phase 2 work
+- Condition evaluator - Phase 2 work
+- Action execution layer - Phase 2 work
+- AI integration layer - Phase 3 work
+- Predetermined rules - Phase 4 work
+- Custom rule UI - Phase 5 work
 
 ---
 
 ## What's Next
 
-### Immediate Next Steps (Phase 1 Continuation)
-1. **Create test subreddit** - Private subreddit with < 200 members for beta testing
-2. **Register Reddit app** - Get credentials at https://www.reddit.com/prefs/apps
-3. **Set up .env file** - Store API keys securely (OpenAI, Gemini, Reddit)
-4. **Implement basic event handlers**:
-   - `src/handlers/postSubmit.ts` - Handle new post submissions
-   - `src/handlers/commentSubmit.ts` - Handle new comment submissions
-5. **Create type definitions**:
-   - `src/types/events.ts` - Reddit event types
-   - `src/types/storage.ts` - Storage-related types
-6. **Implement Redis storage layer**:
-   - `src/storage/redis.ts` - Redis client wrapper
-   - `src/storage/audit.ts` - Audit logging
-7. **Test in playtest mode**: `npm run dev`
-8. **Verify events trigger**: Check logs, test handlers work
-9. **Commit Phase 1 completion**: Document and commit working foundation
+### Immediate Next Steps (Phase 2: Rule Engine Core)
+1. **Design rule data structure**:
+   - Define Rule type with conditions, actions, priority
+   - Design storage schema for rules in Redis
+   - Create rule builder utility functions
 
-### After Phase 1 Complete
-1. Begin Phase 2: Rule Engine Core
-2. Implement rule matching and evaluation logic
-3. Create action execution layer
+2. **Implement rule matching engine**:
+   - `src/rules/matcher.ts` - Match content against rules
+   - Support text matching, regex patterns, keywords
+   - Handle rule priority and conflict resolution
+
+3. **Create condition evaluator**:
+   - `src/rules/evaluator.ts` - Evaluate rule conditions
+   - Text contains/matches logic
+   - User history checks
+   - Content type checks (post vs comment)
+
+4. **Build action execution layer**:
+   - `src/rules/actions.ts` - Execute moderation actions
+   - Implement: REMOVE, FLAG, APPROVE, IGNORE
+   - Log all actions via audit logger
+   - Handle action failures gracefully
+
+5. **Test rule engine**:
+   - Create simple test rules
+   - Deploy and test in playtest mode
+   - Verify actions execute correctly
+   - Verify audit logging captures all actions
+
+6. **Commit Phase 2**: Document and commit working rule engine
+
+### After Phase 2 Complete
+1. Phase 3: AI Integration (OpenAI Moderation API + GPT-4/Gemini)
+2. Phase 4: Implement 20 predetermined rules
+3. Phase 5: Custom rule builder UI
 
 ---
 
@@ -303,9 +332,9 @@ Then:
 
 ---
 
-**Status**: Planning complete ✅ | Git repository initialized ✅
-**Ready for**: User approval → Phase 1 implementation
-**Estimated time to MVP**: 6-8 weeks (5 phases)
+**Status**: Phase 1 complete ✅ | Event handlers operational ✅ | Deployed to playtest ✅
+**Ready for**: Phase 2 - Rule Engine Core implementation
+**Estimated time to MVP**: 5-7 weeks remaining (4 phases)
 
 ---
 
@@ -320,28 +349,45 @@ Then:
 5. ✅ 5 commits completed
 6. ✅ Repository clean and ready
 
-### Session 2: Phase 1 Foundation
+### Session 2: Phase 1 Complete ✅
 **Completed**:
 1. ✅ Organized research files into docs/research/
 2. ✅ Installed Devvit CLI v0.12.1
 3. ✅ Created Devvit project structure
 4. ✅ Set up package.json, tsconfig.json, devvit.yaml
 5. ✅ Created modular src/ directory structure
-6. ✅ Added README.md to each module for documentation
-7. ✅ Installed 403 npm packages
-8. ✅ Created main.tsx entry point
-9. ✅ Initialized git branch strategy (main + develop)
-10. ✅ Committed Devvit structure to main
-11. ✅ Updated project-status.md and resume-prompt.md
-12. ✅ Phase 1 foundation complete
+6. ✅ Installed 403 npm packages
+7. ✅ Created main.tsx entry point
+8. ✅ User created test subreddit r/AiAutomod
+9. ✅ User created bot account u/aiautomodapp
+10. ✅ Authenticated Devvit CLI
+11. ✅ User created developer account
+12. ✅ User registered app "AI-Automod-App"
+13. ✅ Implemented type definitions (events.ts, storage.ts, config.ts)
+14. ✅ Implemented Redis storage layer (redis.ts, audit.ts)
+15. ✅ Implemented PostSubmit handler
+16. ✅ Implemented CommentSubmit handler
+17. ✅ Deployed to playtest (r/ai_automod_app_dev)
+18. ✅ Fixed API compatibility issues
+19. ✅ Tested with real Reddit events
+20. ✅ Committed working foundation (7 commits)
+21. ✅ Updated project-status.md and resume-prompt.md
+22. ✅ **Phase 1 complete - Event-driven architecture operational**
 
-**Files in Git** (20 tracked):
+**Files in Git** (27 tracked on develop branch):
 - .gitignore
 - README.md
 - package.json, package-lock.json
 - tsconfig.json
 - devvit.yaml
 - src/main.tsx
+- src/handlers/postSubmit.ts
+- src/handlers/commentSubmit.ts
+- src/storage/redis.ts
+- src/storage/audit.ts
+- src/types/events.ts
+- src/types/storage.ts
+- src/types/config.ts
 - src/*/README.md (7 READMEs)
 - docs/*.md (6 planning docs)
 
@@ -349,3 +395,6 @@ Then:
 - CLAUDE.md (development workflow)
 - node_modules/ (403 packages)
 - docs/research/ (AI-generated reference docs)
+
+**Current Branch**: develop (7 commits)
+**Last Commit**: acee755 - fix: resolve Devvit API compatibility issues
