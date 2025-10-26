@@ -4,7 +4,8 @@
 Reddit AI Automod is a Devvit-based **user profiling & analysis system** that uses AI (OpenAI gpt-4o-mini) to detect problematic posters: romance scammers, dating seekers, underage users, and spammers. Built with TypeScript, Redis storage, trust scoring, and strict cost controls.
 
 **Stack**: Reddit Devvit (TypeScript), Redis, OpenAI API (gpt-4o-mini)
-**Current Phase**: Phase 1 - Foundation & User Profile Analysis (75% Complete)
+**Current Phase**: Phase 2 - AI Integration (Ready to Start)
+**Phase 1 Status**: COMPLETE ✅
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -34,17 +35,23 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 - ✅ Created implementation plan (4-5 weeks, 5 phases)
 - ✅ Initialized git repository (7 commits)
 
-### Phase 1: Foundation (75% Complete ✅)
+### Phase 1: Foundation & User Profiling (COMPLETE ✅ - 2025-10-26)
 - ✅ Installed Node.js v20.19.5 + Devvit CLI v0.12.1
 - ✅ Created Devvit project structure
 - ✅ Set up modular src/ directory
-- ✅ Implemented type definitions (events.ts, storage.ts, config.ts)
+- ✅ Implemented type definitions (events.ts, storage.ts, config.ts, profile.ts)
 - ✅ Implemented Redis storage layer (redis.ts, audit.ts)
 - ✅ Implemented PostSubmit & CommentSubmit event handlers
 - ✅ Deployed to playtest subreddit (r/ai_automod_app_dev)
 - ✅ Tested with real Reddit events
 - ✅ Fixed API compatibility issues
-- ✅ Committed working foundation to develop branch
+- ✅ **Implemented user profiling system**:
+  - ✅ Rate limiter with exponential backoff
+  - ✅ User profile fetcher (account age, karma, email verified)
+  - ✅ Post history analyzer (last 20 posts/comments)
+  - ✅ Trust score calculator (0-100 scoring algorithm)
+  - ✅ Integrated with PostSubmit handler
+- ✅ Deployed v0.0.2 to playtest
 
 ### Documentation Updates (Complete ✅ - 2025-10-25)
 - ✅ Completely rewrote implementation-plan.md
@@ -55,22 +62,25 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 ## Current State
 
-**Status**: Foundation complete, ready to build user profiling system
+**Status**: Phase 1 complete, user profiling system operational, ready for AI integration
 
 **What Exists**:
-- Working Devvit app deployed to playtest
-- Event handlers capturing new posts/comments
-- Redis storage and audit logging operational
-- Type definitions for events, storage, config
+- ✅ Working Devvit app deployed to playtest (v0.0.2)
+- ✅ Event handlers capturing new posts/comments
+- ✅ Redis storage and audit logging operational
+- ✅ Type definitions for events, storage, config, profiles
+- ✅ Rate limiter (60 req/min with exponential backoff)
+- ✅ User profile fetcher (account age, karma, email verified)
+- ✅ Post history analyzer (fetch last 20 posts from all subs)
+- ✅ Trust score system (0-100 score, "trusted user" flag)
+- ✅ Handler integration (trust check → profile fetch → score calculation)
 
-**What's Missing** (Next to Build):
-- ❌ User profile fetcher (account age, karma, email verified)
-- ❌ Post history analyzer (fetch last 20 posts from all subs)
-- ❌ Trust score system (0-100 score, "trusted user" flag)
-- ❌ AI integration (OpenAI gpt-4o-mini)
+**What's Missing** (Phase 2 - Next to Build):
+- ❌ OpenAI API integration (gpt-4o-mini)
+- ❌ AI analysis prompts (dating detection, scammer patterns, age estimation)
 - ❌ Cost tracking system (daily limits, monthly totals)
-- ❌ Rules engine (hard rules + AI rules)
-- ❌ Action executors (FLAG, REMOVE, COMMENT, BAN)
+- ❌ Budget enforcement (default $5/day limit)
+- ❌ AI result caching (24h TTL)
 
 **Reddit Infrastructure**:
 - Test sub: r/AiAutomod ✅
@@ -82,35 +92,39 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 ## What's Next
 
-### Immediate (Phase 1.2 - User Profiling System)
+### Immediate (Phase 2 - AI Integration)
 
-**Build 3 components**:
+**Build 5 components**:
 
-1. **User Profile Fetcher** (`src/profile/fetcher.ts`)
-   - Fetch user by ID
-   - Get: account age, total karma (link+comment), email verified, is_mod
-   - Cache in Redis (24h TTL)
-   - Key: `user:{userId}:profile`
+1. **OpenAI API Client** (`src/ai/openai.ts`)
+   - Initialize OpenAI client with API key from environment
+   - Implement retry logic with exponential backoff
+   - Handle rate limit errors
 
-2. **Post History Analyzer** (`src/profile/historyAnalyzer.ts`)
-   - Use `getCommentsAndPostsByUser()` Devvit API
-   - Fetch last 20 posts/comments across ALL subreddits
-   - Extract: text content, subreddit names, timestamps, scores
-   - Cache in Redis (24h TTL)
-   - Key: `user:{userId}:history`
+2. **AI Analysis Prompts** (`src/ai/prompts.ts`)
+   - Dating intent detection prompt
+   - Scammer pattern detection prompt
+   - Age estimation prompt (for FriendsOver40/50)
+   - Return structured JSON responses
 
-3. **Trust Score System** (`src/profile/trustScore.ts`)
-   - Calculate score (0-100) from:
-     - Account age (older = higher score)
-     - Total karma (more = higher score)
-     - Email verified (big boost)
-     - Approved post history in this sub
-   - Store score: `user:{userId}:trustScore`
-   - Store trusted flag: `user:{subreddit}:trusted:{userId}`
-   - If score > threshold (default 70), mark as "trusted"
-   - Trusted users bypass expensive AI analysis
+3. **AI Analyzer** (`src/ai/analyzer.ts`)
+   - Take UserProfile + UserPostHistory as input
+   - Send to OpenAI gpt-4o-mini
+   - Parse structured JSON response
+   - Cache results (24h TTL) in Redis
 
-**Test**: Update PostSubmit handler to fetch profile + history + calculate trust score
+4. **Cost Tracker** (`src/ai/costTracker.ts`)
+   - Track per-request costs (tokens × price)
+   - Daily running total in Redis
+   - Monthly aggregate
+   - Alert at 50%, 75%, 90% of daily budget
+
+5. **Budget Enforcer** (`src/ai/budgetEnforcer.ts`)
+   - Check daily budget before AI calls
+   - Hard stop at limit (default $5/day)
+   - Log when budget exceeded
+
+**Test**: Integrate AI analysis into PostSubmit handler for non-trusted users
 
 ---
 

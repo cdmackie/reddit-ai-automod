@@ -52,6 +52,16 @@ export enum StorageKey {
   CACHE = 'cache',
   /** Rules: rule:{ruleId} */
   RULE = 'rule',
+  /** User profile cache: user:{userId}:profile */
+  USER_PROFILE = 'user',
+  /** User post history cache: user:{userId}:history */
+  USER_HISTORY = 'user',
+  /** User trust score: user:{userId}:trustScore */
+  USER_TRUST_SCORE = 'user',
+  /** Trusted user flag: user:{subreddit}:trusted:{userId} */
+  TRUSTED_USER = 'user',
+  /** User approved post count: user:{userId}:{subreddit}:approved */
+  USER_APPROVED_COUNT = 'user',
 }
 
 /**
