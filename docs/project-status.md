@@ -1,8 +1,22 @@
 # Project Status
 
 **Last Updated**: 2025-10-25
-**Current Phase**: Phase 1 - Foundation & Setup (Complete ✅)
-**Overall Progress**: 35% (Planning Complete, Foundation Complete, Event Handlers Working)
+**Current Phase**: Phase 1 - Foundation & User Profile Analysis
+**Overall Progress**: 25% (Planning Complete, Foundation In Progress, Architecture Revised)
+
+---
+
+## Project Pivot - 2025-10-25
+
+**Important**: The project architecture has been significantly revised based on actual use case requirements.
+
+**Original Plan**: Generic rule engine with 20 predetermined rules + custom rule builder
+**New Direction**: User profiling & analysis system focused on specific moderation needs
+
+**Target Subreddits**:
+- r/FriendsOver40 (detect dating seekers, scammers, underage users)
+- r/FriendsOver50 (detect dating seekers, scammers, underage users)
+- r/bitcointaxes (detect spam, off-topic)
 
 ---
 
@@ -12,8 +26,6 @@
 - [x] Created CLAUDE.md with development best practices - 2025-10-25
 - [x] Researched Reddit Devvit platform capabilities - 2025-10-25
 - [x] Researched OpenAI and Gemini API integration - 2025-10-25
-- [x] Documented 20 predetermined moderation rules - 2025-10-25
-- [x] Designed custom rule configuration system - 2025-10-25
 - [x] Created comprehensive architecture document - 2025-10-25
 - [x] Created 6-phase implementation plan - 2025-10-25
 - [x] Created project status tracking document - 2025-10-25
@@ -22,9 +34,8 @@
 - [x] Created README.md with project overview - 2025-10-25
 - [x] Configured .gitignore to exclude dev meta files - 2025-10-25
 - [x] Committed core planning documentation - 2025-10-25
-- [x] Removed CLAUDE.md and research files from git tracking - 2025-10-25
 
-### Phase 1: Foundation & Setup (Complete ✅)
+### Phase 1: Foundation & Setup (Partial - 75% Complete ✅)
 - [x] Organized research files into docs/research/ - 2025-10-25
 - [x] Installed Node.js v20.19.5 - 2025-10-25
 - [x] Installed Devvit CLI v0.12.1 - 2025-10-25
@@ -45,20 +56,34 @@
 - [x] Implemented Redis storage layer (redis.ts, audit.ts) - 2025-10-25
 - [x] Implemented PostSubmit event handler - 2025-10-25
 - [x] Implemented CommentSubmit event handler - 2025-10-25
-- [x] Wired handlers in main.tsx - 2025-10-25
 - [x] Deployed to playtest subreddit r/ai_automod_app_dev - 2025-10-25
-- [x] Fixed post.subredditName API compatibility issue - 2025-10-25
-- [x] Fixed audit logger array handling bug - 2025-10-25
-- [x] Verified event handlers working with real Reddit events - 2025-10-25
-- [x] Tested PostSubmit (3 test posts) - 2025-10-25
-- [x] Tested CommentSubmit (1 test comment) - 2025-10-25
+- [x] Fixed API compatibility issues - 2025-10-25
+- [x] Tested with real Reddit events - 2025-10-25
 - [x] Committed working foundation to develop branch - 2025-10-25
+
+### Architecture Research & Redesign (Complete ✅ - 2025-10-25)
+- [x] Clarified actual use case with user
+- [x] Researched Reddit API user data capabilities
+- [x] Researched Devvit API user profile access
+- [x] Confirmed available data points:
+  - ✅ Account age, karma, email verified
+  - ✅ Full post/comment history across ALL subreddits
+  - ✅ Post/comment content text
+- [x] Designed user profiling architecture
+- [x] Designed trust score system
+- [x] Designed AI analysis system with cost tracking
+- [x] Updated implementation-plan.md with new approach
+- [x] Updated project-status.md (this file)
 
 ---
 
 ## In Progress
 
-_None currently - Phase 1 complete, awaiting direction for Phase 2_
+### Phase 1.2: User Profile Analysis (Next Up)
+- [ ] Create `src/profile/fetcher.ts` - User profile fetcher
+- [ ] Create `src/profile/historyAnalyzer.ts` - Post history analyzer
+- [ ] Create `src/profile/trustScore.ts` - Trust score system
+- [ ] Update PostSubmit handler to use new profiling system
 
 ---
 
@@ -70,27 +95,37 @@ _None currently_
 
 ## Next Steps
 
-### Immediate (Phase 2: Rule Engine Core)
-1. Design rule data structure and storage schema
-2. Implement rule matching engine
-3. Create condition evaluator (text matching, regex, AI triggers)
-4. Build action execution layer (remove, flag, approve)
-5. Implement priority and conflict resolution
-6. Create basic rule testing framework
-7. Test rule engine with predefined rules
-8. Verify rule execution and audit logging
+### Immediate (Phase 1.2 - User Profile System)
+1. Build user profile fetcher
+   - Fetch account age, karma, email verified status
+   - Cache in Redis (24h TTL)
+2. Build post history analyzer
+   - Fetch last 20 posts/comments from ALL subreddits
+   - Extract text, subreddit names, engagement metrics
+   - Cache in Redis (24h TTL)
+3. Implement trust score system
+   - Calculate score (0-100) based on multiple factors
+   - Store in Redis per user
+   - Implement "trusted user" bypass logic
+4. Test end-to-end profile fetching
+
+### Next (Phase 2 - AI Integration)
+1. Integrate OpenAI API (gpt-4o-mini)
+2. Create AI analysis prompts
+3. Implement cost tracking system
+4. Add daily budget enforcement
+5. Cache AI analysis results
 
 ### Future Phases
-1. Phase 3: AI Integration (OpenAI Moderation API + GPT-4/Gemini)
-2. Phase 4: Implement 20 predetermined rules
-3. Phase 5: Custom rule builder UI
-4. Phase 6: Polish, testing, and public launch
+1. Phase 3: Rules engine + action execution (FLAG, REMOVE, COMMENT, BAN)
+2. Phase 4: Mod configuration UI + cost dashboard
+3. Phase 5: Production deployment to 3 subreddits
 
 ---
 
 ## Recent Decisions
 
-### Technology Stack - 2025-10-25
+### Platform Choice - 2025-10-25
 **Decision**: Use Reddit Devvit platform with TypeScript
 **Rationale**:
 - Native Reddit integration
@@ -100,37 +135,44 @@ _None currently_
 - No server management required
 
 ### AI Provider Strategy - 2025-10-25
-**Decision**: Hybrid two-stage approach
-**Stage 1**: OpenAI Moderation API (free, 85-90% accuracy)
-**Stage 2**: OpenAI GPT-4 / Gemini (for edge cases, 95%+ accuracy)
+**Decision**: OpenAI gpt-4o-mini with cost tracking
 **Rationale**:
-- Minimize costs (Stage 1 is free forever)
-- High accuracy when needed (Stage 2)
-- Fallback/redundancy with multiple providers
-- Estimated cost: $0-50/month for 10k posts/day
+- Cost-effective ($0.10 per analysis estimated)
+- Structured JSON responses
+- Good accuracy for our use case
+- Daily budget limits prevent overruns
+- Estimated monthly cost: $20-30
 
-### Rule System Design - 2025-10-25
-**Decision**: Both predefined and custom rules
-**Predefined**: 20 common moderation rules (spam, hate speech, etc.)
-**Custom**: Full rule builder with UI for moderators
+### Architecture Pivot - 2025-10-25
+**Decision**: User profiling system instead of generic rule engine
 **Rationale**:
-- Predefined rules cover 80% of use cases
-- Custom rules allow community-specific needs
-- Flexibility without requiring coding
+- User's actual need: Analyze new posters in FriendsOver40/50/bitcointaxes
+- Detect: romance scammers, dating seekers, underage users
+- Simpler, more focused architecture
+- Better aligns with real use case
+- Easier to implement and test
 
-### Git Strategy - 2025-10-25
-**Decision**: Exclude CLAUDE.md and research files from git
+### Trust Score System - 2025-10-25
+**Decision**: Implement trust scoring to reduce AI costs
 **Rationale**:
-- CLAUDE.md is development workflow guide (local only)
-- Research files are AI-generated reference docs (local only)
-- Keep git repository clean with only essential project docs
-- Dev meta files remain locally for assistant use
+- Users with high trust scores bypass expensive analysis
+- Based on: account age, karma, email verified, approved post history
+- Saves costs on returning users
+- Improves performance (< 100ms for trusted users)
+
+### Cost Tracking & Budget Limits - 2025-10-25
+**Decision**: Hard daily budget limits with tracking
+**Rationale**:
+- User requirement: monitor costs and prevent overruns
+- Daily limit (default $5) enforced before AI calls
+- Track per-call costs, daily totals, monthly aggregates
+- Alert mods at 50%, 75%, 90% of budget
 
 ---
 
 ## Known Issues
 
-### Minor TypeScript Type Mismatches
+### TypeScript Compilation Warnings
 - **Issue**: Some TypeScript compilation errors when running `tsc --noEmit`
 - **Impact**: Low - Devvit's build process is more lenient and runtime works correctly
 - **Status**: Non-blocking, to be addressed in future refactoring
@@ -141,37 +183,43 @@ _None currently_
 ## Project Metrics
 
 ### Planning Phase Metrics
-- Documentation created: 7 files
-- Total documentation: ~15,000 words
-- Research time: ~4 hours
+- Documentation created: 8 files (updated)
+- Total documentation: ~20,000 words
+- Research time: ~6 hours
 - Planning completion: 100%
 
 ### Implementation Metrics
-- Lines of code: ~650 (setup + handlers + storage)
-- Test coverage: 0% (no automated tests, manual testing done)
-- Rules implemented: 0/5 (MVP) - Phase 2 work
+- Lines of code: ~650 (Phase 1 foundation)
+- Test coverage: 0% (no automated tests yet, manual testing done)
 - Deployment status: Deployed to playtest (r/ai_automod_app_dev)
 - Git commits: 7
 - Branches: main, develop
 - Event handlers: 2/2 (PostSubmit, CommentSubmit) ✅
 - Storage layer: Implemented (Redis + audit logging) ✅
+- User profiling system: 0/3 components (next up!)
+- AI integration: Not started
+- Rules engine: Not started
 
 ---
 
 ## Timeline
 
-### Original Estimate
+### Original Estimate (OUTDATED)
 - **Total Duration**: 6-8 weeks
-- **Start Date**: TBD (awaiting approval)
-- **Target Launch**: TBD + 8 weeks
+- **Based on**: Generic rule engine architecture
 
-### Phase Breakdown
-- Phase 1: Foundation & Setup (Weeks 1-2) - **Complete (Day 1)** ✅
-- Phase 2: Rule Engine Core (Weeks 2-3) - **Not Started**
-- Phase 3: AI Integration (Weeks 3-4) - **Not Started**
-- Phase 4: Predefined Rules (Weeks 4-5) - **Not Started**
-- Phase 5: Custom Rules & UI (Weeks 5-6) - **Not Started**
-- Phase 6: Polish & Launch (Weeks 6-8) - **Not Started**
+### Revised Estimate (CURRENT)
+- **Total Duration**: 4-5 weeks
+- **Start Date**: 2025-10-25 (actual)
+- **Target MVP**: ~4 weeks from start
+- **Simpler scope**: User profiling + AI analysis (focused on actual needs)
+
+### Phase Breakdown (Revised)
+- Phase 1: Foundation & User Profile Analysis (Weeks 1-2) - **75% Complete**
+- Phase 2: AI Integration & Cost Tracking (Weeks 2-3) - **Not Started**
+- Phase 3: Rules Engine & Actions (Weeks 3-4) - **Not Started**
+- Phase 4: Mod UI & Testing (Week 4-5) - **Not Started**
+- Phase 5: Production Deployment (Week 5) - **Not Started**
 
 ---
 
@@ -180,40 +228,58 @@ _None currently_
 ### Estimated Monthly Costs (Production)
 - **Devvit Hosting**: $0 (free)
 - **Redis Storage**: $0 (included with Devvit)
-- **OpenAI Moderation API**: $0 (free tier)
-- **OpenAI GPT-4 API**: $0-30/month (with caching)
-- **Google Gemini API**: $0-20/month (backup)
-- **Total**: $0-50/month for 10,000 posts/day
+- **OpenAI API (gpt-4o-mini)**: $20-30/month
+  - ~20 new posts/day analyzed
+  - ~700 tokens per analysis
+  - ~$0.10 per analysis
+  - With caching: ~50% cost reduction
+- **Total**: $20-30/month for 3 subreddits
 
 ### Development Costs
-- **Time Investment**: 6-8 weeks (1 developer)
+- **Time Investment**: 4-5 weeks (1 developer)
 - **External Services**: $0 (using free tiers for development)
+
+### Cost Control Measures
+- Daily budget limits (default $5/day)
+- Aggressive caching (24h TTL for user analysis)
+- Trust score system (bypass AI for trusted users)
+- Budget alerts at 50%, 75%, 90%
+- Monthly cost tracking and reporting
 
 ---
 
 ## Risks & Mitigations
 
 ### Current Risks
-1. **Devvit Platform Limitations**
-   - Status: Monitoring
-   - Mitigation: Comprehensive research completed; no blockers identified
 
-2. **AI API Costs**
+1. **AI Costs Higher Than Expected**
+   - Status: Monitoring (not started yet)
+   - Mitigation: Daily budget limits + aggressive caching
+   - Plan: Can reduce analysis depth or frequency if needed
+
+2. **False Positive Rate Too High**
+   - Status: Unknown (not tested yet)
+   - Mitigation: Start with FLAG-only mode
+   - Plan: Refine prompts and confidence thresholds based on real data
+
+3. **Reddit API Rate Limits**
    - Status: Low risk
-   - Mitigation: Free tier + aggressive caching strategy
+   - Mitigation: Cache aggressively, respect rate limits
+   - Plan: Exponential backoff if limits hit
 
-3. **Timeline Slippage**
-   - Status: Medium risk
-   - Mitigation: Phased approach; MVP first
+4. **User Privacy Concerns**
+   - Status: Low risk
+   - Mitigation: Only analyze public Reddit data
+   - Plan: Document what data is accessed and why
 
 ---
 
 ## Team & Responsibilities
 
 - **Project Manager**: AI Assistant (Claude)
-- **Architect**: AI Assistant + specialized architect-reviewer agent
-- **Developers**: Specialized implementation agents (python-pro, javascript-pro)
-- **QA**: test-automator agent
+- **Architect**: AI Assistant + specialized agents
+- **Developers**: Specialized implementation agents
+- **QA**: test-automator agent + manual testing
 - **Security**: security-auditor agent
 - **Stakeholder**: User (project owner, final decision maker)
 
@@ -224,57 +290,50 @@ _None currently_
 ### 2025-10-25 - Session 1 (Planning Phase)
 - Initial project discussion
 - Confirmed platform choice: Devvit
-- Confirmed AI providers: OpenAI + Gemini
+- Confirmed AI providers: OpenAI
 - Completed comprehensive planning phase
-- Created all planning documentation (7 files)
+- Created all planning documentation
 - Initialized git repository
-- Configured .gitignore to exclude dev meta files (CLAUDE.md, research files)
-- Removed development meta files from git tracking
+- Configured .gitignore
 - 5 commits completed
 - Planning phase complete ✅
-- Repository ready for Phase 1 implementation
 
 ### 2025-10-25 - Session 2 (Phase 1 Implementation)
-- Verified Node.js v20.19.5 installed
-- Installed Devvit CLI v0.12.1 globally
-- Organized research files into docs/research/
-- Created Devvit project structure manually (due to create-devvit CLI issue)
-- Set up package.json with all dependencies
-- Configured TypeScript with tsconfig.json
-- Created devvit.yaml configuration file
-- Set up modular src/ directory structure per architecture
-- Created README.md files documenting each module
-- Installed 403 npm packages successfully
-- Created main.tsx entry point with basic Devvit setup
-- Initialized git branch strategy (main + develop branches)
-- Committed initial structure to main branch
-- Switched to develop branch for ongoing work
-- User created test subreddit r/AiAutomod
-- User created bot account u/aiautomodapp with moderator permissions
-- Authenticated Devvit CLI with Reddit account
-- User created developer account at developers.reddit.com
-- User registered app "AI-Automod-App"
-- Implemented type definitions (events.ts, storage.ts, config.ts)
-- Implemented Redis storage layer (redis.ts with type-safe wrapper)
-- Implemented audit logging system (audit.ts)
-- Implemented PostSubmit event handler
-- Implemented CommentSubmit event handler
-- Wired event handlers in main.tsx
-- Deployed app to playtest subreddit r/ai_automod_app_dev
-- Discovered and fixed post.getSubreddit() deprecation (now uses post.subredditName)
-- Discovered and fixed audit logger array handling bug
-- Tested with 3 real posts and 1 comment - all events captured successfully
-- Verified hot-reload working in playtest mode
-- Committed working foundation to develop branch (commit acee755)
-- Phase 1 complete ✅
-- Event-driven architecture fully operational
+- Installed Node.js and Devvit CLI
+- Created Devvit project structure
+- Set up modular src/ directory
+- Implemented type definitions
+- Implemented Redis storage layer
+- Implemented event handlers (PostSubmit, CommentSubmit)
+- Deployed to playtest subreddit
+- Fixed API compatibility issues
+- Tested with real Reddit events
+- Phase 1 foundation complete ✅
+- 7 total commits
+
+### 2025-10-25 - Session 3 (Architecture Revision)
+- Clarified actual use case with user
+- Researched Reddit/Devvit API capabilities
+- Confirmed available user data:
+  - ✅ Account age, karma, email verified
+  - ✅ Full post/comment history from ALL subreddits
+  - ✅ Can read post/comment content text
+- Designed user profiling system
+- Designed trust score system
+- Designed AI analysis with cost tracking
+- Updated implementation-plan.md (completely rewritten)
+- Updated project-status.md (this file)
+- Ready to continue Phase 1 with user profiling system
 
 ---
 
 ## Notes
 
-- All planning documents located in `./docs/`
-- CLAUDE.md contains development workflow for future sessions
-- Architecture supports 20+ predetermined rules and unlimited custom rules
-- Estimated false positive rate: <5% with proper tuning
-- Project follows strict quality gates (see CLAUDE.md)
+- **Major Architecture Change**: Pivoted from generic rule engine to focused user profiling system
+- **Current Status**: Foundation complete, ready to build user profiling components
+- **Next Focus**: User profile fetcher + post history analyzer + trust score system
+- **Cost Tracking**: Critical requirement, will be built into every AI call
+- **Testing Strategy**: Start with FLAG-only mode, transition to auto-actions after validation
+- **Target Subs**: FriendsOver40/50 (dating/scammer detection) + bitcointaxes (spam detection)
+- **Documentation**: All planning docs updated to reflect new architecture
+- **Git**: Working on develop branch, will merge to main after Phase 1 complete
