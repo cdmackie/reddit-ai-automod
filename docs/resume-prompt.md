@@ -1,9 +1,10 @@
 # Resume Prompt
 
 ## Quick Context
-Reddit AI Automod is a Devvit-based **user profiling & analysis system** that uses AI (OpenAI gpt-4o-mini) to detect problematic posters: romance scammers, dating seekers, underage users, and spammers. Built with TypeScript, Redis storage, trust scoring, and strict cost controls.
+Reddit AI Automod is a Devvit-based **user profiling & analysis system** that uses AI (Claude 3.5 Haiku or OpenAI gpt-4o-mini) to detect problematic posters: romance scammers, dating seekers, underage users, and spammers. Built with TypeScript, Redis storage, trust scoring, and strict cost controls.
 
-**Stack**: Reddit Devvit (TypeScript), Redis, OpenAI API (gpt-4o-mini)
+**Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI)
+**AI Providers**: Claude 3.5 Haiku (primary), OpenAI gpt-4o-mini (fallback)
 **Current Phase**: Phase 2 - AI Integration (Ready to Start)
 **Phase 1 Status**: COMPLETE ✅
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
@@ -94,35 +95,50 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 ### Immediate (Phase 2 - AI Integration)
 
-**Build 5 components**:
+**Build 8 components** (see `docs/ai-provider-comparison.md` for provider analysis):
 
-1. **OpenAI API Client** (`src/ai/openai.ts`)
-   - Initialize OpenAI client with API key from environment
-   - Implement retry logic with exponential backoff
-   - Handle rate limit errors
+1. **AI Provider Interface** (`src/ai/provider.ts`)
+   - Abstract interface for all AI providers
+   - Support for Claude, OpenAI, and DeepSeek
+   - Unified request/response format
 
-2. **AI Analysis Prompts** (`src/ai/prompts.ts`)
-   - Dating intent detection prompt
-   - Scammer pattern detection prompt
-   - Age estimation prompt (for FriendsOver40/50)
-   - Return structured JSON responses
+2. **Claude Client** (`src/ai/claude.ts`)
+   - Anthropic SDK with Claude 3.5 Haiku
+   - Retry logic with exponential backoff
+   - Structured output with tool use
 
-3. **AI Analyzer** (`src/ai/analyzer.ts`)
-   - Take UserProfile + UserPostHistory as input
-   - Send to OpenAI gpt-4o-mini
-   - Parse structured JSON response
-   - Cache results (24h TTL) in Redis
+3. **OpenAI Client** (`src/ai/openai.ts`)
+   - OpenAI SDK with GPT-4o Mini
+   - JSON mode for structured output
+   - Retry logic
 
-4. **Cost Tracker** (`src/ai/costTracker.ts`)
-   - Track per-request costs (tokens × price)
-   - Daily running total in Redis
-   - Monthly aggregate
-   - Alert at 50%, 75%, 90% of daily budget
+4. **DeepSeek Client** (`src/ai/deepseek.ts`)
+   - DeepSeek API integration
+   - Lowest cost option (~$0.02/analysis)
+   - Test for quality vs cost tradeoff
 
-5. **Budget Enforcer** (`src/ai/budgetEnforcer.ts`)
-   - Check daily budget before AI calls
-   - Hard stop at limit (default $5/day)
-   - Log when budget exceeded
+5. **Provider Selector** (`src/ai/selector.ts`)
+   - Primary/fallback logic
+   - A/B testing capability
+   - Provider health checking
+
+6. **AI Analysis Prompts** (`src/ai/prompts.ts`)
+   - Dating intent detection
+   - Scammer pattern detection
+   - Age estimation (FriendsOver40/50)
+   - Provider-agnostic prompts
+
+7. **AI Analyzer** (`src/ai/analyzer.ts`)
+   - Coordinates provider selection
+   - Handles retries and fallbacks
+   - Caches results (24h TTL)
+   - Returns structured analysis
+
+8. **Cost Tracker** (`src/ai/costTracker.ts`)
+   - Per-provider cost tracking
+   - Daily/monthly totals
+   - Budget enforcement ($5/day default)
+   - Alerts at 50%, 75%, 90%
 
 **Test**: Integrate AI analysis into PostSubmit handler for non-trusted users
 
@@ -186,13 +202,29 @@ User posts to r/FriendsOver40
 **Why**: Actual need is analyzing new posters, not content moderation
 **What**: Fetch user profile + history, analyze with AI, take action based on patterns
 
-### AI: OpenAI gpt-4o-mini with Cost Tracking
-**Why**: Cost-effective (~$0.10/user), good accuracy, structured JSON output
+### AI: Multi-Provider Strategy (See docs/ai-provider-comparison.md)
+
+**Primary Options** (testing required):
+1. **Claude 3.5 Haiku** - Best quality, proven reliability (~$0.05-0.08/analysis)
+2. **DeepSeek V3** - Lowest cost, testing needed (~$0.02-0.03/analysis)
+
+**Fallback**: OpenAI GPT-4o Mini (~$0.10-0.12/analysis)
+
+**Recommended Approach**:
+- **Phase 2 Week 1**: Implement Claude + OpenAI + DeepSeek
+- **Phase 2 Week 2**: A/B test all three with real data (200 users)
+- **Decision**: Choose primary based on quality/cost balance
+
+**Estimated Costs**:
+- With Claude primary: $9-14/month
+- With DeepSeek primary (if quality sufficient): $4-5/month
+- With mixed approach: $6-10/month
+
 **Cost Controls**:
-- Daily budget limit (default $5/day)
+- Daily budget limit (default $5/day across all providers)
 - Aggressive caching (24h TTL)
 - Trust score system (bypass AI for trusted users)
-- Estimated monthly cost: $20-30 for 3 subs
+- Multi-provider strategy reduces dependency risk
 
 ### Trust Score: 0-100 Score to Reduce AI Costs
 **Why**: Returning users with good history don't need re-analysis
@@ -239,16 +271,22 @@ User posts to r/FriendsOver40
 **Per User Analysis**:
 - Profile fetch: FREE (Reddit API)
 - History fetch (20 posts): FREE (Reddit API)
-- AI analysis: ~700 tokens × $0.00015 = **~$0.10**
+- **AI analysis (Claude 3.5 Haiku)**: ~1000 tokens × $0.00008 = **~$0.08**
+- **AI analysis (OpenAI gpt-4o-mini)**: ~700 tokens × $0.00015 = **~$0.10** (fallback only)
 
-**Monthly (3 subs, 20 posts/day)**:
-- Base cost: 20 users/day × $0.10 = $2/day = $60/month
-- With caching (50% hit rate): **~$30/month**
-- With trust scores (bypass 30%): **~$20/month**
+**Monthly (3 subs, 20 posts/day) - Using Claude**:
+- Base cost: 20 users/day × $0.08 = $1.60/day = $48/month
+- With caching (50% hit rate): **~$24/month**
+- With trust scores (bypass 30%): **~$17/month**
+- **With both optimizations: ~$15/month**
+
+**Fallback Costs**:
+- If Claude unavailable and falling back to OpenAI: Add ~25% ($4-5/month)
 
 **Budget Controls**:
-- Daily limit: $5 (hard stop)
-- Monthly tracking
+- Daily limit: $5 (hard stop across all providers)
+- Per-provider tracking
+- Monthly aggregate
 - Alert at 50%, 75%, 90% of daily budget
 
 ---

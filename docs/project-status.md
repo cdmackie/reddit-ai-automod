@@ -106,24 +106,29 @@ _None currently_
 ## Next Steps
 
 ### Immediate (Phase 2 - AI Integration) - READY TO START
-1. Set up OpenAI API credentials in environment
-2. Create AI analysis prompts for dating/scammer/age detection
-3. Implement cost tracking system (daily/monthly totals)
-4. Add daily budget enforcement (default $5/day limit)
-5. Cache AI analysis results (24h TTL)
-6. Test AI analysis with real user profiles
+1. Set up API credentials in environment:
+   - Claude (Anthropic API key) - primary
+   - OpenAI API key - fallback
+2. Create AI provider abstraction layer
+3. Implement Claude 3.5 Haiku client
+4. Implement OpenAI gpt-4o-mini client (fallback)
+5. Create AI analysis prompts (dating/scammer/age detection)
+6. Implement cost tracking system (per-provider, daily/monthly totals)
+7. Add daily budget enforcement ($5/day limit across all providers)
+8. Cache AI analysis results (24h TTL)
+9. Test AI analysis with real user profiles
+10. Test fallback mechanism (Claude → OpenAI)
 
-### Upcoming (Phase 3 - Rules Engine)
-1. Integrate OpenAI API (gpt-4o-mini)
-2. Create AI analysis prompts
-3. Implement cost tracking system
-4. Add daily budget enforcement
-5. Cache AI analysis results
+### Upcoming (Phase 3 - Rules Engine & Actions)
+1. Define hard rules (account age, karma thresholds)
+2. Define AI-based rules (dating intent, scammer patterns, age estimation)
+3. Implement action executors (FLAG, REMOVE, COMMENT, BAN)
+4. Add rule confidence thresholds
+5. Test rules with real data
 
 ### Future Phases
-1. Phase 3: Rules engine + action execution (FLAG, REMOVE, COMMENT, BAN)
-2. Phase 4: Mod configuration UI + cost dashboard
-3. Phase 5: Production deployment to 3 subreddits
+1. Phase 4: Mod configuration UI + cost dashboard
+2. Phase 5: Production deployment to 3 subreddits
 
 ---
 
@@ -138,14 +143,32 @@ _None currently_
 - Eligible for Reddit Developer Funds 2025
 - No server management required
 
-### AI Provider Strategy - 2025-10-25
-**Decision**: OpenAI gpt-4o-mini with cost tracking
+### AI Provider Strategy - 2025-10-26 (Updated)
+**Decision**: Multi-provider approach with testing phase (see `docs/ai-provider-comparison.md`)
+
+**Providers to Implement**:
+1. **Claude 3.5 Haiku** - Best quality/reliability ($0.05-0.08/analysis)
+2. **DeepSeek V3** - Lowest cost option ($0.02-0.03/analysis) - requires quality testing
+3. **OpenAI GPT-4o Mini** - Proven fallback ($0.10-0.12/analysis)
+
+**Testing Strategy** (Phase 2):
+- Week 1: Implement all three providers
+- Week 2: A/B test with 200 real users
+- Compare quality, speed, cost
+- Select primary provider based on results
+
 **Rationale**:
-- Cost-effective ($0.10 per analysis estimated)
-- Structured JSON responses
-- Good accuracy for our use case
-- Daily budget limits prevent overruns
-- Estimated monthly cost: $20-30
+- **Quality**: Claude proven best for nuanced content analysis
+- **Cost**: DeepSeek could save 60-70% if quality acceptable
+- **Reliability**: Multi-provider prevents single point of failure
+- **Flexibility**: Can optimize based on actual performance data
+
+**Expected Monthly Cost**:
+- Claude primary: $9-14/month
+- DeepSeek primary (if quality sufficient): $4-5/month
+- Mixed strategy: $6-10/month
+
+**Decision Point**: After 1 week of testing with real data
 
 ### Architecture Pivot - 2025-10-25
 **Decision**: User profiling system instead of generic rule engine
@@ -232,23 +255,29 @@ _None currently_
 ### Estimated Monthly Costs (Production)
 - **Devvit Hosting**: $0 (free)
 - **Redis Storage**: $0 (included with Devvit)
-- **OpenAI API (gpt-4o-mini)**: $20-30/month
+- **Claude API (3.5 Haiku)**: $15-20/month (primary)
   - ~20 new posts/day analyzed
-  - ~700 tokens per analysis
-  - ~$0.10 per analysis
+  - ~1000 tokens per analysis
+  - ~$0.08 per analysis
   - With caching: ~50% cost reduction
-- **Total**: $20-30/month for 3 subreddits
+  - With trust scores: additional ~30% reduction
+- **OpenAI API (gpt-4o-mini)**: $0-5/month (fallback only)
+  - Used only when Claude unavailable
+  - ~$0.10 per analysis
+- **Total**: $15-25/month for 3 subreddits
 
 ### Development Costs
 - **Time Investment**: 4-5 weeks (1 developer)
 - **External Services**: $0 (using free tiers for development)
 
 ### Cost Control Measures
-- Daily budget limits (default $5/day)
+- Daily budget limits (default $5/day across all providers)
+- Per-provider cost tracking
 - Aggressive caching (24h TTL for user analysis)
 - Trust score system (bypass AI for trusted users)
 - Budget alerts at 50%, 75%, 90%
 - Monthly cost tracking and reporting
+- Primary/fallback strategy optimizes for cost
 
 ---
 
