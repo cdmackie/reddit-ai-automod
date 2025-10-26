@@ -4,9 +4,11 @@
   "description": "AI-powered moderation tool for Reddit using Devvit",
   "main": "src/main.tsx",
   "scripts": {
-    "build": "devvit build",
     "dev": "devvit playtest",
+    "playtest": "devvit playtest",
     "upload": "devvit upload",
+    "logs": "devvit logs",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
