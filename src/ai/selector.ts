@@ -65,19 +65,21 @@ export class ProviderSelector {
    * A/B testing enabled flag
    * When true, selectProvider uses distribution-based selection
    * When false (default), uses priority-based selection
+   * NOTE: Currently unused - reserved for future A/B testing feature (Week 2)
    */
-  private abTestEnabled: boolean = false;
+  // private _abTestEnabled: boolean = false;
 
   /**
    * A/B testing distribution percentages
    * Must sum to 100. Default: 100% Claude, 0% others
    * Example: { claude: 40, openai: 30, deepseek: 30 }
+   * NOTE: Currently unused - reserved for future A/B testing feature (Week 2)
    */
-  private abTestDistribution: Record<AIProviderType, number> = {
-    claude: 100,
-    openai: 0,
-    deepseek: 0,
-  };
+  // private _abTestDistribution: Record<AIProviderType, number> = {
+  //   claude: 100,
+  //   openai: 0,
+  //   deepseek: 0,
+  // };
 
   /**
    * Private constructor - use getInstance() instead
@@ -365,8 +367,10 @@ export class ProviderSelector {
       );
     }
 
-    this.abTestEnabled = enabled;
-    this.abTestDistribution = distribution;
+    // TODO: Implement A/B testing in Week 2
+    // this._abTestEnabled = enabled;
+    // this._abTestDistribution = distribution;
+    console.log('[ProviderSelector] A/B testing not yet implemented', { enabled, distribution });
 
     console.log(
       `[ProviderSelector] A/B testing ${enabled ? 'enabled' : 'disabled'}`
