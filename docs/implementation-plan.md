@@ -198,147 +198,153 @@ This implementation plan focuses on building an **intelligent user profiling sys
 
 ---
 
-## Phase 3: Rules Engine & Action Execution (Week 3-4)
+## Phase 3: Configurable Rules Engine & Actions (Week 3) - DESIGN COMPLETE ✅
 
 ### Goals
-- Build configurable rules system
-- Implement hard rules (account age, karma, email)
-- Implement AI rules (intent detection)
-- Create action executors (FLAG, REMOVE, COMMENT, BAN)
-- Add audit logging
+- ✅ Build **fully configurable** rules system (no hardcoded rules)
+- ✅ Implement hard rules with flexible conditions (account age, karma, email, content matching)
+- ✅ Implement AI rules with **custom questions** (moderators write questions in natural language)
+- ✅ Create action executors (FLAG, REMOVE, COMMENT)
+- ✅ Add dry-run mode for testing
+- ✅ Support text operators: `contains`, `not_contains`, `in`
+
+### 🎯 Critical Design Insight: Custom AI Questions
+
+**Moderators write custom AI questions** instead of using hardcoded detection types:
+- **Example**: "Does this user appear to be seeking dating or romantic connections?"
+- **AI Response**: `{ answer: "YES"/"NO", confidence: 0-100, reasoning: "..." }`
+- **Rule**: If answer == "YES" AND confidence >= 80% → REMOVE
+
+This makes the system truly flexible - moderators can define ANY detection without code changes.
 
 ### Tasks
 
-#### 3.1 Rules Configuration
-- [ ] Create `src/rules/config.ts`
-- [ ] Define `RuleConfig` type:
-  ```typescript
-  {
-    hardRules: HardRule[],
-    aiRules: AIRule[],
-    trustThreshold: number,
-    minApprovedPosts: number
-  }
-  ```
-- [ ] Store rules in Redis: `rules:{subreddit}:config`
-- [ ] Create default configs for:
-  - r/FriendsOver40
-  - r/FriendsOver50
-  - r/bitcointaxes
-- [ ] Implement rule loading function
+#### 3.1 Rule Storage & Configuration (Priority 1)
+- [ ] Create `src/types/rules.ts` - Type definitions
+  - HardRule type (account/content conditions)
+  - AIRule type (custom question + conditions)
+  - Condition evaluation types
+  - Action types (FLAG, REMOVE, COMMENT, APPROVE)
+- [ ] Create `src/rules/storage.ts` - Redis storage
+  - Store rules: `rules:{subreddit}:hard:{ruleId}`, `rules:{subreddit}:ai:{ruleId}`
+  - Store rule index: `rules:{subreddit}:index` (sorted set by priority)
+  - loadRules(), saveRule(), deleteRule(), listRules()
+- [ ] Create `src/rules/defaults.ts` - Default rule sets
+  - FriendsOver40/50: mod auto-approve, new low karma FLAG, dating intent REMOVE
+  - bitcointaxes: same hard rules + spam detection FLAG
+- [ ] Add Devvit Settings for rule configuration
+  - `hard_rules_config` (JSON, multiline, subreddit scope)
+  - `ai_rules_config` (JSON, multiline, subreddit scope)
+  - `dry_run_mode` (boolean, default true for safety)
+- [ ] **Time**: 3-4 hours
 
-#### 3.2 Hard Rules Evaluator
-- [ ] Create `src/rules/hardRules.ts`
-- [ ] Implement `evaluateHardRules(profile, rules)`
-- [ ] Support conditions:
-  - Account age (lessThan, greaterThan)
-  - Karma (lessThan, greaterThan)
-  - Email verified (true/false)
-  - Is moderator (true/false)
-- [ ] Return matching rules + reasons
-- [ ] Test with various profiles
+#### 3.2 Condition Evaluation Engine (Priority 2)
+- [ ] Create `src/rules/conditions.ts` - Condition evaluator
+- [ ] Support comparison operators: `>`, `<`, `>=`, `<=`, `==`, `!=`
+- [ ] Support text operators: `contains`, `not_contains`, `in`
+- [ ] Support logical operators: `AND`, `OR`
+- [ ] Support dot notation for nested fields: `aiAnalysis.confidence`
+- [ ] Test all operator combinations
+- [ ] **Time**: 2-3 hours
 
-#### 3.3 AI Rules Evaluator
-- [ ] Create `src/rules/aiRules.ts`
-- [ ] Implement `evaluateAIRules(aiAnalysis, rules)`
-- [ ] Check AI confidence thresholds
-- [ ] Support conditions:
-  - Dating intent (YES/NO with min confidence)
-  - Age detection (under threshold with min confidence)
-  - Scammer risk (LOW/MEDIUM/HIGH with min confidence)
-- [ ] Return matching rules + reasons
-- [ ] Test with sample AI results
+#### 3.3 Rules Engine (Priority 3)
+- [ ] Create `src/rules/engine.ts` - Main rules engine
+- [ ] loadRules() - Load rules from Redis with 5-minute cache
+- [ ] evaluate() - Evaluate all rules in priority order
+- [ ] Per-rule try-catch (one rule failure doesn't break evaluation)
+- [ ] Return ActionDecision: action, reason, confidence, matchedRules
+- [ ] Support hard rules evaluation (always run)
+- [ ] Support AI rules evaluation (only if aiAnalysis available)
+- [ ] Default to APPROVE if no rules match
+- [ ] **Time**: 4-6 hours
 
-#### 3.4 Action Executors
-- [ ] Create `src/actions/` directory
-- [ ] Implement `FLAG` action:
-  - Report post to mod queue
-  - Add flair "Pending Review"
-  - Log to Redis
-- [ ] Implement `REMOVE` action:
-  - Remove post
-  - Optional: Post removal comment
-  - Log to Redis
-- [ ] Implement `COMMENT` action:
-  - Auto-reply with template
-  - Support variables: {username}, {reason}, etc.
-  - Log to Redis
-- [ ] Implement `BAN` action (manual override only):
-  - Ban user
-  - Send ban message
-  - Log to Redis
-  - Require mod approval flag
-- [ ] Create auto-comment templates:
-  - Dating removal: "This sub is not for dating..."
-  - Unverified account: "Please verify your email..."
-  - Underage: "This sub is for 40+..."
-- [ ] Test all actions in playtest
+#### 3.4 Update Phase 2 AI System for Custom Questions (Priority 4)
+- [ ] Modify `src/ai/prompts.ts` to accept custom questions
+- [ ] Change AI response format from structured to Q&A format:
+  - **Old**: `{ datingIntent: {...}, ageEstimate: {...} }`
+  - **New**: `{ answers: [{ questionId, answer: "YES"/"NO", confidence, reasoning }] }`
+- [ ] Update `src/ai/analyzer.ts` to batch multiple questions in one API call
+- [ ] Cache AI responses by question ID
+- [ ] Update AIAnalysisResult type to support custom questions
+- [ ] **Time**: 4-5 hours
 
-#### 3.5 Audit Logging
-- [ ] Create `src/storage/auditLogger.ts`
-- [ ] Enhance existing audit log:
-  - Add user trust score
-  - Add AI analysis summary
+#### 3.5 Action Executors (Priority 5)
+- [ ] Create `src/actions/executor.ts` - Action execution logic
+- [ ] Implement FLAG action:
+  - Use `context.reddit.report(post, { reason })`
+  - Add mod note with rule details
+  - Log to audit trail
+- [ ] Implement REMOVE action:
+  - Use `context.reddit.remove(post.id)`
+  - Add comment if specified in rule actionParams
+  - Use `context.reddit.submitComment()` and distinguish
+  - Log to audit trail
+- [ ] Implement COMMENT action:
+  - Add warning comment without removing
+  - Distinguish as mod
+  - Log to audit trail
+- [ ] Support variable substitution:
+  - `{confidence}`, `{reason}`, `{username}`, `{subreddit}`
+- [ ] Test all actions with correct Devvit API calls
+- [ ] **Time**: 3-4 hours
+
+#### 3.6 PostSubmit Handler Integration (Priority 6)
+- [ ] Update `src/handlers/postSubmit.ts`
+- [ ] Add rules engine evaluation after AI analysis
+- [ ] Check dry-run mode before executing actions
+- [ ] Execute determined action via action executor
+- [ ] Update trust score based on action
+- [ ] Enhanced audit logging:
   - Add matched rules
+  - Add AI question responses
   - Add action taken + reason
-  - Add cost of analysis
-- [ ] Store logs: `audit:{subreddit}:{date}`
-- [ ] Implement log querying for mods
-- [ ] Test logging
+- [ ] Error handling with fail-safe to FLAG
+- [ ] **Time**: 2-3 hours
 
-#### 3.6 Decision Engine
-- [ ] Create `src/rules/decisionEngine.ts`
-- [ ] Implement main decision logic:
-  ```
-  1. Check if trusted → APPROVE
-  2. Evaluate hard rules → if match, take action
-  3. Evaluate AI rules → if match, take action
-  4. Default: APPROVE
-  5. Update trust score
-  6. Log decision
-  ```
-- [ ] Handle multiple rule matches (priority)
-- [ ] Handle conflicts (most severe wins)
-- [ ] Test decision tree
-
-#### 3.7 Integration
-- [ ] Wire decision engine into PostSubmit handler
-- [ ] Test complete flow:
-  - New user posts
-  - Profile fetched
-  - History fetched
-  - AI analyzes
-  - Rules evaluated
-  - Action executed
-  - Audit logged
-  - Trust score updated
-- [ ] Test with various scenarios:
-  - Trusted user
-  - New legit user
-  - Dating seeker
-  - Scammer
-  - Underage user
+#### 3.7 Testing (Priority 7)
+- [ ] Unit tests: `src/rules/__tests__/`
+  - Test condition evaluation (all operators)
+  - Test rules engine (priority, disabled rules, errors)
+  - Test action executors
+- [ ] Integration tests: `src/handlers/__tests__/`
+  - Test complete flow with mock rules
+  - Test dry-run mode
+  - Test hard rules only (no AI)
+  - Test AI rules with custom questions
+- [ ] Manual testing in playtest:
+  - Configure custom rules via settings
+  - Test various user scenarios
+  - Verify actions taken correctly
+  - Check audit logs
+- [ ] **Time**: 4-6 hours
 
 ### Deliverables
-- Rules engine operational
-- Hard rules working
-- AI rules working
-- All actions implemented
-- Audit logging enhanced
-- Decision engine complete
+- ✅ Fully configurable rules system (JSON via Settings)
+- ✅ Hard rules with flexible conditions (account, karma, content matching)
+- ✅ AI rules with custom questions (moderator-defined)
+- ✅ Text operators: `contains`, `not_contains`, `in`
+- ✅ Action executors: FLAG, REMOVE, COMMENT
+- ✅ Dry-run mode for safe testing
+- ✅ Enhanced audit logging with rule details
 
 ### Acceptance Criteria
-- [ ] Rules are configurable per subreddit
-- [ ] Hard rules correctly flag violations
-- [ ] AI rules use confidence thresholds
-- [ ] FLAG action reports to mod queue
-- [ ] REMOVE action removes + comments
-- [ ] COMMENT action posts templates
-- [ ] BAN requires manual approval
-- [ ] All actions are logged
-- [ ] Trust scores update after actions
-- [ ] No false positives in testing
-- [ ] Complete end-to-end flow works
+- [ ] Moderators can configure rules via JSON in Settings
+- [ ] Hard rules evaluate account conditions (age, karma, email)
+- [ ] Hard rules evaluate content conditions (contains, in)
+- [ ] AI rules send custom questions to AI
+- [ ] AI responds with YES/NO + confidence for each question
+- [ ] Rules evaluated in priority order
+- [ ] Disabled rules are skipped
+- [ ] One rule failure doesn't break evaluation
+- [ ] FLAG action reports to mod queue with reason
+- [ ] REMOVE action removes post + adds comment if specified
+- [ ] COMMENT action adds warning without removing
+- [ ] Dry-run mode logs actions without executing
+- [ ] Variable substitution works ({confidence}, {reason}, etc.)
+- [ ] All actions logged to audit trail with matched rules
+- [ ] Trust scores update after APPROVE actions
+- [ ] Complete end-to-end flow works in playtest
+- [ ] **Total estimated time**: 19-27 hours (2.5-3.5 days)
 
 ---
 

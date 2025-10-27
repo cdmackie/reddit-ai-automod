@@ -5,9 +5,10 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 **Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI/DeepSeek)
 **AI Providers**: Claude 3.5 Haiku (primary), OpenAI gpt-4o-mini (fallback), DeepSeek V3 (testing)
-**Current Phase**: Phase 3 - Rules Engine & Actions (Ready to Start)
+**Current Phase**: Phase 3 - Configurable Rules Engine & Actions (Design Complete ✅)
 **Phase 1 Status**: COMPLETE ✅
 **Phase 2 Status**: COMPLETE ✅
+**Phase 3 Status**: Design Approved, Ready for Implementation
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -75,7 +76,22 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 - ✅ ~8,905 lines production code, ~3,182 lines test code
 - ✅ Installed dependencies: @anthropic-ai/sdk, openai, zod, uuid
 
-### Documentation Updates (Complete ✅ - 2025-10-25)
+### Phase 3: Configurable Rules Engine (DESIGN COMPLETE ✅ - 2025-10-27)
+- ✅ Created Phase 3 design document
+- ✅ Deployed architect-reviewer for validation
+- ✅ **Critical design insight**: Custom AI questions instead of hardcoded detection
+- ✅ User approval of configurable rules approach
+- ✅ **Design highlights**:
+  - ✅ Moderators write custom AI questions in natural language
+  - ✅ No hardcoded detection types - fully flexible
+  - ✅ Hard rules: account age, karma, email, content matching (`contains`, `in`)
+  - ✅ AI rules: custom questions with YES/NO + confidence responses
+  - ✅ Rules stored in Redis, configured via Settings (JSON)
+  - ✅ Dry-run mode for safe testing
+  - ✅ Actions: FLAG, REMOVE, COMMENT
+- ✅ Updated all documentation with new approach
+
+### Documentation Updates (Complete ✅ - 2025-10-25/27)
 - ✅ Completely rewrote implementation-plan.md
 - ✅ Updated project-status.md with architecture pivot
 - ✅ Updated this resume-prompt.md
@@ -134,51 +150,59 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 ## What's Next
 
-### Immediate (Phase 3 - Rules Engine & Actions Integration)
+### Immediate (Phase 3 - Implementation)
 
-**Priority 1: Integration**
-1. **Wire AI Analyzer into PostSubmit handler**
-   - Call AIAnalyzer.analyzeUser() for non-trusted users
-   - Handle budget exhausted scenarios
-   - Handle provider unavailable scenarios
-   - Log all AI analyses with correlation IDs
+**Design Complete ✅** - Now ready for implementation
 
-2. **Configure API Keys via Devvit Settings**
-   - Add Anthropic API key setting
-   - Add OpenAI API key setting
-   - Add DeepSeek API key setting
-   - Document setup process for moderators
+**Priority 1: Update Phase 2 for Custom Questions** (~4-5 hours)
+1. **Modify AI System** (`src/ai/prompts.ts`, `src/ai/analyzer.ts`)
+   - Change from hardcoded detection to custom Q&A format
+   - **Old**: Return `{ datingIntent: {detected, confidence}, ageEstimate: {...} }`
+   - **New**: Return `{ answers: [{ questionId, answer: "YES"/"NO", confidence, reasoning }] }`
+   - Support batching multiple questions in one AI call
+   - Cache responses by question ID
 
-**Priority 2: Rules Engine**
-3. **Create Rules Engine** (`src/rules/engine.ts`)
-   - Hard rules evaluation:
-     - Account age < 30 days + karma < 100 → FLAG
-     - Email not verified + age < 7 days → FLAG
-   - AI rules evaluation:
-     - Dating intent >80% confidence → REMOVE
-     - Scammer risk HIGH (>75% confidence) → FLAG
-     - Appears underage >85% confidence → FLAG
-   - Configurable thresholds per subreddit
+**Priority 2: Rule Storage & Configuration** (~3-4 hours)
+2. **Implement Rule Storage** (`src/types/rules.ts`, `src/rules/storage.ts`)
+   - HardRule type (account/content conditions)
+   - AIRule type (custom question + conditions)
+   - Redis storage: `rules:{subreddit}:hard:{ruleId}`, `rules:{subreddit}:ai:{ruleId}`
+   - Default rule sets for FriendsOver40/50 and bitcointaxes
+   - Devvit Settings for JSON rule configuration
 
-4. **Implement Action Executors** (`src/actions/`)
-   - FLAG: Report to mod queue with reason
-   - REMOVE: Remove post + auto-comment explaining why
-   - COMMENT: Add warning comment (dating-seeking behavior)
-   - BAN: Manual override only (never auto-execute)
+**Priority 3: Rule Evaluation** (~6-9 hours)
+3. **Condition Evaluator** (`src/rules/conditions.ts`)
+   - Operators: `>`, `<`, `>=`, `<=`, `==`, `!=`, `contains`, `not_contains`, `in`
+   - Logical operators: `AND`, `OR`
+   - Dot notation: `aiAnalysis.confidence`
 
-**Priority 3: Testing & Validation**
-5. **Integration Testing**
-   - Test with real users in playtest subreddit
-   - Validate all three providers work
-   - Test failover mechanism (Claude → OpenAI → DeepSeek)
-   - Measure actual costs per analysis
-   - Check for false positives/negatives
+4. **Rules Engine** (`src/rules/engine.ts`)
+   - Load rules from Redis (5-minute cache)
+   - Evaluate rules in priority order
+   - Per-rule error handling (continue on failure)
+   - Return ActionDecision: action, reason, confidence, matchedRules
 
-6. **Deploy to Test Subreddit**
-   - Deploy updated app to r/AiAutomod
-   - Monitor for 48 hours in FLAG-only mode
-   - Collect metrics on accuracy
-   - Refine confidence thresholds if needed
+**Priority 4: Actions & Integration** (~5-7 hours)
+5. **Action Executors** (`src/actions/executor.ts`)
+   - FLAG: `context.reddit.report(post, { reason })`
+   - REMOVE: `context.reddit.remove(post.id)` + comment
+   - COMMENT: Add warning without removing
+   - Variable substitution: `{confidence}`, `{reason}`, `{username}`
+
+6. **PostSubmit Integration** (`src/handlers/postSubmit.ts`)
+   - Wire rules engine evaluation
+   - Check dry-run mode before executing
+   - Enhanced audit logging with matched rules
+
+**Priority 5: Testing** (~4-6 hours)
+7. **Comprehensive Testing**
+   - Unit tests: conditions, rules engine, actions
+   - Integration tests: complete flow with mock rules
+   - Manual testing in playtest with custom rules
+   - Validate dry-run mode
+   - Test text operators (`contains`, `in`)
+
+**Total Estimated Time**: 19-27 hours (2.5-3.5 days)
 
 ---
 
@@ -362,28 +386,39 @@ When resuming work:
 
 ---
 
-## Session Summary (2025-10-26 - Session 5: Phase 2 Complete)
+## Session Summary (2025-10-27 - Session 6: Phase 3 Design Complete)
 
 **Achievements**:
-1. ✅ Implemented all 11 AI integration components
-2. ✅ Created comprehensive test suites (156 tests passing)
-3. ✅ Deployed code-reviewer agent → APPROVED FOR PRODUCTION
-4. ✅ Multi-provider support (Claude, OpenAI, DeepSeek)
-5. ✅ Circuit breakers and fault tolerance
-6. ✅ Cost tracking with budget enforcement
-7. ✅ PII sanitization and response validation
-8. ✅ Request deduplication and differential caching
-9. ✅ Phase 2 complete and production-ready
+1. ✅ Reviewed Phase 2 completion status
+2. ✅ Updated documentation to reflect Phase 2 completion
+3. ✅ Created initial Phase 3 design with hardcoded rules
+4. ✅ Deployed architect-reviewer for validation
+5. ✅ **Critical discovery**: Identified hardcoded detection types as inflexible
+6. ✅ User clarification: System must be **fully configurable**
+7. ✅ **Key insight**: Moderators write custom AI questions in natural language
+8. ✅ Completely redesigned Phase 3 as configurable rules system
+9. ✅ User approved new design approach
+10. ✅ Updated all documentation with custom AI questions approach
+11. ✅ **Phase 3 design complete and approved** ✅
+
+**Design Highlights**:
+- Moderators write custom AI questions (no hardcoded detection)
+- Rules stored in Redis, configured via Settings (JSON)
+- Text operators: `contains`, `not_contains`, `in`
+- Actions: FLAG, REMOVE, COMMENT (no MESSAGE, no BAN)
+- Dry-run mode for safe testing
 
 **Next Session**:
-- Integrate AI analyzer into PostSubmit handler
-- Configure API keys via Devvit Settings
-- Implement rules engine
-- Implement action executors (FLAG, REMOVE, COMMENT)
-- Integration test with real users
+- Update Phase 2 AI system to support custom questions
+- Implement rule storage and configuration
+- Implement condition evaluation engine
+- Implement rules execution engine
+- Implement action executors
+- Integrate with PostSubmit handler
+- Comprehensive testing
 
 ---
 
-**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | **Rules Engine (Next)** | Production (Week 4-5)
-**Ready for**: Phase 3 - Rules Engine & Actions integration
+**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Design ✅ | **Rules Implementation (Next)** | Production (Week 4-5)
+**Ready for**: Phase 3 - Implementation of configurable rules system
 **Estimated time to MVP**: 2-3 weeks remaining
