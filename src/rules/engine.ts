@@ -1,0 +1,301 @@
+/**
+ * Rules Engine - Evaluates rules and determines moderation action
+ *
+ * This is the main orchestrator that:
+ * - Loads rules from storage
+ * - Evaluates conditions against context
+ * - Applies dry-run mode
+ * - Returns the appropriate moderation action
+ *
+ * The engine uses a priority-based evaluation strategy, stopping at the first
+ * matching rule (highest priority wins).
+ *
+ * @module rules/engine
+ */
+
+import { Devvit } from '@devvit/public-api';
+import { Rule, RuleEvaluationContext, RuleEvaluationResult } from '../types/rules.js';
+import { ConditionEvaluator } from './evaluator.js';
+import { VariableSubstitutor } from './variables.js';
+import { RuleStorage } from './storage.js';
+
+/**
+ * Rules Engine class
+ * Main orchestrator for rule evaluation and action determination
+ */
+export class RulesEngine {
+  private evaluator: ConditionEvaluator;
+  private substitutor: VariableSubstitutor;
+  private storage: RuleStorage;
+
+  constructor(context: Devvit.Context) {
+    this.evaluator = new ConditionEvaluator();
+    this.substitutor = new VariableSubstitutor();
+    this.storage = new RuleStorage(context.redis);
+  }
+
+  /**
+   * Evaluate all rules for a context and return the action to take
+   *
+   * This is the main entry point for rule evaluation. It:
+   * 1. Loads rules for the subreddit (including global rules)
+   * 2. Sorts by priority
+   * 3. Evaluates each rule until one matches
+   * 4. Applies dry-run mode if enabled
+   * 5. Returns the appropriate action
+   *
+   * @param evalContext - The complete evaluation context
+   * @returns The evaluation result with action, reason, and metadata
+   *
+   * @example
+   * ```typescript
+   * const engine = RulesEngine.getInstance(context);
+   * const result = await engine.evaluateRules({
+   *   profile,
+   *   postHistory,
+   *   currentPost,
+   *   aiAnalysis,
+   *   subreddit: 'FriendsOver40'
+   * });
+   * // Returns: { action: 'FLAG', reason: '...', ... }
+   * ```
+   */
+  async evaluateRules(evalContext: RuleEvaluationContext): Promise<RuleEvaluationResult> {
+    const startTime = Date.now();
+
+    try {
+      // 1. Load rules for this subreddit
+      const rules = await this.storage.getRules(evalContext.subreddit);
+
+      // 2. Add global rules
+      const globalRules = await this.storage.getRules('global');
+      const allRules = [...rules, ...globalRules];
+
+      // 3. Sort by priority (highest first)
+      allRules.sort((a, b) => b.priority - a.priority);
+
+      // 4. Check if in dry-run mode
+      const ruleSet = await this.storage.getRuleSet(evalContext.subreddit);
+      const dryRunMode = ruleSet?.dryRunMode ?? true; // Default to safe mode
+
+      // 5. Evaluate each rule
+      let rulesEvaluated = 0;
+
+      for (const rule of allRules) {
+        // Skip disabled rules
+        if (!rule.enabled) {
+          continue;
+        }
+
+        rulesEvaluated++;
+
+        // Skip AI rules if no AI analysis available
+        if (rule.type === 'AI' && !evalContext.aiAnalysis) {
+          console.log('[RulesEngine] Skipping AI rule (no analysis):', {
+            ruleId: rule.id,
+            ruleName: rule.name,
+          });
+          continue;
+        }
+
+        try {
+          // Evaluate condition
+          const matched = this.evaluator.evaluate(rule.conditions, evalContext);
+
+          if (matched) {
+            // Rule matched! Prepare result
+            const reason = this.substitutor.substitute(rule.actionConfig.reason, evalContext);
+            const comment = rule.actionConfig.comment
+              ? this.substitutor.substitute(rule.actionConfig.comment, evalContext)
+              : null;
+
+            // Get confidence
+            const confidence = this.getConfidence(rule, evalContext);
+
+            // Apply dry-run mode
+            // In dry-run, all actions except APPROVE become FLAG
+            const action = dryRunMode && rule.action !== 'APPROVE' ? 'FLAG' : rule.action;
+
+            const executionTimeMs = Date.now() - startTime;
+
+            console.log('[RulesEngine] Rule matched:', {
+              ruleId: rule.id,
+              ruleName: rule.name,
+              originalAction: rule.action,
+              actualAction: action,
+              dryRunMode,
+              confidence,
+              executionTimeMs,
+              rulesEvaluated,
+            });
+
+            return {
+              action,
+              reason: dryRunMode && rule.action !== 'APPROVE' ? `[DRY RUN] ${reason}` : reason,
+              comment: dryRunMode ? null : comment,
+              matchedRule: rule.id,
+              confidence,
+              dryRun: dryRunMode,
+            };
+          }
+        } catch (error) {
+          // Log error but continue evaluating other rules
+          console.error('[RulesEngine] Rule evaluation failed:', {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      // No rules matched - default to APPROVE
+      const executionTimeMs = Date.now() - startTime;
+
+      console.log('[RulesEngine] No rules matched - default approve:', {
+        subreddit: evalContext.subreddit,
+        rulesEvaluated,
+        executionTimeMs,
+      });
+
+      return {
+        action: 'APPROVE',
+        reason: 'No rules matched',
+        matchedRule: 'none',
+        confidence: 100,
+        dryRun: false,
+      };
+    } catch (error) {
+      // Catastrophic failure - default to FLAG for manual review (safer than auto-approve)
+      console.error('[RulesEngine] Critical error during rule evaluation', {
+        subreddit: evalContext.subreddit,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+
+      return {
+        action: 'FLAG',
+        reason: 'Rule evaluation error - requires manual review',
+        matchedRule: 'error',
+        confidence: 0,
+        dryRun: false,
+      };
+    }
+  }
+
+  /**
+   * Get confidence score for a rule match
+   *
+   * - For hard rules: Always returns 100
+   * - For AI rules: Extracts confidence from AI answer
+   *
+   * @param rule - The matched rule
+   * @param context - The evaluation context
+   * @returns Confidence score (0-100)
+   */
+  private getConfidence(rule: Rule, context: RuleEvaluationContext): number {
+    // For AI rules, extract confidence from AI answer
+    if (rule.type === 'AI' && context.aiAnalysis) {
+      // Find the AI question this rule depends on
+      const questionId = rule.aiQuestion?.id;
+
+      if (questionId && context.aiAnalysis.answers) {
+        // Find the answer for this question
+        const answer = context.aiAnalysis.answers.find((a) => a.questionId === questionId);
+
+        if (answer) {
+          return answer.confidence ?? 50;
+        }
+      }
+
+      // Fallback if answer not found
+      return 50;
+    }
+
+    // For hard rules, return 100
+    return 100;
+  }
+
+  /**
+   * Check if AI analysis is needed for this subreddit
+   *
+   * Returns true if any enabled AI rules exist for the subreddit.
+   * This can be used to skip expensive AI analysis when not needed.
+   *
+   * @param subreddit - The subreddit name
+   * @returns true if AI analysis is needed
+   */
+  async needsAIAnalysis(subreddit: string): Promise<boolean> {
+    try {
+      const rules = await this.storage.getRules(subreddit);
+      const globalRules = await this.storage.getRules('global');
+      const allRules = [...rules, ...globalRules];
+
+      return allRules.some((rule) => rule.type === 'AI' && rule.enabled);
+    } catch (error) {
+      console.error('[RulesEngine] Error checking AI analysis need:', {
+        subreddit,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Assume we need it if we can't determine
+      return true;
+    }
+  }
+
+  /**
+   * Get AI questions needed for this subreddit
+   *
+   * Returns all unique AI question IDs from enabled AI rules.
+   * This can be used to batch AI analysis requests efficiently.
+   *
+   * @param subreddit - The subreddit name
+   * @returns Array of AI question objects
+   */
+  async getRequiredAIQuestions(
+    subreddit: string
+  ): Promise<Array<{ id: string; question: string; context?: string }>> {
+    try {
+      const rules = await this.storage.getRules(subreddit);
+      const globalRules = await this.storage.getRules('global');
+      const allRules = [...rules, ...globalRules];
+
+      // Filter to enabled AI rules
+      const aiRules = allRules.filter((rule) => rule.type === 'AI' && rule.enabled);
+
+      // Extract unique questions
+      const questionsMap = new Map<
+        string,
+        { id: string; question: string; context?: string }
+      >();
+
+      for (const rule of aiRules) {
+        if (rule.type === 'AI' && rule.aiQuestion) {
+          const { id, question, context } = rule.aiQuestion;
+          if (!questionsMap.has(id)) {
+            questionsMap.set(id, { id, question, context });
+          }
+        }
+      }
+
+      return Array.from(questionsMap.values());
+    } catch (error) {
+      console.error('[RulesEngine] Error getting required AI questions:', {
+        subreddit,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Singleton pattern
+   * Each Devvit context gets its own engine instance
+   */
+  private static instances = new Map<any, RulesEngine>();
+
+  static getInstance(context: Devvit.Context): RulesEngine {
+    if (!this.instances.has(context)) {
+      this.instances.set(context, new RulesEngine(context));
+    }
+    return this.instances.get(context)!;
+  }
+}
