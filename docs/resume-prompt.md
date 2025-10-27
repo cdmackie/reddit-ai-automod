@@ -123,22 +123,35 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - ✅ Differential caching (12-48h TTL)
 
 **What's Next** (Phase 3 - Rules Engine & Actions):
-- ❌ **AI Integration** - Wire AIAnalyzer into PostSubmit handler
-- ❌ **API Configuration** - Set up Devvit Settings with API keys (Claude, OpenAI, DeepSeek)
+
+**Phase 3.1: AI System Refactor (COMPLETE ✅ - 2025-10-27)**
+- ✅ **AI System Updated** - Added custom questions support (~830 lines)
+  - ✅ New types: AIQuestion, AIAnswer, AIQuestionBatchResult
+  - ✅ buildQuestionPrompt() method for custom questions
+  - ✅ analyzeUserWithQuestions() orchestrator
+  - ✅ Question batch validation
+  - ✅ MD5-based cache keys (collision-safe)
+  - ✅ Input validation (empty check, unique IDs, batch size limit)
+  - ✅ Dynamic cost estimation
+  - ✅ All 156 tests passing
+
+**Phase 3.2: Rule Storage & Configuration (NEXT)**
+- ❌ **Rule Storage** (`src/types/rules.ts`, `src/rules/storage.ts`)
+  - HardRule type (account/content conditions)
+  - AIRule type (custom question + conditions)
+  - Redis storage for rules
+  - Default rule sets
+- ❌ **Devvit Settings Configuration**
+  - JSON rule configuration UI
+  - API key configuration
+
+**Phase 3.3: Rule Evaluation**
+- ❌ **Condition Evaluator** (`src/rules/conditions.ts`)
 - ❌ **Rules Engine** (`src/rules/engine.ts`)
-  - Define hard rules (account age, karma thresholds)
-  - Define AI-based rules (dating intent, scammer patterns, age estimation)
-  - Implement rule evaluation logic
-- ❌ **Action Executors** (`src/actions/`)
-  - FLAG: Report to mod queue
-  - REMOVE: Remove post + auto-comment with reason
-  - COMMENT: Add warning comment
-  - BAN: Manual override only (not auto-executed)
-- ❌ **Integration Testing**
-  - Test with real user profiles in playtest sub
-  - Validate multi-provider failover
-  - Measure actual costs
-  - Verify rule accuracy
+
+**Phase 3.4: Actions & Integration**
+- ❌ **Action Executors** (`src/actions/executor.ts`)
+- ❌ **PostSubmit Integration**
 
 **Reddit Infrastructure**:
 - Test sub: r/AiAutomod ✅
@@ -154,13 +167,16 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 **Design Complete ✅** - Now ready for implementation
 
-**Priority 1: Update Phase 2 for Custom Questions** (~4-5 hours)
-1. **Modify AI System** (`src/ai/prompts.ts`, `src/ai/analyzer.ts`)
-   - Change from hardcoded detection to custom Q&A format
-   - **Old**: Return `{ datingIntent: {detected, confidence}, ageEstimate: {...} }`
-   - **New**: Return `{ answers: [{ questionId, answer: "YES"/"NO", confidence, reasoning }] }`
-   - Support batching multiple questions in one AI call
-   - Cache responses by question ID
+**Priority 1: Update Phase 2 for Custom Questions** (COMPLETE ✅ - 2025-10-27)
+1. **Modified AI System** (`src/ai/prompts.ts`, `src/ai/analyzer.ts`)
+   - ✅ Changed from hardcoded detection to custom Q&A format
+   - ✅ **Old**: Return `{ datingIntent: {detected, confidence}, ageEstimate: {...} }`
+   - ✅ **New**: Return `{ answers: [{ questionId, answer: "YES"/"NO", confidence, reasoning }] }`
+   - ✅ Support batching multiple questions in one AI call
+   - ✅ Cache responses by question ID
+   - ✅ Added ~830 lines of new code across 5 files
+   - ✅ All 156 tests passing
+   - ✅ Code review approved with fixes applied
 
 **Priority 2: Rule Storage & Configuration** (~3-4 hours)
 2. **Implement Rule Storage** (`src/types/rules.ts`, `src/rules/storage.ts`)
@@ -386,7 +402,9 @@ When resuming work:
 
 ---
 
-## Session Summary (2025-10-27 - Session 6: Phase 3 Design Complete)
+## Session Summary
+
+### Session 6 (2025-10-27): Phase 3.0 - Design Complete
 
 **Achievements**:
 1. ✅ Reviewed Phase 2 completion status
@@ -408,14 +426,32 @@ When resuming work:
 - Actions: FLAG, REMOVE, COMMENT (no MESSAGE, no BAN)
 - Dry-run mode for safe testing
 
+### Session 7 (2025-10-27): Phase 3.1 - AI System Refactor Complete
+
+**Achievements**:
+1. ✅ Removed old design document with hardcoded approach
+2. ✅ Reviewed current AI system structure
+3. ✅ Implemented custom questions infrastructure (~830 lines)
+   - New types: AIQuestion, AIAnswer, AIQuestionRequest, AIQuestionBatchResult
+   - buildQuestionPrompt() for dynamic prompt creation
+   - validateQuestionBatchResponse() for Q&A validation
+   - analyzeUserWithQuestions() main orchestrator
+   - MD5-based cache key generation
+   - Comprehensive input validation
+   - Dynamic cost estimation
+4. ✅ Deployed javascript-pro agent for implementation
+5. ✅ All 156 tests passing
+6. ✅ Deployed code-reviewer
+7. ✅ Fixed moderate issues (cache collision, validation)
+8. ✅ **Phase 3.1 COMPLETE** ✅
+
 **Next Session**:
-- Update Phase 2 AI system to support custom questions
-- Implement rule storage and configuration
-- Implement condition evaluation engine
-- Implement rules execution engine
-- Implement action executors
-- Integrate with PostSubmit handler
-- Comprehensive testing
+- Implement rule storage and configuration (Phase 3.2)
+- Implement condition evaluation engine (Phase 3.3)
+- Implement rules execution engine (Phase 3.3)
+- Implement action executors (Phase 3.4)
+- Integrate with PostSubmit handler (Phase 3.4)
+- Comprehensive testing (Phase 3.5)
 
 ---
 

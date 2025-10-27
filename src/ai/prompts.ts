@@ -42,7 +42,7 @@
  */
 
 import { RedisClient } from '@devvit/public-api';
-import { PromptVersion } from '../types/ai.js';
+import { PromptVersion, AIQuestion } from '../types/ai.js';
 import { UserProfile, UserPostHistory, PostHistoryItem } from '../types/profile.js';
 import { contentSanitizer } from './sanitizer.js';
 import crypto from 'crypto';
@@ -288,6 +288,24 @@ export interface PromptBuildParams {
 }
 
 /**
+ * Parameters for building a custom question-based prompt
+ */
+export interface QuestionPromptBuildParams {
+  /** User profile data */
+  profile: UserProfile;
+  /** User post history */
+  postHistory: UserPostHistory;
+  /** Current post being analyzed */
+  currentPost: {
+    title: string;
+    body: string;
+    subreddit: string;
+  };
+  /** Array of custom questions to answer */
+  questions: AIQuestion[];
+}
+
+/**
  * Result of building a prompt
  */
 export interface BuiltPrompt {
@@ -472,6 +490,139 @@ export class PromptManager {
     return {
       prompt,
       version: version.version,
+      piiRemoved: totalPiiRemoved,
+      urlsRemoved: totalUrlsRemoved,
+    };
+  }
+
+  /**
+   * Build prompt for custom question-based analysis
+   *
+   * Creates a prompt that asks the AI to answer multiple custom questions about
+   * a user's profile and behavior. Supports batching multiple questions in one
+   * AI call for cost efficiency.
+   *
+   * This method:
+   * 1. Sanitizes all content to remove PII
+   * 2. Formats post history into readable text
+   * 3. Builds a structured prompt with all questions
+   * 4. Returns prompt ready for AI analysis
+   *
+   * The AI response will be a JSON array of answers with:
+   * - questionId: ID of the question being answered
+   * - answer: 'YES' or 'NO'
+   * - confidence: 0-100 score
+   * - reasoning: Explanation for the answer
+   *
+   * @param params - Build parameters with user data and questions
+   * @returns Built prompt with sanitization metrics
+   *
+   * @example
+   * ```typescript
+   * const prompt = await promptManager.buildQuestionPrompt({
+   *   profile: userProfile,
+   *   postHistory: userHistory,
+   *   currentPost: {
+   *     title: 'Looking for friends',
+   *     body: 'Hey everyone!',
+   *     subreddit: 'FriendsOver40'
+   *   },
+   *   questions: [
+   *     {
+   *       id: 'dating_intent',
+   *       question: 'Is this user seeking romantic relationships?'
+   *     },
+   *     {
+   *       id: 'age_appropriate',
+   *       question: 'Does this user appear to be over 40 years old?'
+   *     }
+   *   ]
+   * });
+   * ```
+   */
+  async buildQuestionPrompt(params: QuestionPromptBuildParams): Promise<BuiltPrompt> {
+    // Sanitize current post content
+    const titleResult = contentSanitizer.sanitize(params.currentPost.title);
+    const bodyResult = contentSanitizer.sanitize(params.currentPost.body);
+
+    // Format and sanitize post history
+    const postHistoryText = this.formatPostHistory(params.postHistory);
+    const historyResult = contentSanitizer.sanitize(postHistoryText);
+
+    // Build user context section
+    const userContext = `USER PROFILE:
+- Username: ${params.profile.username}
+- Account age: ${params.profile.accountAgeInDays} days
+- Total karma: ${params.profile.totalKarma}
+- Email verified: ${params.profile.emailVerified ? 'Yes' : 'No'}
+- Is moderator: ${params.profile.isModerator ? 'Yes' : 'No'}
+
+POSTING HISTORY (last 20 posts/comments):
+${historyResult.sanitizedContent}
+
+CURRENT POST:
+Subreddit: ${params.currentPost.subreddit}
+Title: ${titleResult.sanitizedContent}
+Body: ${bodyResult.sanitizedContent}`;
+
+    // Build questions section
+    const questionsSection = params.questions
+      .map((q, index) => {
+        const contextLine = q.context ? `\n   Context: ${q.context}` : '';
+        return `${index + 1}. Question ID: ${q.id}
+   Question: ${q.question}${contextLine}`;
+      })
+      .join('\n\n');
+
+    // Build example response format
+    const exampleAnswers = params.questions
+      .map(
+        (q) => `    {
+      "questionId": "${q.id}",
+      "answer": "YES" or "NO",
+      "confidence": 0-100,
+      "reasoning": "brief explanation"
+    }`
+      )
+      .join(',\n');
+
+    // Build complete prompt
+    const prompt = `You are a content moderation AI analyzing a Reddit user's profile and posting history to answer specific questions about their behavior.
+
+${userContext}
+
+YOUR TASK:
+Answer the following questions about this user based on their profile, posting history, and current post. For each question:
+- Provide a binary answer: YES or NO
+- Include a confidence score from 0-100 (how certain are you?)
+- Provide brief reasoning explaining your answer
+
+QUESTIONS:
+${questionsSection}
+
+RESPOND WITH JSON:
+{
+  "answers": [
+${exampleAnswers}
+  ]
+}
+
+Important:
+- Answer ALL questions in the array
+- Each answer must have: questionId, answer (YES/NO), confidence (0-100), and reasoning
+- Base your answers on the user's profile, posting history, and current post
+- Be objective and specific in your reasoning
+- Only answer YES if you have reasonable confidence (typically 60+)`;
+
+    // Calculate total PII removed
+    const totalPiiRemoved =
+      titleResult.piiRemoved + bodyResult.piiRemoved + historyResult.piiRemoved;
+    const totalUrlsRemoved =
+      titleResult.urlsRemoved + bodyResult.urlsRemoved + historyResult.urlsRemoved;
+
+    return {
+      prompt,
+      version: 'custom-questions', // Special version identifier for question-based prompts
       piiRemoved: totalPiiRemoved,
       urlsRemoved: totalUrlsRemoved,
     };

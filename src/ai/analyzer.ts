@@ -89,7 +89,8 @@
 
 import { Devvit } from '@devvit/public-api';
 import { v4 as uuidv4 } from 'uuid';
-import { AIAnalysisRequest, AIAnalysisResult } from '../types/ai.js';
+import crypto from 'crypto';
+import { AIAnalysisRequest, AIAnalysisResult, AIQuestion, AIQuestionRequest, AIQuestionBatchResult } from '../types/ai.js';
 import { UserProfile, UserPostHistory } from '../types/profile.js';
 import { ProviderSelector } from './selector.js';
 import { RequestCoalescer } from './requestCoalescer.js';
@@ -124,6 +125,9 @@ interface CurrentPost {
  * - **Graceful Degradation**: Returns null on failure (caller decides action)
  */
 export class AIAnalyzer {
+  /** Maximum number of questions allowed per batch to prevent excessive costs */
+  private static readonly MAX_QUESTIONS_PER_BATCH = 10;
+
   /**
    * Private constructor - use getInstance() instead
    * @param context - Devvit context for Redis and Secrets Manager access
@@ -336,6 +340,234 @@ export class AIAnalyzer {
   }
 
   /**
+   * Analyze user with custom questions
+   *
+   * New flexible analysis method that allows moderators to define custom
+   * detection criteria as natural language questions. Supports batching
+   * multiple questions in one AI call for cost efficiency.
+   *
+   * **Cache Strategy**: Cache key includes sorted question IDs to allow
+   * different question sets to be cached separately:
+   * - `ai:questions:{userId}:{questionIds}` (e.g., `ai:questions:t2_abc:dating,age`)
+   * - Different question combinations are cached independently
+   * - Same questions for same user = cache hit
+   *
+   * **Error Handling**: Returns null on any error (budget exceeded, all
+   * providers down, etc.). Caller decides action (FLAG for review, etc.).
+   *
+   * @param userId - Reddit user ID (format: t2_xxxxx)
+   * @param profile - User profile from Phase 1 profiling system
+   * @param postHistory - User post history from Phase 1 profiling system
+   * @param currentPost - The post that triggered this analysis
+   * @param questions - Array of custom questions to answer
+   * @param subreddit - Name of subreddit where post was submitted
+   * @param trustScore - Optional trust score (0-100) for differential caching
+   * @returns Question batch result with answers, or null on error
+   *
+   * @example
+   * ```typescript
+   * const questions: AIQuestion[] = [
+   *   {
+   *     id: 'dating_intent',
+   *     question: 'Is this user seeking romantic relationships in a friendship subreddit?'
+   *   },
+   *   {
+   *     id: 'age_appropriate',
+   *     question: 'Does this user appear to be over 40 years old?'
+   *   }
+   * ];
+   *
+   * const result = await analyzer.analyzeUserWithQuestions(
+   *   't2_abc123',
+   *   userProfile,
+   *   postHistory,
+   *   { title: 'Hi everyone!', body: 'Looking for friends', subreddit: 'FriendsOver40' },
+   *   questions,
+   *   'FriendsOver40',
+   *   65 // Optional trust score
+   * );
+   *
+   * if (result === null) {
+   *   console.error('Analysis failed - flagging for manual review');
+   * } else {
+   *   for (const answer of result.answers) {
+   *     console.log(`${answer.questionId}: ${answer.answer} (${answer.confidence}%)`);
+   *   }
+   * }
+   * ```
+   */
+  async analyzeUserWithQuestions(
+    userId: string,
+    profile: UserProfile,
+    postHistory: UserPostHistory,
+    currentPost: CurrentPost,
+    questions: AIQuestion[],
+    subreddit: string,
+    trustScore?: number
+  ): Promise<AIQuestionBatchResult | null> {
+    const correlationId = uuidv4();
+
+    // Validate questions array
+    if (!questions || questions.length === 0) {
+      console.error('[AIAnalyzer] No questions provided', { userId, correlationId });
+      throw new Error('At least one question is required for question-based analysis');
+    }
+
+    // Validate question IDs are unique
+    const questionIds = questions.map(q => q.id);
+    const uniqueIds = new Set(questionIds);
+    if (questionIds.length !== uniqueIds.size) {
+      console.error('[AIAnalyzer] Duplicate question IDs detected', {
+        userId,
+        correlationId,
+        questionIds,
+        duplicates: questionIds.filter((id, index) => questionIds.indexOf(id) !== index)
+      });
+      throw new Error('Question IDs must be unique within a batch');
+    }
+
+    // Validate question batch size
+    if (questions.length > AIAnalyzer.MAX_QUESTIONS_PER_BATCH) {
+      console.error('[AIAnalyzer] Too many questions in batch', {
+        userId,
+        correlationId,
+        questionCount: questions.length,
+        maxAllowed: AIAnalyzer.MAX_QUESTIONS_PER_BATCH
+      });
+      throw new Error(`Maximum ${AIAnalyzer.MAX_QUESTIONS_PER_BATCH} questions allowed per batch (got ${questions.length})`);
+    }
+
+    console.log('[AIAnalyzer] Starting question-based analysis', {
+      userId,
+      correlationId,
+      subreddit,
+      questionCount: questions.length,
+      questionIds: questions.map(q => q.id).join(','),
+      trustScore: trustScore || 'unknown',
+    });
+
+    // Generate stable hash of sorted question IDs for cache key
+    const questionIdsString = questions.map(q => q.id).sort().join(',');
+    const questionIdsHash = crypto.createHash('md5').update(questionIdsString).digest('hex').substring(0, 16);
+
+    // 1. Check cache for existing analysis with these questions
+    const cached = await this.getCachedQuestionAnalysis(userId, questionIdsHash);
+    if (cached) {
+      const age = Date.now() - cached.timestamp;
+      console.log('[AIAnalyzer] Cache hit for questions', {
+        userId,
+        correlationId,
+        questionIdsHash,
+        ageSeconds: Math.round(age / 1000),
+      });
+      return cached;
+    }
+
+    console.log('[AIAnalyzer] Cache miss - analysis required', { userId, correlationId, questionIdsHash });
+
+    // 2. Check budget before spending
+    const costTracker = CostTracker.getInstance(this.context);
+    // Estimate cost based on question count (rough estimate)
+    // Base: $0.04 + $0.01 per additional question
+    const estimatedCost = 0.04 + (questions.length * 0.01);
+
+    if (!(await costTracker.canAfford(estimatedCost))) {
+      console.error('[AIAnalyzer] Budget exceeded - cannot analyze', {
+        userId,
+        correlationId,
+        estimatedCost,
+      });
+      return null; // Caller will flag for manual review
+    }
+
+    console.log('[AIAnalyzer] Budget OK - proceeding with analysis', {
+      userId,
+      correlationId,
+      estimatedCost,
+    });
+
+    // 3. Request deduplication - prevent concurrent duplicate analyses
+    const coalescer = RequestCoalescer.getInstance(this.context);
+    const lockKey = `${userId}:questions:${questionIdsHash}`;
+
+    if (!(await coalescer.acquireLock(lockKey, correlationId))) {
+      console.log('[AIAnalyzer] Request coalesced - waiting for existing analysis', {
+        userId,
+        correlationId,
+        questionIdsHash,
+      });
+
+      // Another request is already analyzing - wait for result
+      const result = await this.waitForQuestionResult(userId, questionIdsHash);
+
+      if (result) {
+        console.log('[AIAnalyzer] Received coalesced result', {
+          userId,
+          correlationId,
+          answerCount: result.answers.length,
+        });
+      } else {
+        console.warn('[AIAnalyzer] Coalesced result not found', { userId, correlationId });
+      }
+
+      return result;
+    }
+
+    console.log('[AIAnalyzer] Lock acquired - performing analysis', { userId, correlationId });
+
+    try {
+      // 4. Build analysis request
+      const request: AIQuestionRequest = {
+        userId,
+        username: profile.username,
+        profile,
+        postHistory,
+        currentPost: {
+          title: currentPost.title,
+          body: currentPost.body,
+          subreddit: currentPost.subreddit,
+        },
+        questions,
+        context: {
+          subredditName: subreddit,
+          subredditType: this.getSubredditType(subreddit),
+          correlationId,
+        },
+      };
+
+      // 5. Perform analysis
+      const result = await this.performQuestionAnalysis(request, trustScore || 50);
+
+      // 6. Cache result with differential TTL
+      const cacheTTL = getCacheTTLForTrustScore(trustScore || 50, false);
+
+      await this.cacheQuestionResult(userId, questionIdsHash, result, cacheTTL);
+
+      console.log('[AIAnalyzer] Question analysis complete', {
+        userId,
+        correlationId,
+        answerCount: result.answers.length,
+        costUSD: result.costUSD.toFixed(4),
+        cacheTTL,
+      });
+
+      return result;
+    } catch (error) {
+      console.error('[AIAnalyzer] Question analysis failed', {
+        userId,
+        correlationId,
+        error: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof Error && 'type' in error ? error.type : 'UNKNOWN',
+      });
+      return null; // Caller will flag for manual review
+    } finally {
+      // Always release lock, even on error
+      await coalescer.releaseLock(lockKey);
+      console.log('[AIAnalyzer] Lock released', { userId, correlationId });
+    }
+  }
+
+  /**
    * Perform AI analysis by selecting provider and calling it
    *
    * Internal method that:
@@ -532,6 +764,247 @@ export class AIAnalyzer {
     } catch (error) {
       console.error('[AIAnalyzer] Failed to clear cache', {
         userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Don't throw - cache clear failure is not critical
+    }
+  }
+
+  /**
+   * Perform question-based AI analysis by selecting provider and calling it
+   *
+   * Internal method that:
+   * 1. Builds custom question prompt using promptManager
+   * 2. Selects best available AI provider
+   * 3. Calls provider to analyze with questions
+   * 4. Records cost in cost tracker
+   * 5. Returns result with metadata
+   *
+   * Throws error if no provider is available or analysis fails.
+   *
+   * @param request - Complete question analysis request data
+   * @param trustScore - User trust score (0-100) for differential caching
+   * @returns Question batch result with answers
+   * @throws {Error} If no provider available or analysis fails
+   * @private
+   */
+  private async performQuestionAnalysis(
+    request: AIQuestionRequest,
+    trustScore: number
+  ): Promise<AIQuestionBatchResult> {
+    const startTime = Date.now();
+
+    // Select best available AI provider
+    const selector = ProviderSelector.getInstance(this.context);
+    const provider = await selector.selectProvider();
+
+    if (provider === null) {
+      console.error('[AIAnalyzer] No AI provider available', {
+        correlationId: request.context.correlationId,
+      });
+      throw new Error('No AI provider available');
+    }
+
+    console.log('[AIAnalyzer] Provider selected for questions', {
+      provider: provider.type,
+      model: provider.model,
+      correlationId: request.context.correlationId,
+      questionCount: request.questions.length,
+    });
+
+    // Check if provider supports question-based analysis
+    if (!provider.analyzeWithQuestions) {
+      console.error('[AIAnalyzer] Provider does not support question-based analysis', {
+        provider: provider.type,
+        correlationId: request.context.correlationId,
+      });
+      throw new Error(`Provider ${provider.type} does not support question-based analysis`);
+    }
+
+    // Call provider to analyze with questions
+    const result = await provider.analyzeWithQuestions(request);
+
+    // Record cost for budget tracking
+    const costTracker = CostTracker.getInstance(this.context);
+    await costTracker.recordCost({
+      id: request.context.correlationId,
+      timestamp: Date.now(),
+      provider: provider.type,
+      userId: request.userId,
+      tokensUsed: result.tokensUsed,
+      costUSD: result.costUSD,
+      cached: false, // This is a fresh analysis, not cached
+    });
+
+    console.log('[AIAnalyzer] Cost recorded for questions', {
+      correlationId: request.context.correlationId,
+      provider: provider.type,
+      tokensUsed: result.tokensUsed,
+      costUSD: result.costUSD.toFixed(4),
+    });
+
+    // Add metadata to result
+    result.correlationId = request.context.correlationId;
+    result.latencyMs = Date.now() - startTime;
+
+    // Calculate cache TTL based on trust score
+    result.cacheTTL = getCacheTTLForTrustScore(trustScore, false);
+
+    return result;
+  }
+
+  /**
+   * Get cached question analysis result if available
+   *
+   * Checks Redis cache for existing analysis result for this user with
+   * this specific set of questions.
+   *
+   * Cache key format: `ai:questions:{userId}:{questionIdsHash}`
+   *
+   * @param userId - Reddit user ID (format: t2_xxxxx)
+   * @param questionIdsHash - MD5 hash of sorted question IDs (16 chars)
+   * @returns Cached question batch result, or null if not in cache
+   * @private
+   */
+  private async getCachedQuestionAnalysis(
+    userId: string,
+    questionIdsHash: string
+  ): Promise<AIQuestionBatchResult | null> {
+    const key = `ai:questions:${userId}:${questionIdsHash}`;
+
+    try {
+      const cached = await this.context.redis.get(key);
+
+      if (!cached) {
+        return null;
+      }
+
+      const result = JSON.parse(cached) as AIQuestionBatchResult;
+
+      // Validate that cached result has required fields
+      if (!result.userId || !result.answers || !Array.isArray(result.answers)) {
+        console.warn('[AIAnalyzer] Invalid cached question data - clearing', { userId, questionIdsHash });
+        await this.clearQuestionCache(userId, questionIdsHash);
+        return null;
+      }
+
+      return result;
+    } catch (error) {
+      console.error('[AIAnalyzer] Failed to parse cached question analysis', {
+        userId,
+        questionIdsHash,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      // Clear bad cache to prevent repeated errors
+      await this.clearQuestionCache(userId, questionIdsHash);
+      return null;
+    }
+  }
+
+  /**
+   * Cache question analysis result with differential TTL
+   *
+   * Stores question analysis result in Redis with TTL based on trust score.
+   *
+   * Cache key format: `ai:questions:{userId}:{questionIdsHash}`
+   *
+   * @param userId - Reddit user ID (format: t2_xxxxx)
+   * @param questionIdsHash - MD5 hash of sorted question IDs (16 chars)
+   * @param result - Question batch result to cache
+   * @param cacheTTL - Time to live in seconds
+   * @private
+   */
+  private async cacheQuestionResult(
+    userId: string,
+    questionIdsHash: string,
+    result: AIQuestionBatchResult,
+    cacheTTL: number
+  ): Promise<void> {
+    const key = `ai:questions:${userId}:${questionIdsHash}`;
+
+    try {
+      // Convert TTL (seconds) to Date object
+      const expirationDate = new Date(Date.now() + cacheTTL * 1000);
+      await this.context.redis.set(key, JSON.stringify(result), { expiration: expirationDate });
+
+      console.log('[AIAnalyzer] Question result cached', {
+        userId,
+        questionIdsHash,
+        ttlSeconds: cacheTTL,
+        ttlHours: Math.round(cacheTTL / 3600),
+        answerCount: result.answers.length,
+      });
+    } catch (error) {
+      console.error('[AIAnalyzer] Failed to cache question result', {
+        userId,
+        questionIdsHash,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Don't throw - caching failure shouldn't break analysis
+    }
+  }
+
+  /**
+   * Wait for coalesced question result
+   *
+   * When multiple requests try to analyze the same user with the same
+   * questions simultaneously, only one proceeds and others wait for the
+   * result. This method polls the cache for the result.
+   *
+   * @param userId - Reddit user ID (format: t2_xxxxx)
+   * @param questionIdsHash - MD5 hash of sorted question IDs (16 chars)
+   * @returns Question batch result from cache, or null if timeout
+   * @private
+   */
+  private async waitForQuestionResult(
+    userId: string,
+    questionIdsHash: string
+  ): Promise<AIQuestionBatchResult | null> {
+    // Poll cache for up to 30 seconds
+    const maxAttempts = 30;
+    const delayMs = 1000; // 1 second between attempts
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      // Wait before checking
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+
+      // Check cache
+      const result = await this.getCachedQuestionAnalysis(userId, questionIdsHash);
+      if (result) {
+        return result;
+      }
+    }
+
+    // Timeout - no result found
+    console.warn('[AIAnalyzer] Timeout waiting for coalesced question result', {
+      userId,
+      questionIdsHash,
+      maxAttempts,
+    });
+    return null;
+  }
+
+  /**
+   * Clear cached question analysis for a user with specific questions
+   *
+   * Use this when user behavior changes significantly or when you want to
+   * force a fresh analysis for a specific question set.
+   *
+   * @param userId - Reddit user ID (format: t2_xxxxx)
+   * @param questionIdsHash - MD5 hash of sorted question IDs (16 chars)
+   * @private
+   */
+  private async clearQuestionCache(userId: string, questionIdsHash: string): Promise<void> {
+    const key = `ai:questions:${userId}:${questionIdsHash}`;
+
+    try {
+      await this.context.redis.del(key);
+      console.log('[AIAnalyzer] Question cache cleared', { userId, questionIdsHash });
+    } catch (error) {
+      console.error('[AIAnalyzer] Failed to clear question cache', {
+        userId,
+        questionIdsHash,
         error: error instanceof Error ? error.message : String(error),
       });
       // Don't throw - cache clear failure is not critical

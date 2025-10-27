@@ -480,3 +480,114 @@ export interface SpendingReport {
     avgCostPerRequest: number;
   }>;
 }
+
+/**
+ * Custom question for flexible AI analysis
+ * Allows moderators to define their own detection criteria in natural language
+ *
+ * @example
+ * ```typescript
+ * const question: AIQuestion = {
+ *   id: 'dating_intent_check',
+ *   question: 'Is this user seeking romantic relationships in a friendship subreddit?',
+ *   context: 'This is a platonic friendship community for people aged 40+.'
+ * };
+ * ```
+ */
+export interface AIQuestion {
+  /**
+   * Unique question identifier
+   *
+   * **Format Rules**:
+   * - Use lowercase snake_case (e.g., "dating_intent_check")
+   * - Alphanumeric characters and underscores only (no spaces, commas, or special characters)
+   * - Must be unique within a question batch
+   * - Max length: 50 characters recommended
+   * - Valid examples: "dating_intent", "age_appropriate", "spam_check"
+   * - Invalid examples: "dating-intent" (hyphen), "age, check" (comma), "Test Question" (spaces)
+   *
+   * @example "dating_intent"
+   * @example "age_appropriate_for_sub"
+   * @example "spam_content_check"
+   */
+  id: string;
+  /** Natural language question to ask the AI (no length limit) */
+  question: string;
+  /** Optional additional context specific to this question */
+  context?: string;
+}
+
+/**
+ * AI answer to a custom question
+ * Contains YES/NO answer with confidence score and reasoning
+ */
+export interface AIAnswer {
+  /** Question ID this answer corresponds to */
+  questionId: string;
+  /** Binary answer: YES or NO */
+  answer: 'YES' | 'NO';
+  /** Confidence score (0-100) */
+  confidence: number;
+  /** Explanation for the answer */
+  reasoning: string;
+}
+
+/**
+ * Input data for custom question-based AI analysis request
+ * Contains user data and array of custom questions to answer
+ */
+export interface AIQuestionRequest {
+  /** Reddit user ID (format: t2_xxxxx) */
+  userId: string;
+  /** Reddit username */
+  username: string;
+  /** User profile data from Phase 1 profiling system */
+  profile: UserProfile;
+  /** User post history from Phase 1 profiling system */
+  postHistory: UserPostHistory;
+  /** Current post that triggered the analysis */
+  currentPost: {
+    /** Post title */
+    title: string;
+    /** Post body text */
+    body: string;
+    /** Subreddit where post was submitted */
+    subreddit: string;
+  };
+  /** Array of custom questions to answer */
+  questions: AIQuestion[];
+  /** Additional context for the analysis */
+  context: {
+    /** Name of the subreddit */
+    subredditName: string;
+    /** Type of subreddit for specialized analysis */
+    subredditType: 'FriendsOver40' | 'FriendsOver50' | 'bitcointaxes' | 'other';
+    /** Correlation ID for tracking this request */
+    correlationId: string;
+  };
+}
+
+/**
+ * Result from custom question-based AI analysis
+ * Contains array of answers to all questions plus metadata
+ */
+export interface AIQuestionBatchResult {
+  /** User ID that was analyzed */
+  userId: string;
+  /** Timestamp of analysis (milliseconds since epoch) */
+  timestamp: number;
+  /** AI provider that performed the analysis */
+  provider: AIProviderType;
+  /** Correlation ID for tracking */
+  correlationId: string;
+  /** Cache TTL for this result (seconds) - based on trust score */
+  cacheTTL: number;
+  /** Array of answers to all questions */
+  answers: AIAnswer[];
+  /** Number of tokens used by this request */
+  tokensUsed: number;
+  /** Cost of this request in USD */
+  costUSD: number;
+  /** Request latency in milliseconds */
+  latencyMs: number;
+}

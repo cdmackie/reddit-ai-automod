@@ -115,6 +115,21 @@ const OverallRiskSchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
 const RecommendedActionSchema = z.enum(['APPROVE', 'FLAG', 'REMOVE']);
 
 /**
+ * Zod schema for validating custom question-based AI analysis results
+ * Ensures answer format matches expected structure
+ */
+const AIAnswerSchema = z.object({
+  questionId: z.string(),
+  answer: z.enum(['YES', 'NO']),
+  confidence: z.number().min(0).max(100),
+  reasoning: z.string(),
+});
+
+const AIQuestionBatchResultSchema = z.object({
+  answers: z.array(AIAnswerSchema),
+});
+
+/**
  * AI Response Validator
  *
  * Provides runtime validation of AI provider responses using Zod schemas.
@@ -342,6 +357,80 @@ export class AIResponseValidator {
   isValid(rawResponse: unknown): boolean {
     const result = AIAnalysisResultSchema.safeParse(rawResponse);
     return result.success;
+  }
+
+  /**
+   * Validate AI question batch response with strict enforcement
+   *
+   * Parses the raw response against the AIQuestionBatchResult schema. If
+   * validation fails, logs detailed error information and throws an AIError
+   * with type VALIDATION_ERROR.
+   *
+   * This validates that:
+   * - Response contains an "answers" array
+   * - Each answer has questionId, answer (YES/NO), confidence (0-100), and reasoning
+   * - All required fields are present and correctly typed
+   *
+   * @param rawResponse - Raw response from AI provider (unknown type)
+   * @returns Validated question batch result (just the answers array)
+   * @throws {AIError} If validation fails (type: VALIDATION_ERROR)
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   const result = validator.validateQuestionBatchResponse(apiResponse);
+   *   // result.answers is guaranteed to be a valid array of AIAnswer objects
+   *   for (const answer of result.answers) {
+   *     console.log(`${answer.questionId}: ${answer.answer} (${answer.confidence}%)`);
+   *   }
+   * } catch (error) {
+   *   if (error instanceof AIError) {
+   *     console.error('Validation failed:', error.message);
+   *   }
+   * }
+   * ```
+   */
+  validateQuestionBatchResponse(rawResponse: unknown): { answers: Array<{
+    questionId: string;
+    answer: 'YES' | 'NO';
+    confidence: number;
+    reasoning: string;
+  }> } {
+    try {
+      // Parse response using Zod schema
+      const parsed = AIQuestionBatchResultSchema.parse(rawResponse);
+      return parsed;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        // Extract correlation ID if present in response for logging
+        const correlationId =
+          typeof rawResponse === 'object' &&
+          rawResponse !== null &&
+          'correlationId' in rawResponse
+            ? String(rawResponse.correlationId)
+            : undefined;
+
+        // Format Zod errors into readable message
+        const errorMessage = this.formatZodError(error);
+
+        // Log detailed validation failure for debugging
+        console.error('AI question batch response validation failed', {
+          errors: error.issues,
+          rawResponse: JSON.stringify(rawResponse, null, 2),
+          correlationId,
+        });
+
+        // Throw AIError with validation error type
+        throw new AIError(
+          AIErrorType.VALIDATION_ERROR,
+          `AI question batch response validation failed: ${errorMessage}`,
+          undefined,
+          correlationId
+        );
+      }
+      // Re-throw non-Zod errors
+      throw error;
+    }
   }
 
   /**

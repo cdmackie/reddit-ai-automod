@@ -33,7 +33,7 @@
  * ```
  */
 
-import { AIAnalysisRequest, AIAnalysisResult, AIProviderType } from '../types/ai.js';
+import { AIAnalysisRequest, AIAnalysisResult, AIProviderType, AIQuestionRequest, AIQuestionBatchResult } from '../types/ai.js';
 
 /**
  * Interface that all AI providers must implement
@@ -161,4 +161,55 @@ export interface IAIProvider {
    * ```
    */
   calculateCost(inputTokens: number, outputTokens: number): number;
+
+  /**
+   * Analyze user with custom questions (optional)
+   *
+   * New flexible analysis method that allows moderators to define custom
+   * questions in natural language. The AI answers each question with YES/NO,
+   * confidence score, and reasoning.
+   *
+   * This method enables:
+   * - Dynamic question addition without code changes
+   * - Batching multiple questions in one API call (cost efficient)
+   * - Flexible detection criteria defined by moderators
+   *
+   * Implementation is optional - providers that don't implement this will
+   * fall back to the standard analyze() method.
+   *
+   * @param request - User profile data and array of custom questions
+   * @returns Batch result with answers to all questions
+   * @throws {AIError} On provider errors, validation failures, or timeouts
+   *
+   * @example
+   * ```typescript
+   * const result = await provider.analyzeWithQuestions({
+   *   userId: 't2_abc123',
+   *   username: 'testuser',
+   *   profile: userProfile,
+   *   postHistory: userHistory,
+   *   currentPost: {
+   *     title: 'Looking for friends',
+   *     body: 'Hey everyone!',
+   *     subreddit: 'FriendsOver40'
+   *   },
+   *   questions: [
+   *     {
+   *       id: 'dating_intent',
+   *       question: 'Is this user seeking romantic relationships?'
+   *     },
+   *     {
+   *       id: 'age_appropriate',
+   *       question: 'Does this user appear to be over 40 years old?'
+   *     }
+   *   ],
+   *   context: {
+   *     subredditName: 'FriendsOver40',
+   *     subredditType: 'FriendsOver40',
+   *     correlationId: 'req-12345'
+   *   }
+   * });
+   * ```
+   */
+  analyzeWithQuestions?(request: AIQuestionRequest): Promise<AIQuestionBatchResult>;
 }
