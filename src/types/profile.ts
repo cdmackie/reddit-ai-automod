@@ -16,12 +16,24 @@ export interface UserProfile {
   username: string;
   /** Account age calculated in days from creation date */
   accountAgeInDays: number;
-  /** Total karma (link karma + comment karma) */
+  /** Comment karma (from comments only) */
+  commentKarma: number;
+  /** Post karma (from posts/links only) */
+  postKarma: number;
+  /** Total karma (commentKarma + postKarma) */
   totalKarma: number;
   /** Whether the user has verified their email with Reddit */
   emailVerified: boolean;
   /** Whether the user is a moderator of any subreddit */
   isModerator: boolean;
+  /** Whether the user has user flair */
+  hasUserFlair: boolean;
+  /** User flair text (if any) */
+  userFlairText?: string;
+  /** Whether the user has Reddit Premium */
+  hasPremium: boolean;
+  /** Whether the account is verified */
+  isVerified: boolean;
   /** Timestamp when this profile data was fetched */
   fetchedAt: Date;
 }
@@ -56,6 +68,12 @@ export interface UserPostHistory {
   username: string;
   /** Array of recent posts and comments (newest first) */
   items: PostHistoryItem[];
+  /** Total number of posts in history */
+  totalPosts: number;
+  /** Total number of comments in history */
+  totalComments: number;
+  /** Unique list of subreddits user has posted/commented in */
+  subreddits: string[];
   /** Calculated metrics from the post history */
   metrics: {
     /** Total number of items fetched */
@@ -73,6 +91,39 @@ export interface UserPostHistory {
   };
   /** Timestamp when this history was fetched */
   fetchedAt: Date;
+}
+
+/**
+ * Current post being evaluated by moderation system
+ * Contains rich metadata for rule evaluation
+ */
+export interface CurrentPost {
+  /** Post title */
+  title: string;
+  /** Post body text */
+  body: string;
+  /** Subreddit where post was submitted */
+  subreddit: string;
+  /** Post type */
+  type: 'text' | 'link' | 'image' | 'video' | 'gallery' | 'poll';
+  /** All URLs found in the post */
+  urls: string[];
+  /** Unique domains extracted from URLs */
+  domains: string[];
+  /** Word count (title + body) */
+  wordCount: number;
+  /** Character count (title + body) */
+  charCount: number;
+  /** Body length in characters (alias for charCount) */
+  bodyLength: number;
+  /** Title length in characters */
+  titleLength: number;
+  /** Whether post contains media (images, videos, etc.) */
+  hasMedia: boolean;
+  /** Primary link URL for link posts */
+  linkUrl?: string;
+  /** Whether post has been edited */
+  isEdited: boolean;
 }
 
 /**
