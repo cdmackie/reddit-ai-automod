@@ -151,9 +151,7 @@ export class RuleStorage {
    */
   async addRule(subreddit: string, rule: Rule): Promise<void> {
     try {
-      // Sanitize subreddit name (getRuleSet will also sanitize internally)
-      const sanitizedSub = this.sanitizeRedisKey(subreddit);
-      // Get existing rule set or create new one
+      // Get existing rule set or create new one (getRuleSet sanitizes internally)
       let ruleSet = await this.getRuleSet(subreddit);
 
       if (!ruleSet) {
@@ -197,9 +195,7 @@ export class RuleStorage {
    */
   async updateRule(subreddit: string, ruleId: string, updates: Partial<Rule>): Promise<void> {
     try {
-      // Sanitize inputs (getRuleSet will also sanitize internally)
-      const sanitizedSub = this.sanitizeRedisKey(subreddit);
-      const sanitizedRuleId = this.sanitizeRedisKey(ruleId);
+      // Get existing rule set (getRuleSet sanitizes internally)
       const ruleSet = await this.getRuleSet(subreddit);
 
       if (!ruleSet) {
@@ -251,9 +247,7 @@ export class RuleStorage {
    */
   async deleteRule(subreddit: string, ruleId: string): Promise<void> {
     try {
-      // Sanitize inputs (getRuleSet will also sanitize internally)
-      const sanitizedSub = this.sanitizeRedisKey(subreddit);
-      const sanitizedRuleId = this.sanitizeRedisKey(ruleId);
+      // Get existing rule set (getRuleSet sanitizes internally)
       const ruleSet = await this.getRuleSet(subreddit);
 
       if (!ruleSet) {
@@ -296,9 +290,7 @@ export class RuleStorage {
    */
   async initializeDefaults(subreddit: string, defaultRules?: Rule[]): Promise<void> {
     try {
-      // Sanitize subreddit name (getRuleSet will also sanitize internally)
-      const sanitizedSub = this.sanitizeRedisKey(subreddit);
-      // Check if rules already exist
+      // Check if rules already exist (getRuleSet sanitizes internally)
       const existing = await this.getRuleSet(subreddit);
 
       if (existing && existing.rules.length > 0) {
@@ -342,8 +334,7 @@ export class RuleStorage {
    */
   async setDryRunMode(subreddit: string, dryRunMode: boolean): Promise<void> {
     try {
-      // Sanitize subreddit name (getRuleSet will also sanitize internally)
-      const sanitizedSub = this.sanitizeRedisKey(subreddit);
+      // Get existing rule set (getRuleSet sanitizes internally)
       const ruleSet = await this.getRuleSet(subreddit);
 
       if (!ruleSet) {

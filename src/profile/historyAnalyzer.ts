@@ -116,12 +116,20 @@ export class PostHistoryAnalyzer {
       const fetchedAt = new Date();
       const metrics = this.calculateMetrics(items, fetchedAt);
 
+      // Calculate additional metrics
+      const totalPosts = items.filter((item) => item.type === 'post').length;
+      const totalComments = items.filter((item) => item.type === 'comment').length;
+      const subreddits = [...new Set(items.map((item) => item.subreddit))];
+
       // Build UserPostHistory object
       const history: UserPostHistory = {
         userId,
         username,
         items,
         metrics,
+        totalPosts,
+        totalComments,
+        subreddits,
         fetchedAt,
       };
 
@@ -149,6 +157,9 @@ export class PostHistoryAnalyzer {
           oldestItemDate: fetchedAt,
           newestItemDate: fetchedAt,
         },
+        totalPosts: 0,
+        totalComments: 0,
+        subreddits: [],
         fetchedAt,
       };
     }

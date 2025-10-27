@@ -190,12 +190,62 @@
   - ✅ Added dynamic cost estimation based on question count
   - ✅ All 156 tests passing
   - ✅ Code review approved with fixes applied
-- [ ] Implement rule storage and configuration - NEXT
-- [ ] Implement condition evaluation engine
-- [ ] Implement rules execution engine
-- [ ] Implement action executors
-- [ ] Integrate with PostSubmit handler
-- [ ] Testing and validation
+
+**Phase 3.2: Rules Engine Implementation (COMPLETE ✅ - 2025-10-27)**
+- [x] Design rule types and storage schema - 2025-10-27
+- [x] Implement comprehensive type system (src/types/rules.ts) - 2025-10-27
+  - ✅ HardRule and AIRule types with JSON-serializable structure
+  - ✅ Condition tree with nested AND/OR support
+  - ✅ All Reddit AutoMod operators: comparison, text, array, regex, logical
+  - ✅ Field registry with 30+ accessible fields
+  - ✅ Split karma (commentKarma, postKarma), flair, premium fields
+  - ✅ CurrentPost interface with media type, URLs, domains, word counts
+- [x] Implement condition evaluator (src/rules/evaluator.ts - 303 lines) - 2025-10-27
+  - ✅ Recursive condition tree evaluation
+  - ✅ Field access with whitelist validation
+  - ✅ All comparison operators: <, >, <=, >=, ==, !=
+  - ✅ Text operators: contains, contains_i, regex, regex_i
+  - ✅ Array operators: in
+  - ✅ Regex validation and compilation caching
+  - ✅ Security: depth limits, prototype pollution prevention
+- [x] Implement variable substitution (src/rules/variables.ts - 160 lines) - 2025-10-27
+  - ✅ Dynamic text replacement using {field.path} syntax
+  - ✅ Same field access validation as evaluator
+- [x] Implement Redis storage (src/rules/storage.ts - 343 lines) - 2025-10-27
+  - ✅ Rule CRUD operations
+  - ✅ Priority-based ZSET storage
+  - ✅ RuleSet versioning with timestamps
+  - ✅ Dry-run mode configuration
+  - ✅ Security: Redis key sanitization
+- [x] Implement rules engine (src/rules/engine.ts - 246 lines) - 2025-10-27
+  - ✅ Priority-based evaluation (highest first)
+  - ✅ Combines subreddit + global rules
+  - ✅ Confidence scoring for AI rules
+  - ✅ Dry-run mode support
+  - ✅ AI question aggregation
+- [x] Create default rule sets (src/rules/defaults.ts - 561 lines) - 2025-10-27
+  - ✅ FriendsOver40: 6 rules (dating, scammer, age detection)
+  - ✅ FriendsOver50: 5 rules (dating, scammer, age detection)
+  - ✅ bitcointaxes: 4 rules (spam, off-topic, low effort)
+  - ✅ Global: 1 rule (new accounts with external links)
+- [x] Security hardening (13 tests passing) - 2025-10-27
+  - ✅ Regex injection (ReDoS) prevention
+  - ✅ Redis injection prevention
+  - ✅ Field access whitelist validation
+  - ✅ Prototype pollution prevention
+  - ✅ Regex pattern validation (max 200 chars, dangerous patterns blocked)
+- [x] Update profile types with new fields - 2025-10-27
+  - ✅ Split karma: commentKarma, postKarma, totalKarma
+  - ✅ User attributes: hasUserFlair, hasPremium, isVerified
+  - ✅ Post history: totalPosts, totalComments, subreddits array
+- [x] Update fetchers to populate new fields - 2025-10-27
+  - ✅ profile/fetcher.ts updated
+  - ✅ profile/historyAnalyzer.ts updated with subreddit tracking
+- [x] All tests updated and passing (169 tests) - 2025-10-27
+- [ ] Integrate rules engine with PostSubmit handler - NEXT
+- [ ] Implement action executors (FLAG, REMOVE, COMMENT)
+- [ ] Integration testing with real rules
+- [ ] Devvit Settings UI for rule management
 
 **Design Highlights**:
 - ✅ Moderators write custom AI questions in natural language
@@ -561,6 +611,29 @@ _None currently_
 - TypeScript compilation successful
 - Documented all fixes in docs/security-fixes-phase3.md
 - **Security audit complete** - Rules engine hardened against common attacks ✅
+
+### 2025-10-27 - Session 9 (Phase 3.2 Complete - Profile Updates & Type Fixes)
+- Continued from Phase 3.2 implementation
+- **Updated Profile and History Types**:
+  - ✅ Split karma into commentKarma, postKarma, totalKarma
+  - ✅ Added user attributes: hasUserFlair, userFlairText, hasPremium, isVerified
+  - ✅ Added post history metrics: totalPosts, totalComments, subreddits array
+  - ✅ Created CurrentPost interface with media types, URLs, domains, word counts
+- **Updated Implementation Files**:
+  - ✅ profile/fetcher.ts: Populate new UserProfile fields (commentKarma, postKarma from API)
+  - ✅ profile/historyAnalyzer.ts: Calculate totalPosts, totalComments, unique subreddits
+  - ✅ Fixed all test mocks in src/ai/__tests__/prompts.test.ts (3 locations)
+- **Cleaned up unused variables**:
+  - ✅ Removed redundant sanitization calls in rules/storage.ts (5 locations)
+  - ✅ All TypeScript unused variable warnings resolved
+- **Test Results**:
+  - ✅ All 169 tests passing (up from 156)
+  - ✅ 13 new security tests added in Phase 3.2
+  - ✅ Zero critical TypeScript errors
+  - ✅ Remaining errors in handlers/main.tsx are pre-existing Devvit type issues
+- **Production Code**: ~10,500 lines (+1,595 lines from Phase 3.2)
+- **Phase 3.2 COMPLETE** ✅
+- Ready for Phase 3.3: Rules Engine Integration with PostSubmit handler
 
 ---
 

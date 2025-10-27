@@ -58,9 +58,14 @@ const mockProfile: UserProfile = {
   userId: 't2_testuser123',
   username: 'testuser',
   accountAgeInDays: 365,
+  commentKarma: 400,
+  postKarma: 200,
   totalKarma: 600,
   emailVerified: true,
   isModerator: false,
+  hasUserFlair: false,
+  hasPremium: false,
+  isVerified: false,
   fetchedAt: new Date(),
 };
 
@@ -101,6 +106,9 @@ const mockPostHistory: UserPostHistory = {
     oldestItemDate: new Date(Date.now() - 2000 * 60 * 60),
     newestItemDate: new Date(Date.now() - 500 * 60 * 60),
   },
+  totalPosts: 2,
+  totalComments: 1,
+  subreddits: ['FriendsOver40', 'AskReddit'],
   fetchedAt: new Date(),
 };
 
@@ -278,6 +286,9 @@ describe('PromptManager', () => {
           oldestItemDate: new Date(),
           newestItemDate: new Date(),
         },
+        totalPosts: 0,
+        totalComments: 0,
+        subreddits: [],
         fetchedAt: new Date(),
       };
 
@@ -316,6 +327,9 @@ describe('PromptManager', () => {
           oldestItemDate: new Date(Date.now() - 24 * 1000),
           newestItemDate: new Date(),
         },
+        totalPosts: 13,
+        totalComments: 12,
+        subreddits: ['FriendsOver40'],
         fetchedAt: new Date(),
       };
 
