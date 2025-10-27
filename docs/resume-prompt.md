@@ -5,10 +5,12 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 **Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI/DeepSeek)
 **AI Providers**: Claude 3.5 Haiku (primary), OpenAI gpt-4o-mini (fallback), DeepSeek V3 (testing)
-**Current Phase**: Phase 3 - Configurable Rules Engine & Actions (Design Complete ✅)
+**Current Phase**: Phase 3 - Configurable Rules Engine & Actions
 **Phase 1 Status**: COMPLETE ✅
 **Phase 2 Status**: COMPLETE ✅
-**Phase 3 Status**: Design Approved, Ready for Implementation
+**Phase 3.1 Status**: AI System Refactor - COMPLETE ✅
+**Phase 3.2 Status**: Rules Engine Implementation - COMPLETE ✅
+**Next**: Phase 3.3 - Integrate rules engine with PostSubmit handler
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -76,20 +78,54 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 - ✅ ~8,905 lines production code, ~3,182 lines test code
 - ✅ Installed dependencies: @anthropic-ai/sdk, openai, zod, uuid
 
-### Phase 3: Configurable Rules Engine (DESIGN COMPLETE ✅ - 2025-10-27)
+### Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)
 - ✅ Created Phase 3 design document
 - ✅ Deployed architect-reviewer for validation
 - ✅ **Critical design insight**: Custom AI questions instead of hardcoded detection
 - ✅ User approval of configurable rules approach
-- ✅ **Design highlights**:
-  - ✅ Moderators write custom AI questions in natural language
-  - ✅ No hardcoded detection types - fully flexible
-  - ✅ Hard rules: account age, karma, email, content matching (`contains`, `in`)
-  - ✅ AI rules: custom questions with YES/NO + confidence responses
-  - ✅ Rules stored in Redis, configured via Settings (JSON)
-  - ✅ Dry-run mode for safe testing
-  - ✅ Actions: FLAG, REMOVE, COMMENT
-- ✅ Updated all documentation with new approach
+- ✅ **AI System Updated** (~830 lines):
+  - ✅ New types: AIQuestion, AIAnswer, AIQuestionBatchResult
+  - ✅ buildQuestionPrompt() for custom questions
+  - ✅ analyzeUserWithQuestions() orchestrator
+  - ✅ MD5-based cache keys (collision-safe)
+  - ✅ Input validation and dynamic cost estimation
+  - ✅ All 156 tests passing
+
+### Phase 3.2: Rules Engine Implementation (COMPLETE ✅ - 2025-10-27)
+- ✅ **Complete type system** (src/types/rules.ts):
+  - ✅ HardRule and AIRule types
+  - ✅ Condition tree with nested AND/OR support
+  - ✅ All Reddit AutoMod operators: comparison, text, array, regex, logical
+  - ✅ Field registry with 30+ accessible fields
+  - ✅ CurrentPost interface with media types, URLs, domains
+- ✅ **Condition evaluator** (src/rules/evaluator.ts - 303 lines):
+  - ✅ Recursive condition evaluation
+  - ✅ All operators: <, >, <=, >=, ==, !=, contains, contains_i, regex, regex_i, in
+  - ✅ Field whitelist validation
+  - ✅ Security: depth limits, prototype pollution prevention
+- ✅ **Variable substitution** (src/rules/variables.ts - 160 lines)
+- ✅ **Redis storage** (src/rules/storage.ts - 343 lines):
+  - ✅ Rule CRUD operations
+  - ✅ Priority-based ZSET storage
+  - ✅ Redis key sanitization
+- ✅ **Rules engine** (src/rules/engine.ts - 246 lines):
+  - ✅ Priority-based evaluation
+  - ✅ Combines subreddit + global rules
+  - ✅ Dry-run mode support
+- ✅ **Default rule sets** (src/rules/defaults.ts - 561 lines):
+  - ✅ FriendsOver40: 6 rules
+  - ✅ FriendsOver50: 5 rules
+  - ✅ bitcointaxes: 4 rules
+  - ✅ Global: 1 rule
+- ✅ **Security hardening** (13 tests):
+  - ✅ Regex injection prevention
+  - ✅ Redis injection prevention
+  - ✅ Field access whitelist
+- ✅ **Profile type updates**:
+  - ✅ Split karma: commentKarma, postKarma, totalKarma
+  - ✅ User attributes: hasUserFlair, hasPremium, isVerified
+  - ✅ Post history: totalPosts, totalComments, subreddits[]
+- ✅ **All 169 tests passing** (13 new security tests)
 
 ### Documentation Updates (Complete ✅ - 2025-10-25/27)
 - ✅ Completely rewrote implementation-plan.md
@@ -100,16 +136,16 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 ## Current State
 
-**Status**: Phases 1 & 2 complete, all AI components production-ready, ready for Phase 3 integration
+**Status**: Phases 1, 2, 3.1, and 3.2 complete - Rules engine fully implemented and tested
 
 **What Exists**:
 - ✅ Working Devvit app deployed to playtest (v0.0.2)
 - ✅ Event handlers capturing new posts/comments
 - ✅ Redis storage and audit logging operational
-- ✅ Type definitions for events, storage, config, profiles, AI
+- ✅ Type definitions for events, storage, config, profiles, AI, rules
 - ✅ Rate limiter (60 req/min with exponential backoff)
-- ✅ User profile fetcher (account age, karma, email verified)
-- ✅ Post history analyzer (fetch last 20 posts from all subs)
+- ✅ User profile fetcher with split karma (commentKarma, postKarma)
+- ✅ Post history analyzer (totalPosts, totalComments, subreddits tracking)
 - ✅ Trust score system (0-100 score, "trusted user" flag)
 - ✅ Handler integration (trust check → profile fetch → score calculation)
 - ✅ **All 11 AI components operational**:
@@ -121,37 +157,33 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - ✅ Response validation
   - ✅ A/B testing framework
   - ✅ Differential caching (12-48h TTL)
+  - ✅ Custom AI questions support (analyzeUserWithQuestions)
+- ✅ **Complete rules engine system**:
+  - ✅ Type system with HardRule and AIRule
+  - ✅ Condition evaluator with all Reddit AutoMod operators
+  - ✅ Variable substitution for dynamic messages
+  - ✅ Redis storage with priority-based evaluation
+  - ✅ Rules engine with dry-run mode
+  - ✅ Default rule sets for all 3 target subreddits
+  - ✅ Security hardening (13 tests passing)
+- ✅ **169 tests passing** (13 new security tests)
+- ✅ **~10,500 lines production code**
 
-**What's Next** (Phase 3 - Rules Engine & Actions):
+**What's Next** (Phase 3.3 & 3.4):
 
-**Phase 3.1: AI System Refactor (COMPLETE ✅ - 2025-10-27)**
-- ✅ **AI System Updated** - Added custom questions support (~830 lines)
-  - ✅ New types: AIQuestion, AIAnswer, AIQuestionBatchResult
-  - ✅ buildQuestionPrompt() method for custom questions
-  - ✅ analyzeUserWithQuestions() orchestrator
-  - ✅ Question batch validation
-  - ✅ MD5-based cache keys (collision-safe)
-  - ✅ Input validation (empty check, unique IDs, batch size limit)
-  - ✅ Dynamic cost estimation
-  - ✅ All 156 tests passing
+**Phase 3.3: Rules Engine Integration (NEXT)**
+- ❌ **PostSubmit Handler Integration**
+  - Wire rules engine evaluation into handler
+  - Build CurrentPost object from submission
+  - Call rules engine with full context
+  - Handle dry-run mode
 
-**Phase 3.2: Rule Storage & Configuration (NEXT)**
-- ❌ **Rule Storage** (`src/types/rules.ts`, `src/rules/storage.ts`)
-  - HardRule type (account/content conditions)
-  - AIRule type (custom question + conditions)
-  - Redis storage for rules
-  - Default rule sets
-- ❌ **Devvit Settings Configuration**
-  - JSON rule configuration UI
-  - API key configuration
-
-**Phase 3.3: Rule Evaluation**
-- ❌ **Condition Evaluator** (`src/rules/conditions.ts`)
-- ❌ **Rules Engine** (`src/rules/engine.ts`)
-
-**Phase 3.4: Actions & Integration**
+**Phase 3.4: Action Executors**
 - ❌ **Action Executors** (`src/actions/executor.ts`)
-- ❌ **PostSubmit Integration**
+  - FLAG: Report to mod queue
+  - REMOVE: Remove post + auto-comment
+  - COMMENT: Add warning without removing
+  - Variable substitution in messages
 
 **Reddit Infrastructure**:
 - Test sub: r/AiAutomod ✅
@@ -173,62 +205,52 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 All security tests passing (13 tests). See `docs/security-fixes-phase3.md` for details.
 
-### Immediate (Phase 3 - Implementation)
+### Immediate (Phase 3 - Integration & Actions)
 
-**Design Complete ✅** - Now ready for implementation
+**Phase 3.1 ✅ | Phase 3.2 ✅** - Rules engine fully implemented, now ready for integration
 
-**Priority 1: Update Phase 2 for Custom Questions** (COMPLETE ✅ - 2025-10-27)
-1. **Modified AI System** (`src/ai/prompts.ts`, `src/ai/analyzer.ts`)
-   - ✅ Changed from hardcoded detection to custom Q&A format
-   - ✅ **Old**: Return `{ datingIntent: {detected, confidence}, ageEstimate: {...} }`
-   - ✅ **New**: Return `{ answers: [{ questionId, answer: "YES"/"NO", confidence, reasoning }] }`
-   - ✅ Support batching multiple questions in one AI call
-   - ✅ Cache responses by question ID
-   - ✅ Added ~830 lines of new code across 5 files
-   - ✅ All 156 tests passing
-   - ✅ Code review approved with fixes applied
-
-**Priority 2: Rule Storage & Configuration** (~3-4 hours)
-2. **Implement Rule Storage** (`src/types/rules.ts`, `src/rules/storage.ts`)
-   - HardRule type (account/content conditions)
-   - AIRule type (custom question + conditions)
-   - Redis storage: `rules:{subreddit}:hard:{ruleId}`, `rules:{subreddit}:ai:{ruleId}`
-   - Default rule sets for FriendsOver40/50 and bitcointaxes
-   - Devvit Settings for JSON rule configuration
-
-**Priority 3: Rule Evaluation** (~6-9 hours)
-3. **Condition Evaluator** (`src/rules/conditions.ts`)
-   - Operators: `>`, `<`, `>=`, `<=`, `==`, `!=`, `contains`, `not_contains`, `in`
-   - Logical operators: `AND`, `OR`
-   - Dot notation: `aiAnalysis.confidence`
-
-4. **Rules Engine** (`src/rules/engine.ts`)
-   - Load rules from Redis (5-minute cache)
-   - Evaluate rules in priority order
-   - Per-rule error handling (continue on failure)
-   - Return ActionDecision: action, reason, confidence, matchedRules
-
-**Priority 4: Actions & Integration** (~5-7 hours)
-5. **Action Executors** (`src/actions/executor.ts`)
-   - FLAG: `context.reddit.report(post, { reason })`
-   - REMOVE: `context.reddit.remove(post.id)` + comment
-   - COMMENT: Add warning without removing
-   - Variable substitution: `{confidence}`, `{reason}`, `{username}`
-
-6. **PostSubmit Integration** (`src/handlers/postSubmit.ts`)
-   - Wire rules engine evaluation
-   - Check dry-run mode before executing
+**Priority 1: PostSubmit Handler Integration** (NEXT - ~3-4 hours)
+1. **Integrate Rules Engine** (`src/handlers/postSubmit.ts`)
+   - Build CurrentPost object from submission
+   - Wire rules engine evaluation into flow
+   - Handle dry-run mode (log only vs execute)
    - Enhanced audit logging with matched rules
+   - Error handling for rule evaluation failures
 
-**Priority 5: Testing** (~4-6 hours)
-7. **Comprehensive Testing**
-   - Unit tests: conditions, rules engine, actions
-   - Integration tests: complete flow with mock rules
-   - Manual testing in playtest with custom rules
+**Priority 2: Action Executors** (~5-7 hours)
+2. **Action Executors** (`src/actions/executor.ts`)
+   - FLAG: `context.reddit.report(post, { reason })`
+   - REMOVE: `context.reddit.remove(post.id)` + auto-comment
+   - COMMENT: Add warning without removing
+   - Variable substitution: `{confidence}`, `{reason}`, `{username}`, `{aiAnalysis.answers.*.confidence}`
+   - Dry-run logging support
+
+**Priority 3: Default Rules Initialization** (~2-3 hours)
+3. **Initialize Default Rules**
+   - Load default rule sets into Redis on app install
+   - Per-subreddit initialization
+   - Devvit Settings for rule management (JSON)
+   - API key configuration UI
+
+**Priority 4: Testing** (~4-6 hours)
+4. **Comprehensive Testing**
+   - Integration tests: complete flow with real rules
+   - Test hard rules (account age, karma, content matching)
+   - Test AI rules (custom questions + confidence thresholds)
+   - Manual testing in playtest subreddit
    - Validate dry-run mode
-   - Test text operators (`contains`, `in`)
+   - Validate variable substitution in messages
+   - Test all action types (FLAG, REMOVE, COMMENT)
 
-**Total Estimated Time**: 19-27 hours (2.5-3.5 days)
+**Priority 5: Production Deployment** (~3-4 hours)
+5. **Deploy to Target Subreddits**
+   - Deploy to r/FriendsOver40 (dry-run mode initially)
+   - Deploy to r/FriendsOver50 (dry-run mode initially)
+   - Deploy to r/bitcointaxes (dry-run mode initially)
+   - Monitor for 24-48 hours
+   - Disable dry-run mode after validation
+
+**Total Estimated Time**: 17-24 hours (2-3 days)
 
 ---
 
@@ -455,16 +477,49 @@ When resuming work:
 7. ✅ Fixed moderate issues (cache collision, validation)
 8. ✅ **Phase 3.1 COMPLETE** ✅
 
+### Session 8 (2025-10-27): Phase 3.2 - Rules Engine Implementation
+
+**Achievements**:
+1. ✅ Implemented complete rules engine system (~2,100 lines):
+   - src/types/rules.ts: Complete type system with all operators
+   - src/rules/evaluator.ts: Condition evaluator (303 lines)
+   - src/rules/variables.ts: Variable substitution (160 lines)
+   - src/rules/storage.ts: Redis storage with CRUD (343 lines)
+   - src/rules/engine.ts: Rules engine with priority evaluation (246 lines)
+   - src/rules/defaults.ts: Default rule sets for 3 subs (561 lines)
+   - src/rules/__tests__/security.test.ts: Security test suite (13 tests)
+2. ✅ Deployed code-reviewer → identified 5 CRITICAL security issues
+3. ✅ Deployed security-auditor → fixed all critical issues
+4. ✅ **Security hardening complete** (13 security tests passing)
+
+### Session 9 (2025-10-27): Phase 3.2 Complete - Profile Updates & Type Fixes
+
+**Achievements**:
+1. ✅ Updated profile and history types:
+   - Split karma: commentKarma, postKarma, totalKarma
+   - User attributes: hasUserFlair, userFlairText, hasPremium, isVerified
+   - Post history: totalPosts, totalComments, subreddits[]
+   - CurrentPost interface: media types, URLs, domains, word counts
+2. ✅ Updated implementation files:
+   - profile/fetcher.ts: Populate split karma from API
+   - profile/historyAnalyzer.ts: Calculate post/comment counts, track subreddits
+   - Fixed all test mocks (3 locations in prompts.test.ts)
+3. ✅ Cleaned up unused variables (5 locations in storage.ts)
+4. ✅ All 169 tests passing (13 new security tests)
+5. ✅ Production code: ~10,500 lines (+1,595 from Phase 3.2)
+6. ✅ Updated all documentation
+7. ✅ Committed Phase 3.2 changes
+8. ✅ **Phase 3.2 COMPLETE** ✅
+
 **Next Session**:
-- Implement rule storage and configuration (Phase 3.2)
-- Implement condition evaluation engine (Phase 3.3)
-- Implement rules execution engine (Phase 3.3)
+- Integrate rules engine with PostSubmit handler (Phase 3.3)
 - Implement action executors (Phase 3.4)
-- Integrate with PostSubmit handler (Phase 3.4)
-- Comprehensive testing (Phase 3.5)
+- Build CurrentPost object from submission
+- Handle dry-run mode
+- Comprehensive testing
 
 ---
 
-**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Design ✅ | **Rules Implementation (Next)** | Production (Week 4-5)
-**Ready for**: Phase 3 - Implementation of configurable rules system
-**Estimated time to MVP**: 2-3 weeks remaining
+**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Design ✅ | **Rules Engine ✅** | Integration (Next) | Production (Week 4-5)
+**Ready for**: Phase 3.3 - Rules Engine Integration with PostSubmit handler
+**Estimated time to MVP**: 1-2 weeks remaining
