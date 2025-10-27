@@ -10,7 +10,8 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 **Phase 2 Status**: COMPLETE ✅
 **Phase 3.1 Status**: AI System Refactor - COMPLETE ✅
 **Phase 3.2 Status**: Rules Engine Implementation - COMPLETE ✅
-**Next**: Phase 3.3 - Integrate rules engine with PostSubmit handler
+**Phase 3.3 Status**: Rules Engine Integration - COMPLETE ✅
+**Next**: Phase 3.4 - Implement action executors (FLAG, REMOVE, COMMENT)
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -169,21 +170,23 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 - ✅ **169 tests passing** (13 new security tests)
 - ✅ **~10,500 lines production code**
 
-**What's Next** (Phase 3.3 & 3.4):
+**What's Next** (Phase 3.4):
 
-**Phase 3.3: Rules Engine Integration (NEXT)**
-- ❌ **PostSubmit Handler Integration**
-  - Wire rules engine evaluation into handler
-  - Build CurrentPost object from submission
-  - Call rules engine with full context
-  - Handle dry-run mode
+**Phase 3.3: Rules Engine Integration** - COMPLETE ✅
+- ✅ PostBuilder helper created
+- ✅ PostSubmit handler integration complete
+- ✅ Conditional AI analysis
+- ✅ Enhanced audit logging
+- ✅ Dry-run mode support
+- ✅ Security hardening (6 issues fixed)
 
-**Phase 3.4: Action Executors**
+**Phase 3.4: Action Executors (NEXT)**
 - ❌ **Action Executors** (`src/actions/executor.ts`)
-  - FLAG: Report to mod queue
-  - REMOVE: Remove post + auto-comment
-  - COMMENT: Add warning without removing
-  - Variable substitution in messages
+  - FLAG: Report to mod queue (context.reddit.report)
+  - REMOVE: Remove post + auto-comment (context.reddit.remove)
+  - COMMENT: Add warning without removing (context.reddit.submitComment)
+  - Variable substitution in messages: {confidence}, {reason}, {username}, etc.
+  - Dry-run logging support
 
 **Reddit Infrastructure**:
 - Test sub: r/AiAutomod ✅
@@ -511,15 +514,46 @@ When resuming work:
 7. ✅ Committed Phase 3.2 changes
 8. ✅ **Phase 3.2 COMPLETE** ✅
 
+### Session 10 (2025-10-27): Phase 3.3 Complete - Rules Engine Integration
+
+**Achievements**:
+1. ✅ Created PostBuilder helper (src/handlers/postBuilder.ts - 258 lines)
+   - URL extraction with ReDoS protection (O(n) algorithm)
+   - Domain extraction with protocol validation (http/https only)
+   - Post type detection (text/link/image/video/gallery)
+   - Word/char count calculation
+   - Safe defaults on errors
+2. ✅ Updated PostSubmit handler (src/handlers/postSubmit.ts)
+   - Rules engine integration (lines 131-274)
+   - Conditional AI analysis (only when subreddit has AI rules)
+   - AI question aggregation from rules
+   - Complete evaluation context
+   - Action handling (APPROVE/FLAG/REMOVE/COMMENT)
+   - Enhanced audit logging with metadata (dryRun, aiCost, executionTime, trustScore)
+   - Dry-run mode support
+   - Phase 3.4 placeholders for REMOVE/COMMENT actions
+3. ✅ Code review identified 6 moderate issues
+4. ✅ Fixed all 6 moderate security issues:
+   - ReDoS vulnerability in URL regex
+   - Protocol validation (blocked javascript:, data:, file: URLs)
+   - Pattern matching robustness
+   - Error log sanitization (no sensitive data leakage)
+   - Type safety (removed `as any` casts)
+   - Explicit AI failure logging
+5. ✅ All 169 tests passing ✅
+6. ✅ Documentation created (docs/phase-3.3-security-fixes.md)
+7. ✅ **Phase 3.3 COMPLETE** ✅
+
 **Next Session**:
-- Integrate rules engine with PostSubmit handler (Phase 3.3)
 - Implement action executors (Phase 3.4)
-- Build CurrentPost object from submission
-- Handle dry-run mode
-- Comprehensive testing
+- FLAG: Report to mod queue
+- REMOVE: Remove post + auto-comment
+- COMMENT: Add warning without removing
+- Variable substitution in messages
+- Integration testing in test subreddit
 
 ---
 
-**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Design ✅ | **Rules Engine ✅** | Integration (Next) | Production (Week 4-5)
-**Ready for**: Phase 3.3 - Rules Engine Integration with PostSubmit handler
-**Estimated time to MVP**: 1-2 weeks remaining
+**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Design ✅ | **Rules Engine ✅** | **Integration ✅** | Actions (Next) | Production (Week 4-5)
+**Ready for**: Phase 3.4 - Action Executors (FLAG, REMOVE, COMMENT)
+**Estimated time to MVP**: 1 week remaining
