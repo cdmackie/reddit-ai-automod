@@ -150,7 +150,7 @@ Devvit.addSettings([
     type: 'paragraph',
     name: 'rulesJson',
     label: '🤖 Custom Rules Configuration (JSON)',
-    helpText: 'Configure AI-powered moderation rules in JSON format. See documentation for examples. Leave empty to use default rules. (Executes last if Layers 1-2 don\'t match)',
+    helpText: 'Configure AI-powered moderation rules in JSON format. Starts empty - add your own custom rules here. See documentation for examples. (Executes last if Layers 1-2 don\'t match)',
     defaultValue: '',
     scope: 'installation',
   },

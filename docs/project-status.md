@@ -590,6 +590,33 @@
   - ✅ Updated project-status.md (this file)
   - ✅ Updated resume-prompt.md with Session 25 summary
 
+**Phase 5.9: Remove Default Layer 3 Rules (COMPLETE ✅ - 2025-10-28)**
+- [x] Problem identification - 2025-10-28
+  - ✅ 21 default rules were auto-loading across 4 rule sets
+  - ✅ Caused unexpected automatic moderation on installation
+  - ✅ Conflicted with Layer 1 "built-in rules" concept
+  - ✅ Made system behavior unclear to users
+- [x] Implementation - 2025-10-28
+  - ✅ Emptied all 4 default rule sets in src/rules/defaults.ts
+    - FRIENDSOVER40_RULES: 0 rules (was 6 rules)
+    - FRIENDSOVER50_RULES: 0 rules (was 6 rules)
+    - BITCOINTAXES_RULES: 0 rules (was 8 rules)
+    - GLOBAL_RULES: 0 rules (was 1 rule)
+  - ✅ File reduced from 576 lines to 65 lines (88% reduction)
+  - ✅ Updated module documentation to clarify empty defaults
+  - ✅ Updated rulesJson helpText in main.tsx
+    - Clarified "Starts empty - add your own custom rules here"
+- [x] Testing and deployment - 2025-10-28
+  - ✅ TypeScript compilation successful (no new errors)
+  - ✅ Built and deployed (version 0.1.9)
+  - ✅ devvit upload successful
+- [x] Expected behavior after change - 2025-10-28
+  - ✅ Fresh installs: No Layer 3 custom rules active by default
+  - ✅ Layer 1 only: Only user-configured New Account Checks will run
+  - ✅ Layer 2 optional: OpenAI Moderation if user enables it
+  - ✅ Layer 3 manual: Users add custom rules via JSON if needed
+  - ✅ Clear separation: Built-in rules (Layer 1) vs Custom rules (Layer 3)
+
 **Phase 5.8: Fix Blank Fields in New Account Checks (COMPLETE ✅ - 2025-10-28)**
 - [x] Settings field type changes - 2025-10-28
   - ✅ Changed builtInAccountAgeDays from type: 'number' to type: 'string'
