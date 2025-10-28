@@ -104,12 +104,20 @@ export class SettingsService {
       const settings = await context.settings.getAll();
 
       // Build configuration with defaults
+      // Note: Devvit select fields return arrays, so we need to extract the first value
+      const primaryProviderValue = Array.isArray(settings.primaryProvider)
+        ? settings.primaryProvider[0]
+        : settings.primaryProvider;
+      const fallbackProviderValue = Array.isArray(settings.fallbackProvider)
+        ? settings.fallbackProvider[0]
+        : settings.fallbackProvider;
+
       const config: AIProviderConfig = {
         claudeApiKey: settings.claudeApiKey as string | undefined,
         openaiApiKey: settings.openaiApiKey as string | undefined,
         deepseekApiKey: settings.deepseekApiKey as string | undefined,
-        primaryProvider: (settings.primaryProvider as 'claude' | 'openai' | 'deepseek') ?? 'claude',
-        fallbackProvider: (settings.fallbackProvider as 'claude' | 'openai' | 'deepseek' | 'none') ?? 'openai',
+        primaryProvider: (primaryProviderValue as 'claude' | 'openai' | 'deepseek') ?? 'claude',
+        fallbackProvider: (fallbackProviderValue as 'claude' | 'openai' | 'deepseek' | 'none') ?? 'openai',
       };
 
       // Cache the result

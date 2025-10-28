@@ -13,8 +13,8 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - Phase 3.2: Rules Engine Implementation - COMPLETE ✅
   - Phase 3.3: Rules Engine Integration - COMPLETE ✅
   - Phase 3.4: Action Executors - COMPLETE ✅
-**Phase 4 Status**: Phase 4.1 COMPLETE ✅ (Settings Service Foundation)
-**Next**: Phase 4.2 - Devvit Settings UI Implementation
+**Phase 4 Status**: Phase 4.1 & 4.2 COMPLETE ✅ (Settings Service + UI)
+**Next**: Phase 4.3 - Cost Dashboard UI
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -653,14 +653,49 @@ When resuming work:
 **Files Modified**: 2 files (src/types/config.ts, src/types/ai.ts)
 
 **Next Session**:
-- Phase 4.2: Implement Devvit.addSettings() configuration
-- Add API key input fields
-- Add budget limit configuration fields
-- Add dry-run mode toggle
-- Add alert threshold checkboxes
+- Phase 4.3: Cost Dashboard UI
+- Display daily/monthly AI costs
+- Show budget limits and remaining budget
+- Add budget usage warnings
 
 ---
 
-**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Engine ✅ | Integration ✅ | Actions ✅ | Security Fixes ✅ | **Settings Foundation ✅** | Settings UI (Next) | Production (Week 5)
-**Ready for**: Phase 4.2 - Devvit Settings UI Implementation
+### Session 14 (2025-10-28): Phase 4.2 Complete - Devvit Settings UI
+
+**Achievements**:
+1. ✅ Implemented Devvit.addSettings() in src/main.tsx (169 lines total, +127 lines added)
+   - 13 settings fields organized in 4 sections with clear comments
+   - AI Provider Configuration: claudeApiKey, openaiApiKey, deepseekApiKey (all secret)
+   - Provider Selection: primaryProvider (default: 'claude'), fallbackProvider (default: 'openai')
+   - Budget & Cost Controls: dailyBudgetLimit ($5), monthlyBudgetLimit ($150), 3 alert threshold booleans
+   - Dry-Run Mode: dryRunMode (true), dryRunLogDetails (true)
+   - All fields use `scope: 'installation'` for per-subreddit configuration
+2. ✅ Added comprehensive JSDoc comment block with usage instructions
+3. ✅ Updated Devvit.configure() to enable HTTP permission (http: true)
+4. ✅ Updated menu item toast message to reflect Phase 4
+5. ✅ Fixed SettingsService to handle Devvit select field arrays
+   - Devvit select fields return arrays (e.g., ['claude']), not strings
+   - Added array extraction logic for primaryProvider and fallbackProvider
+   - Handles both array and string values gracefully
+6. ✅ TypeScript compilation verified - No new errors
+7. ✅ All settings field names match SettingsService expectations exactly
+8. ✅ Updated documentation (project-status.md, resume-prompt.md)
+9. ✅ **Phase 4.2 COMPLETE** ✅
+
+**Production Code**: ~11,040 lines (+140 lines from Phase 4.2)
+**Files Modified**: 2 files (src/main.tsx, src/config/settingsService.ts)
+
+**Settings UI Location**:
+Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
+
+**Next Session**:
+- Phase 4.3: Cost Dashboard UI
+- Display daily/monthly AI spend
+- Show budget limits and usage percentages
+- Add warning indicators when approaching limits
+
+---
+
+**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Engine ✅ | Integration ✅ | Actions ✅ | Security Fixes ✅ | Settings Foundation ✅ | **Settings UI ✅** | Cost Dashboard (Next) | Production (Week 5)
+**Ready for**: Phase 4.3 - Cost Dashboard UI Implementation
 **Estimated time to MVP**: ~1 week remaining
