@@ -252,12 +252,12 @@ async function getBuiltInRulesConfig(
   const message = (settings.builtInMessage as string) || 'Your post has been flagged for moderator review.';
 
   // Build a single rule from the individual settings
-  // Only create rule if at least one condition is set (both must be > 0)
   const rules: BuiltInRule[] = [];
 
-  // Check if at least one condition is set
-  const hasAccountAgeCondition = accountAgeDays !== undefined && accountAgeDays > 0;
-  const hasKarmaCondition = karmaThreshold !== undefined && karmaThreshold > 0;
+  // Check if at least one condition is set (not undefined/null)
+  // Important: Allow 0 and negative values! Only undefined/null means "ignore this check"
+  const hasAccountAgeCondition = accountAgeDays !== undefined && accountAgeDays !== null;
+  const hasKarmaCondition = karmaThreshold !== undefined && karmaThreshold !== null;
 
   if (hasAccountAgeCondition || hasKarmaCondition) {
     const rule: BuiltInRule = {
@@ -269,7 +269,8 @@ async function getBuiltInRulesConfig(
       message,
     };
 
-    // Add conditions only if they are set and > 0
+    // Add conditions only if they are explicitly set (not undefined/null)
+    // Important: Allow 0 and negative values!
     if (hasAccountAgeCondition) {
       rule.conditions.accountAgeDays = { operator: '<', value: accountAgeDays };
     }
@@ -279,6 +280,14 @@ async function getBuiltInRulesConfig(
 
     rules.push(rule);
   }
+
+  console.log('[Pipeline] New account checks config:', {
+    enabled,
+    accountAgeDays: hasAccountAgeCondition ? accountAgeDays : 'ignored',
+    karmaThreshold: hasKarmaCondition ? karmaThreshold : 'ignored',
+    action,
+    hasRules: rules.length > 0,
+  });
 
   return {
     enabled,

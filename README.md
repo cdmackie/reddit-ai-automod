@@ -2,7 +2,7 @@
 
 > **Intelligent User Profiling & Moderation for Reddit Communities**
 
-A Reddit Devvit app that uses AI to analyze new posters and detect problematic users before they cause harm. Built for moderators who want to protect their communities from romance scammers, dating seekers, underage users, and spammers.
+A Reddit Devvit app that uses AI to analyze new posters and detect problematic users before they cause harm. Built for moderators who want to protect their communities from undesirable users or scammers.
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue)]()
 [![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen)]()
@@ -15,7 +15,7 @@ Instead of waiting for bad actors to post harmful content, this app **proactivel
 
 - **User Profile**: Account age, karma, email verification status
 - **Post History**: Last 20 posts/comments from ALL subreddits
-- **AI Analysis**: Custom questions you define (e.g., "Does this user appear to be seeking dates?")
+- **AI Analysis**: Custom questions you define (e.g., "Does this user appear to be promoting a service?")
 
 Based on configurable rules, the app can:
 - **FLAG**: Report to mod queue for human review
@@ -35,7 +35,7 @@ Based on configurable rules, the app can:
 
 **AI-Powered Analysis**
 - Works with Claude, DeepSeek, or OpenAI (automatic failover)
-- You ask custom questions in plain English (e.g., "Is this user seeking romantic connections?")
+- You ask custom questions in plain English (e.g., "Is this user promoting a service?")
 - AI answers YES/NO/MAYBE with confidence scores
 - Set your own confidence thresholds for actions
 
@@ -98,28 +98,28 @@ Rules use JSON format. The app provides examples and validation to help you get 
 }
 ```
 
-### Example 2: AIRule - Dating Intent Detection
+### Example 2: AIRule - Promotion Intent Detection
 
 ```json
 {
-  "id": "dating-seeker",
+  "id": "promotion-seeker",
   "type": "ai",
   "priority": 90,
   "contentType": "submission",
   "aiQuestions": [
     {
-      "id": "dating-intent",
-      "question": "Based on this user's post history, are they seeking romantic or dating connections? Answer YES if they mention dating, relationships, looking for partners, or romantic interest. Answer NO if they're just making friends platonically."
+      "id": "promotion-intent",
+      "question": "Based on this user's post history, are they selling or promoting a product or service? Answer YES if they mention a product, links, or selling. Answer NO if they're mentioning or reviewing a product or service."
     }
   ],
   "conditions": {
-    "field": "aiAnalysis.answers.dating-intent.answer",
+    "field": "aiAnalysis.answers.promotion-intent.answer",
     "operator": "==",
     "value": "YES"
   },
   "confidenceThreshold": 80,
   "action": "REMOVE",
-  "message": "This subreddit is for platonic friendships only. Posts seeking romantic connections are not allowed.",
+  "message": "This subreddit is not for product promotions.",
   "notifyMods": true
 }
 ```
@@ -194,25 +194,6 @@ The `contentType` field determines where a rule applies:
 
 ---
 
-## Use Cases
-
-**FriendsOver40/50 Communities**
-- Detect romance scammers, dating seekers, and age inconsistencies
-- Flag suspicious account patterns
-- Protect vulnerable community members
-
-**r/bitcointaxes & Similar**
-- Filter spam and off-topic posts
-- Detect low-effort questions
-- Enforce community standards
-
-**Any Moderated Community**
-- Detect new spammer patterns quickly
-- Reduce manual review burden
-- Customize rules for your community's specific issues
-
----
-
 ## Security & Privacy
 
 **What We Access**
@@ -246,14 +227,6 @@ Trust scores and caching can reduce costs by 50%. Daily budget limits prevent ov
 
 ---
 
-## Support
-
-For issues, questions, or feature requests:
-- [GitHub Issues](https://github.com/cdmackie/reddit-ai-automod/issues)
-- [GitHub Discussions](https://github.com/cdmackie/reddit-ai-automod/discussions)
-
----
-
 ## License
 
 MIT License - See [LICENSE](./LICENSE) file for details.
@@ -262,11 +235,7 @@ MIT License - See [LICENSE](./LICENSE) file for details.
 
 ## Acknowledgments
 
-- **Reddit Devvit Team** - For the excellent platform and developer tools
+- **Reddit Devvit Team** - For the platform and developer tools
 - **Anthropic** - For Claude 3.5 Haiku API
 - **OpenAI** - For GPT-4o Mini API
 - **DeepSeek** - For DeepSeek V3 API
-
----
-
-Built with Reddit Devvit, TypeScript, Claude AI, and Redis.
