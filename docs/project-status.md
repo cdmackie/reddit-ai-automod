@@ -590,6 +590,27 @@
   - ✅ Updated project-status.md (this file)
   - ✅ Updated resume-prompt.md with Session 25 summary
 
+**Phase 5.8: Fix Blank Fields in New Account Checks (COMPLETE ✅ - 2025-10-28)**
+- [x] Settings field type changes - 2025-10-28
+  - ✅ Changed builtInAccountAgeDays from type: 'number' to type: 'string'
+  - ✅ Changed builtInKarmaThreshold from type: 'number' to type: 'string'
+  - ✅ Changed defaultValue from numeric to empty string ''
+  - ✅ Updated helpText for both fields
+  - ✅ Supports blank (ignored), zero, negative values
+- [x] Pipeline parsing logic - 2025-10-28
+  - ✅ Updated getBuiltInRulesConfig() to read strings from settings
+  - ✅ Implemented parseNumberOrUndefined() helper function
+  - ✅ Handles blank/whitespace → undefined (ignore check)
+  - ✅ Handles '0' → 0 (enforce check with zero threshold)
+  - ✅ Handles negative values → valid number (enforce check)
+  - ✅ Handles invalid input → undefined with warning (ignore check)
+- [x] Testing and deployment - 2025-10-28
+  - ✅ TypeScript compilation successful (no new errors)
+  - ✅ Fixed potential null/undefined error in helper function
+  - ✅ Ready for version 0.1.8 deployment
+- [x] Documentation updated - 2025-10-28
+  - ✅ Updated project-status.md (this file)
+
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27
 - [x] Deploy architect-reviewer for design validation - 2025-10-27

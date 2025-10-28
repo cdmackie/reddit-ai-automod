@@ -246,16 +246,20 @@ async function getBuiltInRulesConfig(
   const enabled = (settings.enableBuiltInRules as boolean) ?? true;
 
   // Read individual settings fields
-  const accountAgeDays = settings.builtInAccountAgeDays as number | undefined;
-  const karmaThreshold = settings.builtInKarmaThreshold as number | undefined;
+  const accountAgeDaysRaw = settings.builtInAccountAgeDays as string | undefined;
+  const karmaThresholdRaw = settings.builtInKarmaThreshold as string | undefined;
   const action = ((settings.builtInAction as string[]) || ['FLAG'])[0] as 'FLAG' | 'REMOVE' | 'COMMENT';
   const message = (settings.builtInMessage as string) || 'Your post has been flagged for moderator review.';
+
+  // Parse string values to numbers, treating blank/empty as undefined
+  const accountAgeDays = parseNumberOrUndefined(accountAgeDaysRaw);
+  const karmaThreshold = parseNumberOrUndefined(karmaThresholdRaw);
 
   // Build a single rule from the individual settings
   const rules: BuiltInRule[] = [];
 
   // Check if at least one condition is set (not undefined/null)
-  // Important: Allow 0 and negative values! Only undefined/null means "ignore this check"
+  // Important: Allow 0 and negative values! Only undefined/null/blank means "ignore this check"
   const hasAccountAgeCondition = accountAgeDays !== undefined && accountAgeDays !== null;
   const hasKarmaCondition = karmaThreshold !== undefined && karmaThreshold !== null;
 
@@ -332,4 +336,37 @@ async function getModerationConfig(
     customMessage,
     alwaysRemoveMinorSexual: true, // Always enabled for safety
   };
+}
+
+/**
+ * Parse a string value to a number, treating blank/empty as undefined
+ *
+ * @param value - String value from settings
+ * @returns Parsed number, or undefined if blank/invalid
+ *
+ * @example
+ * parseNumberOrUndefined('50')     // 50
+ * parseNumberOrUndefined('0')      // 0
+ * parseNumberOrUndefined('-10')    // -10
+ * parseNumberOrUndefined('')       // undefined
+ * parseNumberOrUndefined('  ')     // undefined
+ * parseNumberOrUndefined('abc')    // undefined
+ */
+function parseNumberOrUndefined(value: string | undefined): number | undefined {
+  // Undefined, null, or empty string = ignore this check
+  if (!value || value.trim() === '') {
+    return undefined;
+  }
+
+  // Try to parse as number
+  const parsed = Number(value);
+
+  // If parsing failed (NaN), return undefined (ignore the check)
+  if (isNaN(parsed)) {
+    console.warn('[Pipeline] Invalid number in settings, ignoring:', value);
+    return undefined;
+  }
+
+  // Valid number (including 0 and negatives)
+  return parsed;
 }
