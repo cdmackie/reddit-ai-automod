@@ -220,43 +220,19 @@ Devvit.addSettings([
   },
   {
     type: 'boolean',
-    name: 'budgetAlertThreshold50',
-    label: '💰 Alert at 50% Budget',
-    helpText: 'Log warning when 50% of daily/monthly budget is used. Only applies to Layer 3 custom rules.',
-    defaultValue: true,
-    scope: 'installation',
-  },
-  {
-    type: 'boolean',
-    name: 'budgetAlertThreshold75',
-    label: '💰 Alert at 75% Budget',
-    helpText: 'Log warning when 75% of daily/monthly budget is used. Only applies to Layer 3 custom rules.',
-    defaultValue: true,
-    scope: 'installation',
-  },
-  {
-    type: 'boolean',
-    name: 'budgetAlertThreshold90',
-    label: '💰 Alert at 90% Budget',
-    helpText: 'Log warning when 90% of daily/monthly budget is used. Only applies to Layer 3 custom rules.',
+    name: 'budgetAlertsEnabled',
+    label: '💰 Budget Alerts: Enable',
+    helpText: 'Send notifications when AI spending reaches 50%, 75%, or 90% of daily budget. Only applies to Layer 3 custom rules. Recipients configured in \'Notification Recipients\' below.',
     defaultValue: true,
     scope: 'installation',
   },
 
-  // ===== Daily Digest Notifications =====
-  {
-    type: 'boolean',
-    name: 'dailyDigestEnabled',
-    label: '📧 Daily Digest: Enable',
-    helpText: 'Send a daily summary of moderation actions',
-    defaultValue: false,
-    scope: 'installation',
-  },
+  // ===== Notification Recipients (Unified) =====
   {
     type: 'select',
-    name: 'dailyDigestRecipient',
-    label: '📧 Send To',
-    helpText: 'Where to send the daily digest',
+    name: 'notificationRecipient',
+    label: '📬 Send All Notifications To',
+    helpText: 'Where to send all alerts and notifications (daily digest, real-time, budget alerts)',
     options: [
       { label: 'Mod Notifications (all moderators)', value: 'all' },
       { label: 'Specific moderator(s)', value: 'specific' },
@@ -266,9 +242,19 @@ Devvit.addSettings([
   },
   {
     type: 'string',
-    name: 'dailyDigestRecipientUsernames',
-    label: '📧 Recipient Username(s)',
+    name: 'notificationRecipientUsernames',
+    label: '📬 Recipient Username(s)',
     helpText: 'Comma-separated usernames without u/ prefix (e.g., \'user1, user2\'). Only used if \'Specific moderator(s)\' selected above.',
+    scope: 'installation',
+  },
+
+  // ===== Daily Digest Notifications =====
+  {
+    type: 'boolean',
+    name: 'dailyDigestEnabled',
+    label: '📧 Daily Digest: Enable',
+    helpText: 'Send a daily summary of moderation actions. Recipients configured in \'Notification Recipients\' above.',
+    defaultValue: false,
     scope: 'installation',
   },
   {
@@ -285,27 +271,8 @@ Devvit.addSettings([
     type: 'boolean',
     name: 'realtimeNotificationsEnabled',
     label: '⚡ Real-time: Enable Notifications',
-    helpText: 'Send immediate notification after each moderation action (useful for debugging)',
+    helpText: 'Send immediate notification after each moderation action (useful for debugging). Recipients configured in \'Notification Recipients\' above.',
     defaultValue: false,
-    scope: 'installation',
-  },
-  {
-    type: 'select',
-    name: 'realtimeRecipient',
-    label: '⚡ Send To',
-    helpText: 'Where to send real-time notifications',
-    options: [
-      { label: 'Mod Notifications (all moderators)', value: 'all' },
-      { label: 'Specific moderator(s)', value: 'specific' },
-    ],
-    defaultValue: ['all'],
-    scope: 'installation',
-  },
-  {
-    type: 'string',
-    name: 'realtimeRecipientUsernames',
-    label: '⚡ Recipient Username(s)',
-    helpText: 'Comma-separated usernames without u/ prefix (e.g., \'user1, user2\'). Only used if \'Specific moderator(s)\' selected above.',
     scope: 'installation',
   },
 

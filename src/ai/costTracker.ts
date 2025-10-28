@@ -41,10 +41,11 @@
  * @module ai/costTracker
  */
 
-import { Devvit } from '@devvit/public-api';
+import { Devvit, Context } from '@devvit/public-api';
 import { AIProviderType, CostRecord, BudgetStatus, SpendingReport } from '../types/ai.js';
 import { SettingsService } from '../config/settingsService.js';
 import { CostDashboardCache } from '../dashboard/costDashboardCache.js';
+import { sendBudgetAlert } from '../notifications/modmailDigest.js';
 
 /**
  * Default cost tracker configuration
@@ -86,7 +87,7 @@ function centsToUSD(cents: number): number {
  */
 export class CostTracker {
   private static instance: CostTracker | null = null;
-  private context: Devvit.Context;
+  private context: Context;
   private redis: Devvit.Context['redis'];
   private config: typeof DEFAULT_CONFIG;
 
@@ -94,7 +95,7 @@ export class CostTracker {
    * Private constructor for singleton pattern
    * Use CostTracker.getInstance() to get instance
    */
-  private constructor(context: Devvit.Context) {
+  private constructor(context: Context) {
     this.context = context;
     this.redis = context.redis;
     this.config = DEFAULT_CONFIG;
@@ -111,7 +112,7 @@ export class CostTracker {
    * const costTracker = CostTracker.getInstance(context);
    * ```
    */
-  public static getInstance(context: Devvit.Context): CostTracker {
+  public static getInstance(context: Context): CostTracker {
     if (!CostTracker.instance) {
       CostTracker.instance = new CostTracker(context);
     }
@@ -204,7 +205,7 @@ export class CostTracker {
 
       // Check for budget alerts after recording cost
       const status = await this.getBudgetStatus();
-      this.checkBudgetAlert(status);
+      await this.checkBudgetAlert(status);
 
       // Invalidate dashboard cache to reflect new costs
       await CostDashboardCache.invalidateCache(this.context);
@@ -491,14 +492,14 @@ export class CostTracker {
    * budget thresholds are exceeded.
    *
    * Alert levels:
-   * - 50% of daily budget: Warning log
-   * - 75% of daily budget: Warning log (future: notify mods)
-   * - 90% of daily budget: Critical log (future: notify mods)
-   * - 100% of daily budget: Critical log, budget enforcement active
+   * - 50% of daily budget: Warning log + notification
+   * - 75% of daily budget: Warning log + notification
+   * - 90% of daily budget: Critical log + notification
+   * - 100% of daily budget: Critical log + notification, budget enforcement active
    *
    * @param status - Current budget status
    */
-  private checkBudgetAlert(status: BudgetStatus): void {
+  private async checkBudgetAlert(status: BudgetStatus): Promise<void> {
     switch (status.alertLevel) {
       case 'EXCEEDED':
         console.error('BUDGET EXCEEDED - AI calls blocked', {
@@ -507,6 +508,15 @@ export class CostTracker {
           percentUsed: ((status.dailySpent / status.dailyLimit) * 100).toFixed(1),
           perProviderSpent: status.perProviderSpent,
         });
+        // Send notification
+        if (this.context) {
+          await sendBudgetAlert(this.context, 'EXCEEDED', {
+            dailySpent: status.dailySpent,
+            dailyLimit: status.dailyLimit,
+            dailyRemaining: status.dailyRemaining,
+            perProviderSpent: status.perProviderSpent,
+          });
+        }
         break;
 
       case 'WARNING_90':
@@ -517,6 +527,14 @@ export class CostTracker {
           percentUsed: '90%+',
           perProviderSpent: status.perProviderSpent,
         });
+        if (this.context) {
+          await sendBudgetAlert(this.context, 'WARNING_90', {
+            dailySpent: status.dailySpent,
+            dailyLimit: status.dailyLimit,
+            dailyRemaining: status.dailyRemaining,
+            perProviderSpent: status.perProviderSpent,
+          });
+        }
         break;
 
       case 'WARNING_75':
@@ -527,6 +545,14 @@ export class CostTracker {
           percentUsed: '75%+',
           perProviderSpent: status.perProviderSpent,
         });
+        if (this.context) {
+          await sendBudgetAlert(this.context, 'WARNING_75', {
+            dailySpent: status.dailySpent,
+            dailyLimit: status.dailyLimit,
+            dailyRemaining: status.dailyRemaining,
+            perProviderSpent: status.perProviderSpent,
+          });
+        }
         break;
 
       case 'WARNING_50':
@@ -537,6 +563,14 @@ export class CostTracker {
           percentUsed: '50%+',
           perProviderSpent: status.perProviderSpent,
         });
+        if (this.context) {
+          await sendBudgetAlert(this.context, 'WARNING_50', {
+            dailySpent: status.dailySpent,
+            dailyLimit: status.dailyLimit,
+            dailyRemaining: status.dailyRemaining,
+            perProviderSpent: status.perProviderSpent,
+          });
+        }
         break;
 
       case 'NONE':

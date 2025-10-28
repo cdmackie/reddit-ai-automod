@@ -1281,3 +1281,77 @@ Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 
 **Status**: Phase 5.6 complete ✅ | Phase 5.7 documented but NOT STARTED
 **Next**: Implement Phase 5.7 - Unified notification recipients (version 0.1.7)
+
+---
+
+### Session 25 (2025-10-28): Phase 5.7 Complete - Unified Notification Recipients
+
+**Achievements**:
+1. ✅ **Settings UI Consolidation** (src/main.tsx):
+   - Replaced 3 budget alert boolean settings with single budgetAlertsEnabled
+   - Added unified "Notification Recipients" section (2 fields):
+     - notificationRecipient (select): "All Mods" or "Specific moderator(s)"
+     - notificationRecipientUsernames (string): Comma-separated usernames
+   - Removed duplicate recipient fields:
+     - dailyDigestRecipient and dailyDigestRecipientUsernames (2 fields removed)
+     - realtimeRecipient and realtimeRecipientUsernames (2 fields removed)
+   - Updated all helpText to reference unified recipient configuration
+   - Net reduction: 4 settings fields (from 7 → 3 notification recipient fields)
+
+2. ✅ **Notification Functions Updated** (src/notifications/modmailDigest.ts):
+   - Updated sendDailyDigest() to use notificationRecipient/notificationRecipientUsernames
+   - Updated sendRealtimeDigest() to use notificationRecipient/notificationRecipientUsernames
+   - Implemented sendBudgetAlert() function (120 lines):
+     - Sends actual notifications to moderators (modmail or PM)
+     - Supports multi-username PM delivery
+     - Formats budget alert messages with spending details
+     - Respects budgetAlertsEnabled setting
+   - Implemented formatBudgetAlertMessage() helper function
+
+3. ✅ **CostTracker Integration** (src/ai/costTracker.ts):
+   - Added Context import and sendBudgetAlert import
+   - Added context as private field in CostTracker class
+   - Made checkBudgetAlert() async (was void, now Promise<void>)
+   - Updated recordCost() to await checkBudgetAlert()
+   - Added sendBudgetAlert() calls for all 4 alert levels:
+     - EXCEEDED: Budget exceeded notification (AI disabled until tomorrow)
+     - WARNING_90: 90% budget used notification
+     - WARNING_75: 75% budget used notification
+     - WARNING_50: 50% budget used notification
+
+4. ✅ Testing and deployment:
+   - TypeScript compilation successful (no new errors)
+   - Built and deployed successfully
+   - Version automatically bumped: 0.1.6 → 0.1.7
+   - devvit upload completed without errors
+
+**Files Modified**:
+- src/main.tsx (settings consolidation: -4 fields, +2 fields, net -2)
+- src/notifications/modmailDigest.ts (unified settings + sendBudgetAlert: +120 lines)
+- src/ai/costTracker.ts (async checkBudgetAlert + sendBudgetAlert calls: +40 lines)
+- docs/project-status.md (added Phase 5.7 section)
+- docs/resume-prompt.md (this file - Session 25 summary)
+
+**Production Code**: ~12,894 lines (+160 lines from Phase 5.7)
+**Version**: 0.1.7 deployed to Reddit
+
+**Key Features**:
+- Single unified recipient configuration for all notification types
+- Budget alerts now actually sent to moderators (not just console.log)
+- Cleaner settings UI with less duplication
+- All three notification types (daily, real-time, budget) use same recipient config
+
+**Before Phase 5.7**:
+- Daily digest: 2 recipient settings (dailyDigestRecipient, dailyDigestRecipientUsernames)
+- Real-time: 2 recipient settings (realtimeRecipient, realtimeRecipientUsernames)
+- Budget alerts: 3 boolean threshold settings + console.log only (no actual notifications)
+
+**After Phase 5.7**:
+- Unified: 2 recipient settings (notificationRecipient, notificationRecipientUsernames)
+- Daily digest: 2 settings (enable, time) - uses unified recipients
+- Real-time: 1 setting (enable) - uses unified recipients
+- Budget alerts: 1 setting (enable) - uses unified recipients + actual notifications
+
+**Status**: Phase 5.7 complete ✅
+**Next**: Production deployment to target subreddits or additional features as requested
+

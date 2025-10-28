@@ -32,8 +32,8 @@ export async function sendDailyDigest(context: Context): Promise<void> {
     // Get settings
     const settings = await context.settings.getAll();
     const dailyDigestEnabled = settings.dailyDigestEnabled as boolean;
-    const dailyDigestRecipient = (settings.dailyDigestRecipient as string[])?.[0] || 'all';
-    const dailyDigestRecipientUsernames = settings.dailyDigestRecipientUsernames as string;
+    const notificationRecipient = (settings.notificationRecipient as string[])?.[0] || 'all';
+    const notificationRecipientUsernames = settings.notificationRecipientUsernames as string;
 
     // Check if daily digest is enabled
     if (!dailyDigestEnabled) {
@@ -44,8 +44,8 @@ export async function sendDailyDigest(context: Context): Promise<void> {
     console.log('[ModmailDigest] Daily digest not yet fully implemented - requires getLogsInRange() on AuditLogger');
     // TODO: Implement full daily digest when AuditLogger.getLogsInRange() is available
     // When implemented:
-    // - If dailyDigestRecipient is 'all', send to modmail
-    // - If dailyDigestRecipient is 'specific', split dailyDigestRecipientUsernames by comma, trim, and send PM to each
+    // - If notificationRecipient is 'all', send to modmail
+    // - If notificationRecipient is 'specific', split notificationRecipientUsernames by comma, trim, and send PM to each
   } catch (error) {
     console.error('[ModmailDigest] Error in daily digest:', error);
     // Don't throw - we don't want to crash the scheduler
@@ -65,13 +65,13 @@ export async function sendRealtimeDigest(context: Context, auditLog: AuditLog): 
   try {
     const settings = await context.settings.getAll();
     const realtimeNotificationsEnabled = settings.realtimeNotificationsEnabled as boolean;
-    const realtimeRecipient = (settings.realtimeRecipient as string[])?.[0] || 'all';
-    const realtimeRecipientUsernames = settings.realtimeRecipientUsernames as string;
+    const notificationRecipient = (settings.notificationRecipient as string[])?.[0] || 'all';
+    const notificationRecipientUsernames = settings.notificationRecipientUsernames as string;
 
     console.log('[ModmailDigest] Real-time notification settings:', {
       realtimeNotificationsEnabled,
-      realtimeRecipient,
-      realtimeRecipientUsernames,
+      notificationRecipient,
+      notificationRecipientUsernames,
     });
 
     // Check if real-time notifications are enabled
@@ -85,9 +85,9 @@ export async function sendRealtimeDigest(context: Context, auditLog: AuditLog): 
     const subject = `AI Automod - ${auditLog.action} Action`;
 
     // Send via PM if specific user(s), modmail if all mods
-    if (realtimeRecipient === 'specific' && realtimeRecipientUsernames) {
+    if (notificationRecipient === 'specific' && notificationRecipientUsernames) {
       // Parse comma-separated usernames
-      const usernames = realtimeRecipientUsernames
+      const usernames = notificationRecipientUsernames
         .split(',')
         .map(u => u.trim())
         .filter(u => u.length > 0);
@@ -193,6 +193,121 @@ function formatRealtimeMessage(log: AuditLog, settings: any): string {
 
   message += `\n---\n`;
   message += `*View full details in mod log or subreddit menu*`;
+
+  return message;
+}
+
+/**
+ * Send budget alert notification when spending thresholds are reached
+ *
+ * @param context - Devvit context
+ * @param alertLevel - Budget alert level ('WARNING_50' | 'WARNING_75' | 'WARNING_90' | 'EXCEEDED')
+ * @param budgetStatus - Current budget status with spending details
+ */
+export async function sendBudgetAlert(
+  context: Context,
+  alertLevel: string,
+  budgetStatus: {
+    dailySpent: number;
+    dailyLimit: number;
+    dailyRemaining: number;
+    perProviderSpent: Record<string, number>;
+  }
+): Promise<void> {
+  try {
+    const settings = await context.settings.getAll();
+    const budgetAlertsEnabled = settings.budgetAlertsEnabled as boolean;
+    const notificationRecipient = (settings.notificationRecipient as string[])?.[0] || 'all';
+    const notificationRecipientUsernames = settings.notificationRecipientUsernames as string;
+
+    // Check if budget alerts are enabled
+    if (!budgetAlertsEnabled) {
+      console.log('[ModmailDigest] Budget alerts disabled, skipping notification');
+      return;
+    }
+
+    // Format the alert message
+    const message = formatBudgetAlertMessage(alertLevel, budgetStatus);
+    const subject = `AI Automod - Budget Alert: ${alertLevel}`;
+
+    // Send via PM if specific user(s), modmail if all mods
+    if (notificationRecipient === 'specific' && notificationRecipientUsernames) {
+      // Parse comma-separated usernames
+      const usernames = notificationRecipientUsernames
+        .split(',')
+        .map(u => u.trim())
+        .filter(u => u.length > 0);
+
+      if (usernames.length === 0) {
+        console.log('[ModmailDigest] No valid usernames for budget alert, skipping');
+        return;
+      }
+
+      console.log(`[ModmailDigest] Sending budget alert PMs to ${usernames.length} user(s)`);
+
+      // Send individual PM to each username
+      for (const username of usernames) {
+        try {
+          await context.reddit.sendPrivateMessage({
+            to: username,
+            subject: subject,
+            text: message,
+          });
+          console.log(`[ModmailDigest] ✓ Budget alert PM sent to u/${username}`);
+        } catch (error) {
+          console.error(`[ModmailDigest] Error sending budget alert to u/${username}:`, error);
+        }
+      }
+    } else {
+      // Send as modmail to all mods
+      console.log('[ModmailDigest] Sending budget alert to Mod Notifications (all mods)');
+
+      await context.reddit.modMail.createModInboxConversation({
+        subredditId: context.subredditId,
+        subject: subject,
+        bodyMarkdown: message,
+      });
+
+      console.log('[ModmailDigest] ✓ Budget alert modmail sent');
+    }
+
+    console.log(`[ModmailDigest] ✓ Budget alert sent for ${alertLevel}`);
+  } catch (error) {
+    console.error('[ModmailDigest] Error sending budget alert:', error);
+    // Don't throw - we don't want to crash budget tracking
+  }
+}
+
+/**
+ * Format budget alert message
+ */
+function formatBudgetAlertMessage(alertLevel: string, budgetStatus: any): string {
+  const percentUsed = ((budgetStatus.dailySpent / budgetStatus.dailyLimit) * 100).toFixed(1);
+
+  let message = `## AI Automod - Budget Alert\n\n`;
+
+  if (alertLevel === 'EXCEEDED') {
+    message += `**🔴 BUDGET EXCEEDED** - AI analysis has been disabled until tomorrow.\n\n`;
+  } else if (alertLevel === 'WARNING_90') {
+    message += `**⚠️ CRITICAL WARNING** - 90% of daily AI budget used.\n\n`;
+  } else if (alertLevel === 'WARNING_75') {
+    message += `**⚠️ WARNING** - 75% of daily AI budget used.\n\n`;
+  } else if (alertLevel === 'WARNING_50') {
+    message += `**ℹ️ NOTICE** - 50% of daily AI budget used.\n\n`;
+  }
+
+  message += `**Daily Spent:** $${budgetStatus.dailySpent.toFixed(4)}\n`;
+  message += `**Daily Limit:** $${budgetStatus.dailyLimit.toFixed(2)}\n`;
+  message += `**Remaining:** $${budgetStatus.dailyRemaining.toFixed(4)}\n`;
+  message += `**Percent Used:** ${percentUsed}%\n\n`;
+
+  message += `**Per-Provider Breakdown:**\n`;
+  for (const [provider, spent] of Object.entries(budgetStatus.perProviderSpent)) {
+    message += `- ${provider}: $${(spent as number).toFixed(4)}\n`;
+  }
+
+  message += `\n---\n`;
+  message += `*Budget resets daily at midnight UTC. View full cost details in subreddit menu.*`;
 
   return message;
 }

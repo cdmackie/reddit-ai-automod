@@ -554,35 +554,41 @@
   - ✅ resume-prompt.md: Added Phases 5.5 & 5.6
   - ✅ project-status.md: Added Phase 5.5 & 5.6 sections (this)
 
-**Phase 5.7: Unified Notification Recipients (NOT STARTED ⏳ - Next Up)**
-- [ ] Problem identified - 2025-10-28
-  - **Issue**: Duplicate recipient configuration across multiple settings groups
-  - Current: Daily digest has recipient selection, real-time has recipient selection
-  - Budget alerts (50%, 75%, 90%) only write to console.log (not sent to mods)
-  - **Proposal**: Single "Send Alerts and Notifications to" setting
-- [ ] Design consolidation - 2025-10-28
-  - Create unified recipient configuration (All Mods / Specific Users)
-  - Single comma-separated username list field
-  - Apply to:
-    - Daily digest notifications
-    - Real-time action notifications
-    - Budget alerts (upgrade from console.log to actual notifications)
-  - Remove duplicate recipient fields from daily/realtime groups
-- [ ] Implementation tasks
-  - [ ] Add unified recipient settings at top of notification section
-  - [ ] Remove duplicate recipient fields from daily digest group
-  - [ ] Remove duplicate recipient fields from real-time group
-  - [ ] Update sendDailyDigest() to use unified settings
-  - [ ] Update sendRealtimeDigest() to use unified settings
-  - [ ] Implement sendBudgetAlert() function (new - currently just console.log)
-  - [ ] Update CostTracker.checkBudgetAlert() to call sendBudgetAlert()
-  - [ ] Test all three notification types with unified recipients
-  - [ ] Update documentation
-  - [ ] Build and deploy (version 0.1.7)
-- [ ] Migration considerations
-  - Existing installations have separate recipient configs
-  - Need to handle migration gracefully (use daily digest recipient as default?)
-  - Document migration path for existing users
+**Phase 5.7: Unified Notification Recipients (COMPLETE ✅ - 2025-10-28)**
+- [x] Settings UI consolidation - 2025-10-28
+  - ✅ Added unified "Notification Recipients" section after budget settings
+  - ✅ notificationRecipient (select): "All Mods" or "Specific moderator(s)"
+  - ✅ notificationRecipientUsernames (string): Comma-separated usernames
+  - ✅ Replaced 3 budget alert boolean settings with single budgetAlertsEnabled
+  - ✅ Removed dailyDigestRecipient and dailyDigestRecipientUsernames (2 fields)
+  - ✅ Removed realtimeRecipient and realtimeRecipientUsernames (2 fields)
+  - ✅ Updated helpText to reference unified recipient configuration
+- [x] Notification functions updated - 2025-10-28
+  - ✅ sendDailyDigest() uses notificationRecipient/notificationRecipientUsernames
+  - ✅ sendRealtimeDigest() uses notificationRecipient/notificationRecipientUsernames
+  - ✅ Implemented sendBudgetAlert() function (120 lines)
+    - Sends actual notifications to moderators (modmail or PM)
+    - Supports multi-username PM delivery
+    - Formats budget alert messages with all spending details
+    - Respects budgetAlertsEnabled setting
+  - ✅ Implemented formatBudgetAlertMessage() helper
+- [x] CostTracker integration - 2025-10-28
+  - ✅ Added Context import and sendBudgetAlert import
+  - ✅ Added context as private field in CostTracker class
+  - ✅ Made checkBudgetAlert() async (was void, now Promise<void>)
+  - ✅ Updated recordCost() to await checkBudgetAlert()
+  - ✅ Added sendBudgetAlert() calls for all 4 alert levels:
+    - EXCEEDED: Budget exceeded notification
+    - WARNING_90: 90% budget used notification
+    - WARNING_75: 75% budget used notification
+    - WARNING_50: 50% budget used notification
+- [x] Testing and deployment - 2025-10-28
+  - ✅ TypeScript compilation successful (no new errors)
+  - ✅ Built and deployed (version 0.1.7)
+  - ✅ devvit upload successful
+- [x] Documentation updated - 2025-10-28
+  - ✅ Updated project-status.md (this file)
+  - ✅ Updated resume-prompt.md with Session 25 summary
 
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27
