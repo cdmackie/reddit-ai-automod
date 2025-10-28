@@ -696,6 +696,29 @@
 - [x] Documentation updated - 2025-10-28
   - ✅ Updated project-status.md (this file)
 
+**Phase 5.13: Dynamic Bot Username Detection (COMPLETE ✅ - 2025-10-28)**
+- [x] Issue identification - 2025-10-28
+  - ✅ User reported: Hardcoded username 'aiautomodapp' doesn't match actual bot 'ai-automod-app'
+  - ✅ Root cause: Hardcoded checks used wrong username (no hyphens vs with hyphens)
+  - ✅ Impact: Bot not properly skipping its own content
+- [x] Initial fix (version 0.1.14) - 2025-10-28
+  - ✅ Added 'ai-automod-app' to hardcoded checks
+  - ✅ Now checks all three variations: 'ai-automod-app', 'aiautomodapp', 'AI-Automod-App'
+  - ✅ Committed but recognized as temporary solution
+- [x] Refactored to dynamic lookup (version 0.1.15) - 2025-10-28
+  - ✅ Removed ALL hardcoded username checks
+  - ✅ Now uses only getCurrentUser() API for dynamic detection
+  - ✅ Fully portable - works with any bot account name
+  - ✅ Cleaner code, more maintainable
+  - ✅ Updated both postSubmit.ts and commentSubmit.ts
+- [x] Testing and deployment - 2025-10-28
+  - ✅ TypeScript compilation successful
+  - ✅ Version 0.1.14 deployed (hardcoded fix)
+  - ✅ Version 0.1.15 deployed (dynamic lookup)
+  - ✅ Both commits to git
+- [x] Documentation updated - 2025-10-28
+  - ✅ Updated project-status.md (this file)
+
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27
 - [x] Deploy architect-reviewer for design validation - 2025-10-27
