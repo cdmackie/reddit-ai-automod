@@ -31,17 +31,21 @@ export async function sendDailyDigest(context: Context): Promise<void> {
 
     // Get settings
     const settings = await context.settings.getAll();
-    const digestEnabled = settings.digestEnabled as boolean;
-    const digestMode = (settings.digestMode as string[])?.[0] || 'daily';
+    const dailyDigestEnabled = settings.dailyDigestEnabled as boolean;
+    const dailyDigestRecipient = (settings.dailyDigestRecipient as string[])?.[0] || 'all';
+    const dailyDigestRecipientUsernames = settings.dailyDigestRecipientUsernames as string;
 
-    // Check if digest is enabled and in daily mode
-    if (!digestEnabled || digestMode !== 'daily') {
-      console.log('[ModmailDigest] Daily digest is disabled or not in daily mode, skipping');
+    // Check if daily digest is enabled
+    if (!dailyDigestEnabled) {
+      console.log('[ModmailDigest] Daily digest is disabled, skipping');
       return;
     }
 
     console.log('[ModmailDigest] Daily digest not yet fully implemented - requires getLogsInRange() on AuditLogger');
     // TODO: Implement full daily digest when AuditLogger.getLogsInRange() is available
+    // When implemented:
+    // - If dailyDigestRecipient is 'all', send to modmail
+    // - If dailyDigestRecipient is 'specific', split dailyDigestRecipientUsernames by comma, trim, and send PM to each
   } catch (error) {
     console.error('[ModmailDigest] Error in daily digest:', error);
     // Don't throw - we don't want to crash the scheduler
@@ -60,21 +64,19 @@ export async function sendDailyDigest(context: Context): Promise<void> {
 export async function sendRealtimeDigest(context: Context, auditLog: AuditLog): Promise<void> {
   try {
     const settings = await context.settings.getAll();
-    const digestEnabled = settings.digestEnabled as boolean;
-    const digestMode = (settings.digestMode as string[])?.[0] || 'daily';
-    const digestRecipient = (settings.digestRecipient as string[])?.[0] || 'all';
-    const digestRecipientUsername = settings.digestRecipientUsername as string;
+    const realtimeNotificationsEnabled = settings.realtimeNotificationsEnabled as boolean;
+    const realtimeRecipient = (settings.realtimeRecipient as string[])?.[0] || 'all';
+    const realtimeRecipientUsernames = settings.realtimeRecipientUsernames as string;
 
-    console.log('[ModmailDigest] Settings:', {
-      digestEnabled,
-      digestMode,
-      digestRecipient,
-      digestRecipientUsername,
+    console.log('[ModmailDigest] Real-time notification settings:', {
+      realtimeNotificationsEnabled,
+      realtimeRecipient,
+      realtimeRecipientUsernames,
     });
 
-    // Check if digest is enabled and mode is realtime
-    if (!digestEnabled || digestMode !== 'realtime') {
-      console.log('[ModmailDigest] Skipping - disabled or not realtime mode');
+    // Check if real-time notifications are enabled
+    if (!realtimeNotificationsEnabled) {
+      console.log('[ModmailDigest] Skipping - real-time notifications disabled');
       return;
     }
 
@@ -82,18 +84,35 @@ export async function sendRealtimeDigest(context: Context, auditLog: AuditLog): 
     const message = formatRealtimeMessage(auditLog, settings);
     const subject = `AI Automod - ${auditLog.action} Action`;
 
-    // Send via PM if specific user, modmail if all mods
-    if (digestRecipient === 'specific' && digestRecipientUsername) {
-      // Send as private message to specific user
-      console.log(`[ModmailDigest] Sending PM to specific user: u/${digestRecipientUsername}`);
+    // Send via PM if specific user(s), modmail if all mods
+    if (realtimeRecipient === 'specific' && realtimeRecipientUsernames) {
+      // Parse comma-separated usernames
+      const usernames = realtimeRecipientUsernames
+        .split(',')
+        .map(u => u.trim())
+        .filter(u => u.length > 0);
 
-      await context.reddit.sendPrivateMessage({
-        to: digestRecipientUsername,
-        subject: subject,
-        text: message,
-      });
+      if (usernames.length === 0) {
+        console.log('[ModmailDigest] No valid usernames found, skipping');
+        return;
+      }
 
-      console.log(`[ModmailDigest] ✓ PM sent to u/${digestRecipientUsername}`);
+      console.log(`[ModmailDigest] Sending PMs to ${usernames.length} specific user(s): ${usernames.join(', ')}`);
+
+      // Send individual PM to each username
+      for (const username of usernames) {
+        try {
+          await context.reddit.sendPrivateMessage({
+            to: username,
+            subject: subject,
+            text: message,
+          });
+          console.log(`[ModmailDigest] ✓ PM sent to u/${username}`);
+        } catch (error) {
+          console.error(`[ModmailDigest] Error sending PM to u/${username}:`, error);
+          // Continue with other usernames even if one fails
+        }
+      }
     } else {
       // Send as modmail to all mods
       console.log('[ModmailDigest] Sending modmail to Mod Notifications (all mods)');

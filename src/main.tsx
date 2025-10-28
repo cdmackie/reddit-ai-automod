@@ -151,52 +151,69 @@ Devvit.addSettings([
     scope: 'installation',
   },
 
-  // ===== Modmail Digest Settings =====
+  // ===== Daily Digest Settings =====
   {
     type: 'boolean',
-    name: 'digestEnabled',
+    name: 'dailyDigestEnabled',
     label: 'Enable Daily Digest',
-    helpText: 'Send a daily summary of AI moderation actions via modmail',
+    helpText: 'Send a daily summary of moderation actions',
     defaultValue: false,
     scope: 'installation',
   },
   {
     type: 'select',
-    name: 'digestMode',
-    label: 'Digest Mode',
-    helpText: 'When to send digest notifications',
-    options: [
-      { label: 'Daily Summary (9 AM UTC)', value: 'daily' },
-      { label: 'Real-time (after each action)', value: 'realtime' },
-    ],
-    defaultValue: ['daily'],
-    scope: 'installation',
-  },
-  {
-    type: 'select',
-    name: 'digestRecipient',
-    label: 'Send Digest To',
+    name: 'dailyDigestRecipient',
+    label: 'Send Daily Digest To',
     helpText: 'Where to send the daily digest',
     options: [
       { label: 'Mod Notifications (all moderators)', value: 'all' },
-      { label: 'Specific moderator', value: 'specific' },
+      { label: 'Specific moderator(s)', value: 'specific' },
     ],
     defaultValue: ['all'],
     scope: 'installation',
   },
   {
     type: 'string',
-    name: 'digestRecipientUsername',
-    label: 'Specific Moderator Username',
-    helpText: 'Username without u/ prefix. Only used if "Specific moderator" is selected above.',
+    name: 'dailyDigestRecipientUsernames',
+    label: 'Moderator Username(s) for Daily Digest',
+    helpText: 'Comma-separated usernames without u/ prefix (e.g., \'user1, user2\'). Only used if \'Specific moderator(s)\' selected above.',
     scope: 'installation',
   },
   {
     type: 'string',
-    name: 'digestTime',
-    label: 'Digest Delivery Time (UTC)',
-    helpText: 'Time to send digest in HH:MM format (24-hour, UTC timezone). Example: 09:00',
+    name: 'dailyDigestTime',
+    label: 'Daily Digest Time (UTC)',
+    helpText: 'Time to send digest in HH:MM format (24-hour, UTC). Example: 09:00',
     defaultValue: '09:00',
+    scope: 'installation',
+  },
+
+  // ===== Real-time Notification Settings =====
+  {
+    type: 'boolean',
+    name: 'realtimeNotificationsEnabled',
+    label: 'Enable Real-time Notifications',
+    helpText: 'Send immediate notification after each moderation action (useful for debugging)',
+    defaultValue: false,
+    scope: 'installation',
+  },
+  {
+    type: 'select',
+    name: 'realtimeRecipient',
+    label: 'Send Real-time Notifications To',
+    helpText: 'Where to send real-time notifications',
+    options: [
+      { label: 'Mod Notifications (all moderators)', value: 'all' },
+      { label: 'Specific moderator(s)', value: 'specific' },
+    ],
+    defaultValue: ['all'],
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'realtimeRecipientUsernames',
+    label: 'Moderator Username(s) for Real-time',
+    helpText: 'Comma-separated usernames without u/ prefix (e.g., \'user1, user2\'). Only used if \'Specific moderator(s)\' selected above.',
     scope: 'installation',
   },
 ]);

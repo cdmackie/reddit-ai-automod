@@ -443,6 +443,41 @@
   - ✅ Documented contentType field behavior
   - ✅ Updated status badges and roadmap
 
+**Phase 5.4: Notification Settings UX & Documentation (COMPLETE ✅ - 2025-10-28)**
+- [x] Refactored notification settings in main.tsx - 2025-10-28
+  - ✅ **Problem identified**: Mixed daily/realtime modes in single group was confusing
+  - ✅ Split into two independent setting groups:
+    - Daily Digest Settings (4 fields): enable, recipient selection, usernames, time
+    - Real-time Notifications (3 fields): enable, recipient selection, usernames
+  - ✅ Both can be enabled simultaneously
+  - ✅ Clear labels: "useful for debugging" for real-time
+  - ✅ Multi-username support: comma-separated lists (e.g., "user1, user2")
+- [x] Updated notification logic in modmailDigest.ts - 2025-10-28
+  - ✅ sendDailyDigest() uses new setting names (dailyDigestEnabled, etc.)
+  - ✅ sendRealtimeDigest() uses new setting names (realtimeNotificationsEnabled, etc.)
+  - ✅ Implemented multi-username parsing (split, trim, filter)
+  - ✅ Sends individual PMs to each username in list
+  - ✅ Per-username error handling (continues on failure)
+- [x] Slimmed down README.md for Reddit app directory - 2025-10-28
+  - ✅ **Before**: 570 lines with extensive developer documentation
+  - ✅ **After**: 272 lines (52% reduction)
+  - ✅ Removed: Architecture, system flow, dev setup, roadmap, contributing
+  - ✅ Kept: What it does, key features, rule examples, use cases, security, support
+  - ✅ Moderator-focused language, no GitHub-specific content
+  - ✅ All three rule examples preserved (copy-ready for moderators)
+- [x] Added MIT License - 2025-10-28
+  - ✅ Created LICENSE file with standard MIT text
+  - ✅ Copyright holder: cdmackie (Colin Mackie)
+  - ✅ Updated README.md to reference LICENSE file
+- [x] Testing and deployment - 2025-10-28
+  - ✅ TypeScript compilation successful (no new errors)
+  - ✅ devvit upload successful
+  - ✅ Version automatically bumped: 0.1.0 → 0.1.1
+  - ✅ Built and deployed to Reddit without errors
+- [x] Documentation updated - 2025-10-28
+  - ✅ resume-prompt.md: Added Session 23 summary
+  - ✅ project-status.md: Added Phase 5.4 section (this)
+
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27
 - [x] Deploy architect-reviewer for design validation - 2025-10-27

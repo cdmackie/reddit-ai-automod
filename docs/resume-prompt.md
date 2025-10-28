@@ -1107,3 +1107,51 @@ Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 
 **Status**: Phase 5.3 complete ✅
 **Next**: Production deployment to target subreddits (r/FriendsOver40, r/FriendsOver50, r/bitcointaxes)
+
+---
+
+### Session 23 (2025-10-28): Phase 5.4 Complete - Notification Settings UX & Documentation
+
+**Achievements**:
+1. ✅ Refactored notification settings for clarity
+   - **Problem**: Mixed daily/realtime modes in single settings group was confusing
+   - **Solution**: Split into two independent setting groups
+   - ✅ Daily Digest Settings (4 fields): enable flag, recipient selection, usernames (comma-separated), delivery time
+   - ✅ Real-time Notification Settings (3 fields): enable flag, recipient selection, usernames (comma-separated)
+   - ✅ Both can be enabled simultaneously
+   - ✅ Multi-username support: comma-separated lists, individual PMs to each
+   - ✅ Clear labels: "useful for debugging" for real-time
+2. ✅ Slimmed down README.md for Reddit app directory
+   - **Before**: 570 lines with extensive developer documentation
+   - **After**: 272 lines (52% reduction) focused on moderators
+   - ✅ Removed: Architecture, system flow, dev setup, roadmap, contributing
+   - ✅ Kept: What it does, key features, rule writing with examples, use cases, security, support
+   - ✅ Moderator-focused language, no GitHub-specific content
+   - ✅ All three rule examples preserved for copy-ready usage
+3. ✅ Added MIT License
+   - ✅ Created LICENSE file with MIT license
+   - ✅ Updated README.md to reference license
+   - ✅ Copyright holder: cdmackie (Colin Mackie)
+4. ✅ Testing complete
+   - ✅ TypeScript compilation successful (no new errors)
+   - ✅ Built and uploaded to Reddit successfully
+   - ✅ Version automatically bumped: 0.1.0 → 0.1.1
+   - ✅ No runtime errors during build
+
+**Files Modified**:
+- src/main.tsx (refactored notification settings: 7 fields → 7 new fields with clear grouping)
+- src/notifications/modmailDigest.ts (updated to use new setting names, added multi-username support)
+- README.md (slimmed down from 570 → 272 lines)
+- LICENSE (new file - MIT license)
+
+**Production Code**: ~12,734 lines (no change to logic, settings structure only)
+**Version**: 0.1.1 deployed to Reddit
+
+**Key Improvements**:
+- Settings UX: Daily and real-time modes now completely independent
+- Multi-recipient support: Send to comma-separated list of moderators
+- Documentation: README appropriate for Reddit app directory (not just GitHub)
+- License: Clear MIT license for open-source release
+
+**Status**: Phase 5.4 complete ✅
+**Next**: Production deployment to target subreddits with improved settings UX
