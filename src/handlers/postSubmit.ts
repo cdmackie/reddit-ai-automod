@@ -16,6 +16,7 @@ import { AIAnalyzer } from '../ai/analyzer.js';
 import { AIQuestionBatchResult } from '../types/ai.js';
 import { ModAction } from '../types/storage.js';
 import { PostBuilder } from './postBuilder.js';
+import { executeAction } from '../actions/executor.js';
 
 // Singleton rate limiter shared across all handler invocations
 const rateLimiter = new RateLimiter();
@@ -221,62 +222,52 @@ export async function handlePostSubmit(
     trustScore: trustScore.totalScore,
   };
 
-  switch (ruleResult.action) {
-    case 'APPROVE':
-      await auditLogger.log({
-        action: ModAction.APPROVE,
-        userId: author,
-        contentId: postId,
-        reason: ruleResult.reason,
-        ruleId: ruleResult.matchedRule,
-        confidence: ruleResult.confidence,
-        metadata,
-      });
-      // Increment approved count
-      await trustScoreCalc.incrementApprovedCount(userId, subredditName);
-      break;
+  // Execute the action
+  const executionResult = await executeAction({
+    post,
+    ruleResult,
+    profile,
+    context,
+    dryRun: ruleResult.dryRun,
+  });
 
-    case 'FLAG':
-      await auditLogger.log({
-        action: ModAction.FLAG,
-        userId: author,
-        contentId: postId,
-        reason: ruleResult.reason,
-        ruleId: ruleResult.matchedRule,
-        confidence: ruleResult.confidence,
-        metadata,
-      });
-      break;
+  // Log to audit trail
+  const auditAction = executionResult.success
+    ? (ruleResult.action === 'APPROVE' ? ModAction.APPROVE :
+       ruleResult.action === 'FLAG' ? ModAction.FLAG :
+       ruleResult.action === 'REMOVE' ? ModAction.REMOVE :
+       ModAction.FLAG) // COMMENT becomes FLAG in audit
+    : ModAction.FLAG; // Failed actions become FLAG for manual review
 
-    case 'REMOVE':
-      // Phase 3.4: Action executors will handle actual removal
-      // For now, FLAG for manual review
-      await auditLogger.log({
-        action: ModAction.FLAG,
-        userId: author,
-        contentId: postId,
-        reason: `[REMOVE ACTION - Pending Phase 3.4] ${ruleResult.reason}`,
-        ruleId: ruleResult.matchedRule,
-        confidence: ruleResult.confidence,
-        metadata,
-      });
-      console.log(`[PostSubmit] REMOVE action pending Phase 3.4 implementation`);
-      break;
+  await auditLogger.log({
+    action: auditAction,
+    userId: author,
+    contentId: postId,
+    reason: executionResult.success
+      ? ruleResult.reason
+      : `Action execution failed: ${executionResult.error || 'Unknown error'}`,
+    ruleId: ruleResult.matchedRule,
+    confidence: ruleResult.confidence,
+    metadata: {
+      ...metadata,
+      executionSuccess: executionResult.success,
+      executionError: executionResult.error,
+      executionDetails: executionResult.details,
+    },
+  });
 
-    case 'COMMENT':
-      // Phase 3.4: Action executors will handle comments
-      // For now, FLAG for manual review
-      await auditLogger.log({
-        action: ModAction.FLAG,
-        userId: author,
-        contentId: postId,
-        reason: `[COMMENT ACTION - Pending Phase 3.4] ${ruleResult.reason}`,
-        ruleId: ruleResult.matchedRule,
-        confidence: ruleResult.confidence,
-        metadata,
-      });
-      console.log(`[PostSubmit] COMMENT action pending Phase 3.4 implementation`);
-      break;
+  // Increment approved count for successful approvals
+  if (executionResult.success && ruleResult.action === 'APPROVE') {
+    await trustScoreCalc.incrementApprovedCount(userId, subredditName);
+  }
+
+  // Log execution result
+  if (!executionResult.success) {
+    console.error(`[PostSubmit] Action execution failed:`, {
+      postId,
+      action: ruleResult.action,
+      error: executionResult.error,
+    });
   }
 
   console.log(`[PostSubmit] Post ${postId} processed successfully`);

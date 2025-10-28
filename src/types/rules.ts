@@ -211,6 +211,29 @@ export interface RuleEvaluationResult {
 }
 
 /**
+ * Result of executing a moderation action
+ */
+export interface ActionExecutionResult {
+  /** Whether action was executed successfully */
+  success: boolean;
+  /** Action that was executed */
+  action: ModerationAction;
+  /** Error message if execution failed */
+  error?: string;
+  /** Whether this was a dry-run (logged only, not executed) */
+  dryRun: boolean;
+  /** Details about what was done */
+  details?: {
+    /** For FLAG: report reason used */
+    reportReason?: string;
+    /** For REMOVE: whether comment was added */
+    commentAdded?: boolean;
+    /** For COMMENT: comment text posted */
+    commentText?: string;
+  };
+}
+
+/**
  * Field type information for validation
  * Describes the type and purpose of a field that can be referenced in rules
  */
