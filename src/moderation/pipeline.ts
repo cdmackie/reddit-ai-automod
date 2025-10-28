@@ -7,10 +7,10 @@
  * - Trusted users (score >= threshold) bypass all moderation
  * - Typical: 70+ trust score = APPROVE immediately
  *
- * Layer 1: Built-in Rules (fast, deterministic checks)
- * - Account age + karma + external links
+ * Layer 1: New Account Checks (fast, deterministic checks)
+ * - Account age + karma
  * - No external API calls, <1ms execution
- * - Example: New account + links = FLAG
+ * - Example: New account with low karma = FLAG
  *
  * Layer 2: OpenAI Moderation API (free content moderation)
  * - Hate, harassment, violence, sexual content
@@ -66,7 +66,7 @@ import { checkContent } from './openaiMod.js';
  *
  * Execution Flow:
  * 1. Trust Score Check - Bypass if user is trusted
- * 2. Layer 1 - Built-in rules (if enabled)
+ * 2. Layer 1 - New account checks (if enabled)
  * 3. Layer 2 - OpenAI Moderation (if enabled)
  * 4. Layer 3 - Custom rules evaluation (existing system, not called here)
  *
@@ -101,11 +101,11 @@ export async function executeModerationPipeline(
     subreddit: post.subreddit,
   });
 
-  // ===== LAYER 1: Built-in Rules =====
+  // ===== LAYER 1: New Account Checks =====
   const builtInConfig = await getBuiltInRulesConfig(context);
 
   if (builtInConfig.enabled && builtInConfig.rules.length > 0) {
-    console.log('[Pipeline] Layer 1: Evaluating built-in rules', {
+    console.log('[Pipeline] Layer 1: Evaluating new account checks', {
       correlationId,
       ruleCount: builtInConfig.rules.length,
     });
@@ -119,7 +119,7 @@ export async function executeModerationPipeline(
 
     if (matchedRule) {
       const latencyMs = Date.now() - startTime;
-      console.log('[Pipeline] Layer 1 triggered - built-in rule matched', {
+      console.log('[Pipeline] Layer 1 triggered - new account check matched', {
         correlationId,
         ruleId: matchedRule.id,
         action: matchedRule.action,
@@ -129,14 +129,14 @@ export async function executeModerationPipeline(
       return {
         layerTriggered: 'builtin',
         action: matchedRule.action,
-        reason: matchedRule.message || `Built-in rule: ${matchedRule.name}`,
+        reason: matchedRule.message || `New account check: ${matchedRule.name}`,
         metadata: {
           builtInRuleId: matchedRule.id,
         },
       };
     }
 
-    console.log('[Pipeline] Layer 1 passed - no built-in rules matched', {
+    console.log('[Pipeline] Layer 1 passed - no new account checks matched', {
       correlationId,
     });
   } else {
@@ -232,10 +232,10 @@ export async function executeModerationPipeline(
 }
 
 /**
- * Get built-in rules configuration from settings
+ * Get new account checks configuration from settings
  *
  * @param context - Devvit context
- * @returns Built-in rules configuration
+ * @returns New account checks configuration
  * @private
  */
 async function getBuiltInRulesConfig(
@@ -244,22 +244,40 @@ async function getBuiltInRulesConfig(
   const settings = await context.settings.getAll();
 
   const enabled = (settings.enableBuiltInRules as boolean) ?? true;
-  const rulesJson = (settings.builtInRulesJson as string) || '';
 
-  // Parse rules JSON
-  let rules: BuiltInRule[] = [];
-  if (rulesJson.trim().length > 0) {
-    try {
-      rules = JSON.parse(rulesJson);
-      if (!Array.isArray(rules)) {
-        console.error('[Pipeline] builtInRulesJson is not an array');
-        rules = [];
-      }
-    } catch (error) {
-      console.error('[Pipeline] Failed to parse builtInRulesJson', {
-        error: error instanceof Error ? error.message : String(error),
-      });
+  // Read individual settings fields
+  const accountAgeDays = settings.builtInAccountAgeDays as number | undefined;
+  const karmaThreshold = settings.builtInKarmaThreshold as number | undefined;
+  const action = ((settings.builtInAction as string[]) || ['FLAG'])[0] as 'FLAG' | 'REMOVE' | 'COMMENT';
+  const message = (settings.builtInMessage as string) || 'Your post has been flagged for moderator review.';
+
+  // Build a single rule from the individual settings
+  // Only create rule if at least one condition is set (both must be > 0)
+  const rules: BuiltInRule[] = [];
+
+  // Check if at least one condition is set
+  const hasAccountAgeCondition = accountAgeDays !== undefined && accountAgeDays > 0;
+  const hasKarmaCondition = karmaThreshold !== undefined && karmaThreshold > 0;
+
+  if (hasAccountAgeCondition || hasKarmaCondition) {
+    const rule: BuiltInRule = {
+      id: 'simple-built-in-rule',
+      name: 'New account spam detection',
+      enabled: true,
+      conditions: {},
+      action,
+      message,
+    };
+
+    // Add conditions only if they are set and > 0
+    if (hasAccountAgeCondition) {
+      rule.conditions.accountAgeDays = { operator: '<', value: accountAgeDays };
     }
+    if (hasKarmaCondition) {
+      rule.conditions.totalKarma = { operator: '<', value: karmaThreshold };
+    }
+
+    rules.push(rule);
   }
 
   return {

@@ -1,20 +1,22 @@
 /**
- * Built-in Rules Module (Layer 1)
+ * New Account Checks Module (Layer 1)
  *
  * This module provides fast, deterministic moderation checks that don't require
- * external API calls. These rules execute first in the pipeline to catch common
- * patterns quickly and reduce AI API usage.
+ * external API calls. These checks execute first in the pipeline to catch common
+ * spam patterns from new accounts quickly and reduce AI API usage.
  *
  * Supported Conditions:
  * - Account age (days since account creation)
  * - Total karma (comment karma + post karma)
- * - External links presence (URLs in post)
- * - Email verification status
+ * - External links presence (URLs in post) - available for custom JSON rules
+ * - Email verification status - available for custom JSON rules
  *
  * Common Use Cases:
- * - New account + low karma + external links = FLAG/REMOVE
- * - Unverified email + suspicious pattern = FLAG
- * - Account age < 7 days + karma < 50 + links = FLAG
+ * - New account with low karma = FLAG/REMOVE
+ * - Account age < 7 days and karma < 50 = FLAG
+ *
+ * Note: The simple settings UI (Layer 1) only exposes account age and karma checks.
+ * External links and email verification are available for custom JSON rules.
  *
  * Performance: <1ms per evaluation (no I/O operations)
  *
@@ -41,22 +43,22 @@ import { UserProfile, CurrentPost } from '../types/profile.js';
 import { BuiltInRulesConfig, BuiltInRule } from '../types/moderation.js';
 
 /**
- * Evaluate built-in rules against user profile and post
+ * Evaluate new account checks against user profile and post
  *
- * Iterates through enabled rules in priority order (first to last).
- * Returns the first matching rule, or null if no rules match.
+ * Iterates through enabled checks in priority order (first to last).
+ * Returns the first matching check, or null if no checks match.
  *
- * All conditions in a rule must be met (AND logic) for the rule to match.
+ * All conditions in a check must be met (AND logic) for the check to match.
  * Undefined conditions are treated as "don't care" (always match).
  *
- * Performance: O(n) where n = number of enabled rules
+ * Performance: O(n) where n = number of enabled checks
  * Typical execution time: <1ms
  *
  * @param profile - User profile data
  * @param post - Current post being evaluated
- * @param config - Built-in rules configuration from settings
+ * @param config - New account checks configuration from settings
  * @param correlationId - Correlation ID for logging
- * @returns First matching rule, or null if no match
+ * @returns First matching check, or null if no match
  */
 export function evaluateBuiltInRules(
   profile: UserProfile,

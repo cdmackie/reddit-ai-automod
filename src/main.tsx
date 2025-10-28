@@ -29,34 +29,50 @@ Devvit.configure({
  * See SettingsService for type-safe access to these settings.
  */
 Devvit.addSettings([
-  // ===== Layer 1: Built-in Rules (Free & Fast) =====
+  // ===== Layer 1: New Account Checks (Free & Fast) =====
   {
     type: 'boolean',
     name: 'enableBuiltInRules',
-    label: '**🔧 Layer 1: Enable Built-in Rules**',
-    helpText: 'Fast, deterministic checks like account age + karma + external links. Executes first to catch common patterns quickly. (Executes first, free)',
+    label: '🔧 Layer 1: New Account Checks',
+    helpText: 'Fast checks for new/low-karma accounts. Catches spam from new accounts. (Executes first, free)',
     defaultValue: true,
     scope: 'installation',
   },
   {
-    type: 'paragraph',
-    name: 'builtInRulesJson',
-    label: '🔧 Built-in Rules Configuration (JSON)',
-    helpText: 'Configure simple built-in rules. See documentation for format. Rules are evaluated in array order. (Executes first, free)',
-    defaultValue: JSON.stringify([
-      {
-        id: 'new-account-links',
-        name: 'New account with external links',
-        enabled: true,
-        conditions: {
-          accountAgeDays: { operator: '<', value: 7 },
-          totalKarma: { operator: '<', value: 50 },
-          hasExternalLinks: true
-        },
-        action: 'FLAG',
-        message: 'New account posting links - please review'
-      }
-    ], null, 2),
+    type: 'number',
+    name: 'builtInAccountAgeDays',
+    label: '🔧 Account Age (days)',
+    helpText: 'Flag accounts newer than this many days. Set to 0 to ignore. Example: 7 for one week',
+    defaultValue: 7,
+    scope: 'installation',
+  },
+  {
+    type: 'number',
+    name: 'builtInKarmaThreshold',
+    label: '🔧 Karma Threshold',
+    helpText: 'Flag accounts with less than this much total karma. Set to 0 to ignore. Example: 50',
+    defaultValue: 50,
+    scope: 'installation',
+  },
+  {
+    type: 'select',
+    name: 'builtInAction',
+    label: '🔧 Action',
+    helpText: 'What action to take when new account check matches',
+    options: [
+      { label: 'FLAG - Report to mod queue', value: 'FLAG' },
+      { label: 'REMOVE - Remove post/comment', value: 'REMOVE' },
+      { label: 'COMMENT - Warn user', value: 'COMMENT' },
+    ],
+    defaultValue: ['FLAG'],
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'builtInMessage',
+    label: '🔧 Custom Message (optional)',
+    helpText: 'Message to show user when content is removed or commented. Leave empty for default message.',
+    defaultValue: 'Your post has been flagged for moderator review.',
     scope: 'installation',
   },
 
@@ -64,7 +80,7 @@ Devvit.addSettings([
   {
     type: 'boolean',
     name: 'enableOpenAIMod',
-    label: '**🛡️ Layer 2: Enable OpenAI Moderation**',
+    label: '🛡️ Layer 2: Enable OpenAI Moderation',
     helpText: 'FREE content moderation for hate, harassment, violence, sexual content. Uses OpenAI Moderation API at no cost. (Executes second, free)',
     defaultValue: false,
     scope: 'installation',
@@ -125,7 +141,7 @@ Devvit.addSettings([
   {
     type: 'boolean',
     name: 'enableCustomAIRules',
-    label: '**🤖 Layer 3: Enable Custom AI Rules**',
+    label: '🤖 Layer 3: Enable Custom AI Rules',
     helpText: 'Enable custom rules with AI analysis (Executes last if Layers 1-2 don\'t match). Uses your AI API keys and budget.',
     defaultValue: true,
     scope: 'installation',
@@ -231,7 +247,7 @@ Devvit.addSettings([
   {
     type: 'boolean',
     name: 'dailyDigestEnabled',
-    label: '**📧 Daily Digest: Enable**',
+    label: '📧 Daily Digest: Enable',
     helpText: 'Send a daily summary of moderation actions',
     defaultValue: false,
     scope: 'installation',
@@ -268,7 +284,7 @@ Devvit.addSettings([
   {
     type: 'boolean',
     name: 'realtimeNotificationsEnabled',
-    label: '**⚡ Real-time: Enable Notifications**',
+    label: '⚡ Real-time: Enable Notifications',
     helpText: 'Send immediate notification after each moderation action (useful for debugging)',
     defaultValue: false,
     scope: 'installation',
@@ -297,7 +313,7 @@ Devvit.addSettings([
   {
     type: 'boolean',
     name: 'dryRunMode',
-    label: '**🧪 Enable Dry-Run Mode (Global)**',
+    label: '🧪 Enable Dry-Run Mode (Global)',
     helpText: 'When enabled, all actions are logged but NOT executed. Recommended for initial testing.',
     defaultValue: true,
     scope: 'installation',
