@@ -10,6 +10,7 @@ export enum ModAction {
   REMOVE = 'REMOVE',
   SPAM = 'SPAM',
   FLAG = 'FLAG',
+  COMMENT = 'COMMENT',
   BAN = 'BAN',
   IGNORE = 'IGNORE',
 }

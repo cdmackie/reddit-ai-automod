@@ -30,7 +30,7 @@ export async function handlePostSubmit(
 ): Promise<void> {
   const { reddit, redis } = context;
 
-  // Get post from event
+  // Get post from event (type guard for TriggerEvent union)
   if (!('post' in event) || !event.post) {
     console.error('[PostSubmit] No post in event');
     return;
@@ -236,7 +236,8 @@ export async function handlePostSubmit(
     ? (ruleResult.action === 'APPROVE' ? ModAction.APPROVE :
        ruleResult.action === 'FLAG' ? ModAction.FLAG :
        ruleResult.action === 'REMOVE' ? ModAction.REMOVE :
-       ModAction.FLAG) // COMMENT becomes FLAG in audit
+       ruleResult.action === 'COMMENT' ? ModAction.COMMENT :
+       ModAction.FLAG) // Unknown actions become FLAG in audit
     : ModAction.FLAG; // Failed actions become FLAG for manual review
 
   await auditLogger.log({

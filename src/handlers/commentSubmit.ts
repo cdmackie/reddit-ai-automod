@@ -16,7 +16,7 @@ export async function handleCommentSubmit(
 ): Promise<void> {
   const { reddit, redis } = context;
 
-  // Get comment from event
+  // Get comment from event (type guard for TriggerEvent union)
   if (!('comment' in event) || !event.comment) {
     console.error('[CommentSubmit] No comment in event');
     return;

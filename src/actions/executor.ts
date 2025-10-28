@@ -16,6 +16,32 @@ import { RuleEvaluationResult, ActionExecutionResult } from '../types/rules.js';
 import { UserProfile } from '../types/profile.js';
 
 /**
+ * Reddit API limits and constants
+ */
+const MAX_COMMENT_LENGTH = 10000;
+const MAX_REPORT_REASON_LENGTH = 100;
+const DEFAULT_REMOVAL_MESSAGE =
+  'Your post has been removed.\n\nReason: {reason}\n\nIf you believe this was done in error, please contact the moderators.';
+
+/**
+ * Validate and truncate comment text to Reddit's character limit
+ *
+ * @param text - Comment text to validate
+ * @param correlationId - Correlation ID for logging
+ * @returns Validated and potentially truncated comment text
+ */
+function validateCommentLength(text: string, correlationId: string): string {
+  if (text.length > MAX_COMMENT_LENGTH) {
+    console.warn(`[ActionExecutor:${correlationId}] Comment too long, truncating`, {
+      original: text.length,
+      truncated: MAX_COMMENT_LENGTH,
+    });
+    return text.substring(0, MAX_COMMENT_LENGTH - 100) + '\n\n[Comment truncated due to length]';
+  }
+  return text;
+}
+
+/**
  * Parameters for executing an action
  */
 export interface ExecuteActionParams {
@@ -150,9 +176,19 @@ async function executeFlagAction(
       };
     }
 
+    // Validate report reason length
+    let reportReason = ruleResult.reason;
+    if (reportReason.length > MAX_REPORT_REASON_LENGTH) {
+      console.warn(`[ActionExecutor:${correlationId}] Report reason too long, truncating`, {
+        original: reportReason.length,
+        truncated: MAX_REPORT_REASON_LENGTH,
+      });
+      reportReason = reportReason.substring(0, MAX_REPORT_REASON_LENGTH - 3) + '...';
+    }
+
     // Execute: Report post to mod queue
     await context.reddit.report(post, {
-      reason: ruleResult.reason,
+      reason: reportReason,
     });
 
     console.log(`[ActionExecutor:${correlationId}] Successfully flagged post:`, {
@@ -170,6 +206,21 @@ async function executeFlagAction(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Check if it's a rate limit error
+    if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+      console.error(`[ActionExecutor:${correlationId}] Rate limit hit for FLAG action`, {
+        postId: post.id,
+        error: errorMessage,
+      });
+      return {
+        success: false,
+        action: 'FLAG',
+        error: 'Rate limit exceeded - action will be retried',
+        dryRun,
+      };
+    }
+
     console.error(`[ActionExecutor:${correlationId}] FLAG action failed:`, {
       postId: post.id,
       error: errorMessage,
@@ -205,8 +256,11 @@ async function executeRemoveAction(
 
   try {
     // Determine comment text
-    const commentText = ruleResult.comment ||
-      `Your post has been removed.\n\nReason: ${ruleResult.reason}\n\nIf you believe this was done in error, please contact the moderators.`;
+    let commentText = ruleResult.comment ||
+      DEFAULT_REMOVAL_MESSAGE.replace('{reason}', ruleResult.reason);
+
+    // Validate comment length
+    commentText = validateCommentLength(commentText, correlationId);
 
     if (dryRun) {
       console.log(`[ActionExecutor:${correlationId}] [DRY-RUN] Would REMOVE post:`, {
@@ -263,6 +317,21 @@ async function executeRemoveAction(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Check if it's a rate limit error
+    if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+      console.error(`[ActionExecutor:${correlationId}] Rate limit hit for REMOVE action`, {
+        postId: post.id,
+        error: errorMessage,
+      });
+      return {
+        success: false,
+        action: 'REMOVE',
+        error: 'Rate limit exceeded - action will be retried',
+        dryRun,
+      };
+    }
+
     console.error(`[ActionExecutor:${correlationId}] REMOVE action failed:`, {
       postId: post.id,
       error: errorMessage,
@@ -311,7 +380,8 @@ async function executeCommentAction(
       };
     }
 
-    const commentText = ruleResult.comment;
+    // Validate comment length
+    const commentText = validateCommentLength(ruleResult.comment, correlationId);
 
     if (dryRun) {
       console.log(`[ActionExecutor:${correlationId}] [DRY-RUN] Would COMMENT on post:`, {
@@ -350,6 +420,21 @@ async function executeCommentAction(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Check if it's a rate limit error
+    if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+      console.error(`[ActionExecutor:${correlationId}] Rate limit hit for COMMENT action`, {
+        postId: post.id,
+        error: errorMessage,
+      });
+      return {
+        success: false,
+        action: 'COMMENT',
+        error: 'Rate limit exceeded - action will be retried',
+        dryRun,
+      };
+    }
+
     console.error(`[ActionExecutor:${correlationId}] COMMENT action failed:`, {
       postId: post.id,
       error: errorMessage,
