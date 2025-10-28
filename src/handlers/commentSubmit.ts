@@ -184,11 +184,14 @@ export async function handleCommentSubmit(
     const dryRunEnabled = dryRunConfig.dryRunMode;
 
     // Execute the action using the existing executeAction API (comment API is compatible with Post API)
+    // Map pipeline reason to the correct field based on action type
     const executionResult = await executeAction({
       post: comment as any, // Comment API is compatible with Post API for basic fields
       ruleResult: {
         action: pipelineResult.action,
-        reason: pipelineResult.reason,
+        reason: pipelineResult.reason, // For FLAG actions
+        comment: pipelineResult.action === 'COMMENT' ? pipelineResult.reason : undefined,
+        removalReason: pipelineResult.action === 'REMOVE' ? pipelineResult.reason : undefined,
         matchedRule: pipelineResult.metadata?.builtInRuleId ||
                      (pipelineResult.metadata?.moderationCategories?.join(',')) ||
                      'pipeline',
