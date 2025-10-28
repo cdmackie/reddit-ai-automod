@@ -19,6 +19,7 @@ import { executeAction } from '../actions/executor.js';
 import { SettingsService } from '../config/settingsService.js';
 import { sendRealtimeDigest } from '../notifications/modmailDigest.js';
 import { CurrentPost } from '../types/profile.js';
+import { executeModerationPipeline } from '../moderation/pipeline.js';
 
 // Singleton rate limiter shared across all handler invocations
 const rateLimiter = new RateLimiter();
@@ -140,10 +141,7 @@ export async function handleCommentSubmit(
     return;
   }
 
-  // Rules engine integration with optional AI analysis
-  console.log(`[CommentSubmit] User ${author} not trusted, evaluating rules...`);
-
-  // 1. Build CurrentPost-compatible object for comments
+  // 1. Build CurrentPost-compatible object for comments (needed for both pipeline and rules)
   // Note: Comments don't have all fields posts have, provide safe defaults
   const currentPost: CurrentPost = {
     title: '', // Comments don't have titles
@@ -160,6 +158,105 @@ export async function handleCommentSubmit(
     linkUrl: undefined,
     isEdited: false, // Comment API doesn't easily expose edit status
   };
+
+  // ===== Execute Moderation Pipeline (Layers 1-2) =====
+  const correlationId = `comment-${commentId}-${Date.now()}`;
+  console.log('[CommentSubmit] Executing moderation pipeline', { correlationId });
+
+  const pipelineResult = await executeModerationPipeline(
+    context as Devvit.Context,
+    profile,
+    currentPost,
+    'comment'
+  );
+
+  // If pipeline triggered an action, execute and return
+  if (pipelineResult.action !== 'APPROVE') {
+    console.log('[CommentSubmit] Pipeline triggered action', {
+      correlationId,
+      layer: pipelineResult.layerTriggered,
+      action: pipelineResult.action,
+      reason: pipelineResult.reason,
+    });
+
+    // Get dry-run config
+    const dryRunConfig = await SettingsService.getDryRunConfig(context as Devvit.Context);
+    const dryRunEnabled = dryRunConfig.dryRunMode;
+
+    // Execute the action using the existing executeAction API (comment API is compatible with Post API)
+    const executionResult = await executeAction({
+      post: comment as any, // Comment API is compatible with Post API for basic fields
+      ruleResult: {
+        action: pipelineResult.action,
+        reason: pipelineResult.reason,
+        matchedRule: pipelineResult.metadata?.builtInRuleId ||
+                     (pipelineResult.metadata?.moderationCategories?.join(',')) ||
+                     'pipeline',
+        confidence: 100, // Pipeline decisions are deterministic/binary
+        dryRun: dryRunEnabled,
+      },
+      profile,
+      context,
+      dryRun: dryRunEnabled,
+    });
+
+    // Enhanced audit log with pipeline metadata
+    const auditAction = executionResult.success
+      ? (pipelineResult.action === 'FLAG' ? ModAction.FLAG :
+         pipelineResult.action === 'REMOVE' ? ModAction.REMOVE :
+         pipelineResult.action === 'COMMENT' ? ModAction.COMMENT :
+         ModAction.FLAG) // Unknown actions become FLAG in audit
+      : ModAction.FLAG; // Failed actions become FLAG for manual review
+
+    const auditLog = await auditLogger.log({
+      action: auditAction,
+      userId: author,
+      contentId: commentId,
+      reason: executionResult.success
+        ? pipelineResult.reason
+        : `Action execution failed: ${executionResult.error || 'Unknown error'}`,
+      ruleId: pipelineResult.metadata?.builtInRuleId ||
+              (pipelineResult.metadata?.moderationCategories?.join(',')) ||
+              'pipeline',
+      confidence: 100, // Pipeline decisions are deterministic/binary
+      metadata: {
+        layer: pipelineResult.layerTriggered,
+        executionTimeMs: Date.now() - Date.now(), // Will be negligible
+        trustScore: trustScore.totalScore,
+        actionSuccess: executionResult.success,
+        aiCost: 0, // Layers 1-2 are free
+        dryRun: dryRunEnabled,
+        executionError: executionResult.error,
+        executionDetails: executionResult.details,
+        bodyPreview: body.substring(0, 200),
+        ...pipelineResult.metadata,
+      },
+    });
+
+    // Send real-time digest if enabled
+    if (auditLog) {
+      await sendRealtimeDigest(context as Devvit.Context, auditLog);
+    }
+
+    // Log execution result
+    if (!executionResult.success) {
+      console.error(`[CommentSubmit] Pipeline action execution failed:`, {
+        commentId,
+        layer: pipelineResult.layerTriggered,
+        action: pipelineResult.action,
+        error: executionResult.error,
+      });
+    }
+
+    console.log(`[CommentSubmit] Comment ${commentId} processed by pipeline`);
+    return; // Short-circuit, don't continue to custom rules
+  }
+
+  // Continue to Layer 3 (custom rules + AI) if pipeline didn't trigger
+  console.log('[CommentSubmit] Pipeline approved, continuing to custom rules', { correlationId });
+
+  // Rules engine integration with optional AI analysis
+  console.log(`[CommentSubmit] User ${author} not trusted, evaluating rules...`);
 
   // 2. Initialize rules engine
   const rulesEngine = RulesEngine.getInstance(context as Devvit.Context);

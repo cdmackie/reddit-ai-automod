@@ -20,6 +20,7 @@ import { executeAction } from '../actions/executor.js';
 import { initializeDefaultRules, isInitialized } from './appInstall.js';
 import { SettingsService } from '../config/settingsService.js';
 import { sendRealtimeDigest } from '../notifications/modmailDigest.js';
+import { executeModerationPipeline } from '../moderation/pipeline.js';
 
 // Singleton rate limiter shared across all handler invocations
 const rateLimiter = new RateLimiter();
@@ -154,11 +155,108 @@ export async function handlePostSubmit(
     return;
   }
 
+  // 1. Build CurrentPost object (needed for both pipeline and rules)
+  const currentPost = PostBuilder.buildCurrentPost(post);
+
+  // ===== Execute Moderation Pipeline (Layers 1-2) =====
+  const correlationId = `post-${postId}-${Date.now()}`;
+  console.log('[PostSubmit] Executing moderation pipeline', { correlationId });
+
+  const pipelineResult = await executeModerationPipeline(
+    context as Devvit.Context,
+    profile,
+    currentPost,
+    'submission'
+  );
+
+  // If pipeline triggered an action, execute and return
+  if (pipelineResult.action !== 'APPROVE') {
+    console.log('[PostSubmit] Pipeline triggered action', {
+      correlationId,
+      layer: pipelineResult.layerTriggered,
+      action: pipelineResult.action,
+      reason: pipelineResult.reason,
+    });
+
+    // Get dry-run config
+    const dryRunConfig = await SettingsService.getDryRunConfig(context as Devvit.Context);
+    const dryRunEnabled = dryRunConfig.dryRunMode;
+
+    // Execute the action using the existing executeAction API
+    const executionResult = await executeAction({
+      post,
+      ruleResult: {
+        action: pipelineResult.action,
+        reason: pipelineResult.reason,
+        matchedRule: pipelineResult.metadata?.builtInRuleId ||
+                     (pipelineResult.metadata?.moderationCategories?.join(',')) ||
+                     'pipeline',
+        confidence: 100, // Pipeline decisions are deterministic/binary
+        dryRun: dryRunEnabled,
+      },
+      profile,
+      context,
+      dryRun: dryRunEnabled,
+    });
+
+    // Enhanced audit log with pipeline metadata
+    const auditAction = executionResult.success
+      ? (pipelineResult.action === 'FLAG' ? ModAction.FLAG :
+         pipelineResult.action === 'REMOVE' ? ModAction.REMOVE :
+         pipelineResult.action === 'COMMENT' ? ModAction.COMMENT :
+         ModAction.FLAG) // Unknown actions become FLAG in audit
+      : ModAction.FLAG; // Failed actions become FLAG for manual review
+
+    const auditLog = await auditLogger.log({
+      action: auditAction,
+      userId: author,
+      contentId: postId,
+      reason: executionResult.success
+        ? pipelineResult.reason
+        : `Action execution failed: ${executionResult.error || 'Unknown error'}`,
+      ruleId: pipelineResult.metadata?.builtInRuleId ||
+              (pipelineResult.metadata?.moderationCategories?.join(',')) ||
+              'pipeline',
+      confidence: 100, // Pipeline decisions are deterministic/binary
+      metadata: {
+        layer: pipelineResult.layerTriggered,
+        executionTimeMs: Date.now() - Date.now(), // Will be negligible
+        trustScore: trustScore.totalScore,
+        actionSuccess: executionResult.success,
+        aiCost: 0, // Layers 1-2 are free
+        dryRun: dryRunEnabled,
+        executionError: executionResult.error,
+        executionDetails: executionResult.details,
+        postTitle: title,
+        bodyPreview: post.body?.substring(0, 200),
+        ...pipelineResult.metadata,
+      },
+    });
+
+    // Send real-time digest if enabled
+    if (auditLog) {
+      await sendRealtimeDigest(context as Devvit.Context, auditLog);
+    }
+
+    // Log execution result
+    if (!executionResult.success) {
+      console.error(`[PostSubmit] Pipeline action execution failed:`, {
+        postId,
+        layer: pipelineResult.layerTriggered,
+        action: pipelineResult.action,
+        error: executionResult.error,
+      });
+    }
+
+    console.log(`[PostSubmit] Post ${postId} processed by pipeline`);
+    return; // Short-circuit, don't continue to custom rules
+  }
+
+  // Continue to Layer 3 (custom rules + AI) if pipeline didn't trigger
+  console.log('[PostSubmit] Pipeline approved, continuing to custom rules', { correlationId });
+
   // Phase 3.3: Rules engine integration with optional AI analysis
   console.log(`[PostSubmit] User ${author} not trusted, evaluating rules...`);
-
-  // 1. Build CurrentPost object
-  const currentPost = PostBuilder.buildCurrentPost(post);
 
   // 2. Initialize rules engine
   const rulesEngine = RulesEngine.getInstance(context as Devvit.Context);
