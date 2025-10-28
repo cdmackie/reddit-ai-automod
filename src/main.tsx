@@ -1,6 +1,7 @@
 import { Devvit } from '@devvit/public-api';
 import { handlePostSubmit } from './handlers/postSubmit';
 import { handleCommentSubmit } from './handlers/commentSubmit';
+import { renderCostDashboard } from './dashboard/costDashboardUI';
 
 // Configure Devvit with required permissions
 Devvit.configure({
@@ -153,6 +154,24 @@ Devvit.addMenuItem({
   location: 'subreddit',
   onPress: async (_event, context) => {
     context.ui.showToast('Phase 4: Settings UI - Configure in Subreddit Settings');
+  },
+});
+
+// Cost Dashboard Menu Item (Phase 4.4)
+Devvit.addMenuItem({
+  label: 'View AI Costs',
+  location: 'subreddit',
+  onPress: async (_event, context) => {
+    try {
+      const dashboard = await renderCostDashboard(context);
+      context.ui.showToast({
+        text: dashboard,
+        appearance: 'neutral',
+      });
+    } catch (error) {
+      console.error('[CostDashboard] Error rendering dashboard:', error);
+      context.ui.showToast('Error loading cost dashboard. Check logs for details.');
+    }
   },
 });
 
