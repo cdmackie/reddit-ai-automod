@@ -172,7 +172,37 @@
 
 ## In Progress
 
-### Phase 4: Devvit Settings UI & Cost Dashboard (Not Started)
+### Phase 4: Devvit Settings UI & Cost Dashboard (Started - Phase 4.1 Complete ✅)
+
+**Phase 4.1: Settings Service Foundation (COMPLETE ✅ - 2025-10-28)**
+- [x] Created new type interfaces in src/types/config.ts - 2025-10-28
+  - ✅ AIProviderConfig (API keys and provider selection)
+  - ✅ BudgetConfig (daily/monthly limits and alert thresholds)
+  - ✅ DryRunConfig (dry-run mode and logging settings)
+- [x] Implemented SettingsService (src/config/settingsService.ts - 336 lines) - 2025-10-28
+  - ✅ Static Map-based caching with 60-second TTL
+  - ✅ getAIConfig() - Fetch AI provider configuration
+  - ✅ getBudgetConfig() - Fetch budget configuration
+  - ✅ getDryRunConfig() - Fetch dry-run configuration
+  - ✅ invalidateCache() - Clear cached settings
+  - ✅ getCacheStatus() - Debug cache state
+  - ✅ Graceful error handling with safe defaults
+  - ✅ Comprehensive JSDoc comments
+- [x] Implemented ConfigurationManager (src/config/configManager.ts - 223 lines) - 2025-10-28
+  - ✅ getEffectiveAIConfig() - Merge AI_CONFIG with settings
+  - ✅ Settings take precedence over hardcoded defaults
+  - ✅ API keys added conditionally from settings
+  - ✅ Budget limits overridden with settings values
+  - ✅ Alert thresholds converted from boolean to numeric array
+  - ✅ hasConfiguredProviders() - Check if any provider configured
+  - ✅ getConfiguredProviders() - List configured providers
+  - ✅ validateConfig() - Validate effective configuration
+  - ✅ Comprehensive JSDoc comments
+- [x] Updated AIProviderConfig type to include optional apiKey field - 2025-10-28
+- [x] Code review completed - All issues resolved ✅
+- [x] TypeScript compilation successful ✅
+
+**Phase 4.2: Devvit Settings UI (Next - Not Started)**
 
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27

@@ -57,7 +57,7 @@ export enum DegradationLevel {
 /**
  * Configuration for a single AI provider
  * Defines model, priority, and enable/disable status
- * Note: API keys are stored separately in Devvit Secrets Manager
+ * Note: API keys are stored separately in Devvit Settings (added at runtime)
  */
 export interface AIProviderConfig {
   /** Provider type identifier */
@@ -72,6 +72,8 @@ export interface AIProviderConfig {
   costPerMTokenInput: number;
   /** Cost per million output tokens in USD */
   costPerMTokenOutput: number;
+  /** API key (optional - added at runtime from settings) */
+  apiKey?: string;
 }
 
 /**

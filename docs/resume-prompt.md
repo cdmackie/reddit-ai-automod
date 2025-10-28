@@ -13,7 +13,8 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - Phase 3.2: Rules Engine Implementation - COMPLETE ✅
   - Phase 3.3: Rules Engine Integration - COMPLETE ✅
   - Phase 3.4: Action Executors - COMPLETE ✅
-**Next**: Phase 4 - Settings UI, Rule Management, Cost Dashboard
+**Phase 4 Status**: Phase 4.1 COMPLETE ✅ (Settings Service Foundation)
+**Next**: Phase 4.2 - Devvit Settings UI Implementation
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -622,6 +623,44 @@ When resuming work:
 
 ---
 
-**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Engine ✅ | Integration ✅ | Actions ✅ | **Security Fixes ✅** | Settings UI (Next) | Production (Week 5)
-**Ready for**: Phase 4 - Devvit Settings UI & Cost Dashboard
+### Session 13 (2025-10-28): Phase 4.1 Complete - Settings Service Foundation
+
+**Achievements**:
+1. ✅ Created new type interfaces in src/types/config.ts
+   - AIProviderConfig (API keys and provider selection)
+   - BudgetConfig (daily/monthly limits and alert thresholds)
+   - DryRunConfig (dry-run mode and logging settings)
+2. ✅ Implemented SettingsService (src/config/settingsService.ts - 336 lines)
+   - Static Map-based caching with 60-second TTL
+   - getAIConfig(), getBudgetConfig(), getDryRunConfig() methods
+   - invalidateCache() and getCacheStatus() for debugging
+   - Graceful error handling with safe defaults
+   - Comprehensive JSDoc comments
+3. ✅ Implemented ConfigurationManager (src/config/configManager.ts - 223 lines)
+   - getEffectiveAIConfig() merges AI_CONFIG with settings
+   - Settings take precedence over hardcoded defaults
+   - API keys added conditionally from settings
+   - Budget limits overridden with settings values
+   - hasConfiguredProviders(), getConfiguredProviders(), validateConfig() helpers
+   - Comprehensive JSDoc comments
+4. ✅ Updated AIProviderConfig type to include optional apiKey field
+5. ✅ Code review completed - All type safety issues resolved
+6. ✅ TypeScript compilation successful
+7. ✅ **Phase 4.1 COMPLETE** ✅
+
+**Production Code**: ~10,900 lines (+400 lines from Phase 4.1)
+**Files Created**: 2 new files (settingsService.ts, configManager.ts)
+**Files Modified**: 2 files (src/types/config.ts, src/types/ai.ts)
+
+**Next Session**:
+- Phase 4.2: Implement Devvit.addSettings() configuration
+- Add API key input fields
+- Add budget limit configuration fields
+- Add dry-run mode toggle
+- Add alert threshold checkboxes
+
+---
+
+**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Engine ✅ | Integration ✅ | Actions ✅ | Security Fixes ✅ | **Settings Foundation ✅** | Settings UI (Next) | Production (Week 5)
+**Ready for**: Phase 4.2 - Devvit Settings UI Implementation
 **Estimated time to MVP**: ~1 week remaining

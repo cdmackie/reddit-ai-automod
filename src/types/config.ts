@@ -43,3 +43,51 @@ export interface EnvConfig {
   /** Google Gemini API key */
   geminiApiKey?: string;
 }
+
+/**
+ * AI Provider Configuration from Settings
+ * Contains API keys and provider selection configured via Devvit Settings UI
+ */
+export interface AIProviderConfig {
+  /** Claude API key (optional - from settings) */
+  claudeApiKey?: string;
+  /** OpenAI API key (optional - from settings) */
+  openaiApiKey?: string;
+  /** DeepSeek API key (optional - from settings) */
+  deepseekApiKey?: string;
+  /** Primary AI provider to use */
+  primaryProvider: 'claude' | 'openai' | 'deepseek';
+  /** Fallback provider if primary fails */
+  fallbackProvider: 'claude' | 'openai' | 'deepseek' | 'none';
+}
+
+/**
+ * Budget Configuration from Settings
+ * Controls daily/monthly spending limits and alert thresholds
+ */
+export interface BudgetConfig {
+  /** Daily spending limit in USD */
+  dailyLimitUSD: number;
+  /** Monthly spending limit in USD */
+  monthlyLimitUSD: number;
+  /** Alert threshold configuration */
+  alertThresholds: {
+    /** Alert at 50% of daily budget */
+    threshold50: boolean;
+    /** Alert at 75% of daily budget */
+    threshold75: boolean;
+    /** Alert at 90% of daily budget */
+    threshold90: boolean;
+  };
+}
+
+/**
+ * Dry Run Configuration from Settings
+ * Controls whether the bot actually takes actions or just logs them
+ */
+export interface DryRunConfig {
+  /** Whether dry-run mode is enabled (no actual moderation actions) */
+  dryRunMode: boolean;
+  /** Whether to log detailed information during dry-run */
+  dryRunLogDetails: boolean;
+}
