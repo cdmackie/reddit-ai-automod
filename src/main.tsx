@@ -135,6 +135,16 @@ Devvit.addSettings([
     defaultValue: true,
     scope: 'installation',
   },
+
+  // ===== Rule Management =====
+  {
+    type: 'paragraph',
+    name: 'rulesJson',
+    label: 'Rules Configuration (JSON)',
+    helpText: 'Configure moderation rules in JSON format. See documentation for examples. Leave empty to use default rules.',
+    defaultValue: '',
+    scope: 'installation',
+  },
 ]);
 
 // Add menu action for settings (future Phase 5)

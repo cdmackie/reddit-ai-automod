@@ -13,8 +13,8 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - Phase 3.2: Rules Engine Implementation - COMPLETE ✅
   - Phase 3.3: Rules Engine Integration - COMPLETE ✅
   - Phase 3.4: Action Executors - COMPLETE ✅
-**Phase 4 Status**: Phase 4.1 & 4.2 COMPLETE ✅ (Settings Service + UI)
-**Next**: Phase 4.3 - Cost Dashboard UI
+**Phase 4 Status**: Phase 4.1, 4.2 & 4.3 COMPLETE ✅ (Settings Service + UI + Rule Management)
+**Next**: Phase 4.4 - Cost Dashboard UI
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -689,13 +689,65 @@ When resuming work:
 Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 
 **Next Session**:
-- Phase 4.3: Cost Dashboard UI
+- Phase 4.3: Rule Management with Schema Validation
+- Implement JSON validation for rules configuration
+- Add versioned schema support
+- Fallback to default rules on validation errors
+
+---
+
+### Session 15 (2025-10-28): Phase 4.3 Complete - Rule Management with Schema Validation
+
+**Achievements**:
+1. ✅ Added ValidationResult<T> interface to src/types/rules.ts
+   - Generic interface for type-safe validation results
+   - Supports success/error/warnings/details fields
+   - Used by RuleSchemaValidator for validation operations
+2. ✅ Implemented RuleSchemaValidator (src/rules/schemaValidator.ts - 426 lines)
+   - validateAndMigrate() - Main entry point with JSON parsing and error position extraction
+   - validateSchema() - Comprehensive rule structure validation
+   - migrate() - Version migration framework (v1.0 supported, extensible to v1.1+)
+   - formatValidationError() - Extract line numbers from JSON parse errors
+   - Validation rules: required fields, type checks (HARD/AI), action validation (APPROVE/FLAG/REMOVE/COMMENT)
+   - AI question ID uniqueness enforcement across all rules
+   - Condition structure validation (field/operator or logicalOperator/rules)
+   - Graceful error handling with clear, actionable error messages
+3. ✅ Implemented loadRulesFromSettings() helper function
+   - Loads and validates rules from Devvit settings
+   - Falls back to default rules on empty/invalid JSON
+   - Logs errors and warnings appropriately (console.error for errors, console.warn for warnings)
+   - Never throws - always returns valid rules
+   - getDefaultRuleSet() helper for subreddit-specific defaults (FriendsOver40/50, bitcointaxes, global)
+4. ✅ Added rulesJson field to Devvit settings (src/main.tsx)
+   - Type: 'paragraph' for multi-line JSON input
+   - Helpful helpText with documentation reference
+   - Default empty string (uses defaults)
+   - scope: 'installation' (per-subreddit)
+   - Added as new "Rule Management" section after Dry-Run Mode
+5. ✅ Code review completed - APPROVED FOR PRODUCTION ✅
+   - 0 critical issues
+   - 0 moderate issues
+   - 0 minor issues
+   - All validation rules implemented correctly
+   - Type safety verified (no `any` leaked to public API)
+   - Error handling comprehensive (JSON parse, validation, fallback)
+   - Documentation complete with JSDoc examples
+6. ✅ TypeScript compilation verified - No new errors
+7. ✅ Updated documentation (project-status.md, resume-prompt.md)
+8. ✅ **Phase 4.3 COMPLETE** ✅
+
+**Production Code**: ~11,466 lines (+426 lines from Phase 4.3)
+**Files Created**: 1 new file (src/rules/schemaValidator.ts)
+**Files Modified**: 2 files (src/types/rules.ts, src/main.tsx)
+
+**Next Session**:
+- Phase 4.4: Cost Dashboard UI
 - Display daily/monthly AI spend
 - Show budget limits and usage percentages
 - Add warning indicators when approaching limits
 
 ---
 
-**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Engine ✅ | Integration ✅ | Actions ✅ | Security Fixes ✅ | Settings Foundation ✅ | **Settings UI ✅** | Cost Dashboard (Next) | Production (Week 5)
-**Ready for**: Phase 4.3 - Cost Dashboard UI Implementation
+**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Engine ✅ | Integration ✅ | Actions ✅ | Security Fixes ✅ | Settings Foundation ✅ | Settings UI ✅ | **Rule Management ✅** | Cost Dashboard (Next) | Production (Week 5)
+**Ready for**: Phase 4.4 - Cost Dashboard UI Implementation
 **Estimated time to MVP**: ~1 week remaining

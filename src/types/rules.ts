@@ -391,3 +391,35 @@ export const AVAILABLE_FIELDS: Record<string, FieldTypeInfo> = {
   // Format: aiAnalysis.answers.{questionId}.{field}
   // where field can be: answer, confidence, reasoning
 };
+
+/**
+ * Result of schema validation with typed data
+ *
+ * Generic interface for validation operations that may succeed or fail.
+ * Used by RuleSchemaValidator to return validated and typed data along
+ * with any errors or warnings encountered during validation.
+ *
+ * @template T - The type of data being validated
+ *
+ * @example
+ * ```typescript
+ * const result: ValidationResult<RuleSet> = await validateRules(json);
+ * if (result.success) {
+ *   console.log('Valid rules:', result.data);
+ * } else {
+ *   console.error('Validation failed:', result.error);
+ * }
+ * ```
+ */
+export interface ValidationResult<T> {
+  /** Whether validation succeeded */
+  success: boolean;
+  /** Validated and typed data (only present if success = true) */
+  data?: T;
+  /** Error message (only present if success = false) */
+  error?: string;
+  /** Non-fatal warnings that don't prevent validation success */
+  warnings?: string[];
+  /** Additional validation details for debugging */
+  details?: string;
+}
