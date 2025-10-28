@@ -216,6 +216,98 @@ Devvit.addSettings([
     helpText: 'Comma-separated usernames without u/ prefix (e.g., \'user1, user2\'). Only used if \'Specific moderator(s)\' selected above.',
     scope: 'installation',
   },
+
+  // ===== Built-in Rules Settings (Layer 1) =====
+  {
+    type: 'boolean',
+    name: 'enableBuiltInRules',
+    label: 'Enable Built-in Rules (Layer 1)',
+    helpText: 'Fast, deterministic checks like account age + karma + external links. Executes first to catch common patterns quickly.',
+    defaultValue: true,
+    scope: 'installation',
+  },
+  {
+    type: 'paragraph',
+    name: 'builtInRulesJson',
+    label: 'Built-in Rules Configuration (JSON)',
+    helpText: 'Configure simple built-in rules. See documentation for format. Rules are evaluated in array order.',
+    defaultValue: JSON.stringify([
+      {
+        id: 'new-account-links',
+        name: 'New account with external links',
+        enabled: true,
+        conditions: {
+          accountAgeDays: { operator: '<', value: 7 },
+          totalKarma: { operator: '<', value: 50 },
+          hasExternalLinks: true
+        },
+        action: 'FLAG',
+        message: 'New account posting links - please review'
+      }
+    ], null, 2),
+    scope: 'installation',
+  },
+
+  // ===== OpenAI Moderation Settings (Layer 2) =====
+  {
+    type: 'boolean',
+    name: 'enableOpenAIMod',
+    label: 'Enable OpenAI Moderation (Layer 2)',
+    helpText: 'FREE content moderation for hate, harassment, violence, sexual content. Uses OpenAI Moderation API at no cost.',
+    defaultValue: false,
+    scope: 'installation',
+  },
+  {
+    type: 'select',
+    name: 'openaiModCategories',
+    label: 'Moderation Categories',
+    helpText: 'Which content categories to check. Multiple selections allowed.',
+    options: [
+      { label: 'Hate speech', value: 'hate' },
+      { label: 'Hate speech (threatening)', value: 'hate/threatening' },
+      { label: 'Harassment', value: 'harassment' },
+      { label: 'Harassment (threatening)', value: 'harassment/threatening' },
+      { label: 'Self-harm content', value: 'self-harm' },
+      { label: 'Self-harm (intent)', value: 'self-harm/intent' },
+      { label: 'Self-harm (instructions)', value: 'self-harm/instructions' },
+      { label: 'Sexual content', value: 'sexual' },
+      { label: 'Sexual content (minors)', value: 'sexual/minors' },
+      { label: 'Violence', value: 'violence' },
+      { label: 'Violence (graphic)', value: 'violence/graphic' },
+    ],
+    multiSelect: true,
+    defaultValue: ['hate', 'harassment', 'sexual', 'violence'],
+    scope: 'installation',
+  },
+  {
+    type: 'number',
+    name: 'openaiModThreshold',
+    label: 'Moderation Threshold (0.0-1.0)',
+    helpText: 'Confidence threshold to flag content. Lower = more strict. Recommended: 0.5 for balanced moderation, 0.3 for strict, 0.7 for lenient.',
+    defaultValue: 0.5,
+    scope: 'installation',
+  },
+  {
+    type: 'select',
+    name: 'openaiModAction',
+    label: 'Action for Flagged Content',
+    helpText: 'What to do when content is flagged. Note: sexual/minors is always REMOVE for safety.',
+    options: [
+      { label: 'FLAG - Report to mod queue', value: 'FLAG' },
+      { label: 'REMOVE - Remove post/comment', value: 'REMOVE' },
+      { label: 'COMMENT - Warn user', value: 'COMMENT' },
+    ],
+    defaultValue: ['FLAG'],
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'openaiModMessage',
+    label: 'Custom Message (for REMOVE/COMMENT)',
+    helpText: 'Message to show users when content is flagged. Leave empty for default message.',
+    defaultValue: 'Your content was flagged by our automated moderation system for violating community guidelines.',
+    scope: 'installation',
+  },
 ]);
 
 // Register menu items
