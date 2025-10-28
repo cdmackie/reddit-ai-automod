@@ -13,12 +13,13 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - Phase 3.2: Rules Engine Implementation - COMPLETE ✅
   - Phase 3.3: Rules Engine Integration - COMPLETE ✅
   - Phase 3.4: Action Executors - COMPLETE ✅
-**Phase 4 Status**: COMPLETE ✅ (Settings Service + UI + Rule Management + Cost Dashboard + Default Rules Init)
+**Phase 4 Status**: COMPLETE ✅ (Settings Service + UI + Rule Management + Cost Dashboard + Default Rules Init + Integration Fixes)
   - Phase 4.1: Settings Service Foundation - COMPLETE ✅
   - Phase 4.2: Devvit Settings UI - COMPLETE ✅
   - Phase 4.3: Rule Management with Schema Validation - COMPLETE ✅
   - Phase 4.4: Cost Dashboard UI - COMPLETE ✅
   - Phase 4.5: Default Rules Initialization with Atomic Locks - COMPLETE ✅
+  - Phase 4.6: Settings Integration Fixes - COMPLETE ✅
 **Next**: Phase 5 - Production Deployment & Testing (READY TO START)
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
@@ -800,7 +801,7 @@ Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 - Monthly costs use daily costs as placeholder
 - Toast-based display (Phase 5: custom post UI with charts)
 
-**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Engine ✅ | Integration ✅ | Actions ✅ | Security Fixes ✅ | Settings Foundation ✅ | Settings UI ✅ | Rule Management ✅ | Cost Dashboard ✅ | **Default Rules Init ✅** | Production (Next - Phase 5)
+**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Engine ✅ | Integration ✅ | Actions ✅ | Security Fixes ✅ | Settings Foundation ✅ | Settings UI ✅ | Rule Management ✅ | Cost Dashboard ✅ | Default Rules Init ✅ | **Integration Fixes ✅** | Production (Next - Phase 5)
 **Ready for**: Phase 5 - Production Deployment & Testing
 **Estimated time to MVP**: ~2-3 days remaining
 
@@ -858,3 +859,45 @@ Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 - Monitor AI costs and performance
 - Collect moderator feedback
 - Enable live actions after validation
+
+---
+
+### Session 18 (2025-10-28): Phase 4.6 Complete - Critical Settings Integration Fixes
+
+**Achievements**:
+1. ✅ Fixed CRITICAL #1: RulesEngine now uses loadRulesFromSettings()
+   - Updated evaluateRules() to call loadRulesFromSettings() instead of storage.getRules()
+   - Added context parameter to RulesEngine constructor
+   - Stored context as instance variable for use in rule loading
+   - Updated needsAIAnalysis() to use loadRulesFromSettings()
+   - Updated getRequiredAIQuestions() to use loadRulesFromSettings()
+   - Removed unused RuleStorage dependency and import
+   - Rules now correctly loaded from settings with validation
+2. ✅ Fixed CRITICAL #2: AISelector now uses ConfigurationManager
+   - Imported ConfigurationManager in selector.ts
+   - Updated getProviderInstance() to use ConfigurationManager.getEffectiveAIConfig()
+   - API keys from settings now take precedence over defaults
+   - Provider configuration properly merged with AI_CONFIG
+   - Removed direct context.settings.get() calls for API keys
+3. ✅ TypeScript compilation verified - Critical errors resolved
+   - No errors in src/rules/engine.ts ✅
+   - No errors in src/ai/selector.ts ✅
+   - Only pre-existing errors in test files and handlers (non-blocking)
+4. ✅ Updated project documentation (project-status.md, resume-prompt.md)
+5. ✅ **Phase 4.6 COMPLETE** ✅
+
+**Why These Fixes Were Critical**:
+- **CRITICAL #1**: Without this fix, rules engine was reading from Redis storage instead of validated settings
+  - Settings changes wouldn't take effect
+  - Schema validation wasn't being applied
+  - Moderators would be confused why their settings didn't work
+- **CRITICAL #2**: Without this fix, AI selector was bypassing ConfigurationManager
+  - API keys from settings weren't being used
+  - Budget limits from settings weren't being applied
+  - Configuration merging wasn't happening
+
+**Files Modified**: 2 files (src/rules/engine.ts, src/ai/selector.ts)
+**Lines Changed**: ~50 lines modified/removed
+
+**Status**: Phase 4 now **FULLY COMPLETE** with all integration issues resolved
+**Ready for**: Phase 5 - Production Deployment & Testing

@@ -13,11 +13,11 @@
  * @module rules/engine
  */
 
-import { Devvit } from '@devvit/public-api';
+import { Devvit, Context } from '@devvit/public-api';
 import { Rule, RuleEvaluationContext, RuleEvaluationResult } from '../types/rules.js';
 import { ConditionEvaluator } from './evaluator.js';
 import { VariableSubstitutor } from './variables.js';
-import { RuleStorage } from './storage.js';
+import { loadRulesFromSettings } from './schemaValidator.js';
 
 /**
  * Rules Engine class
@@ -26,12 +26,12 @@ import { RuleStorage } from './storage.js';
 export class RulesEngine {
   private evaluator: ConditionEvaluator;
   private substitutor: VariableSubstitutor;
-  private storage: RuleStorage;
+  private context: Context;
 
   constructor(context: Devvit.Context) {
     this.evaluator = new ConditionEvaluator();
     this.substitutor = new VariableSubstitutor();
-    this.storage = new RuleStorage(context.redis);
+    this.context = context;
   }
 
   /**
@@ -64,19 +64,19 @@ export class RulesEngine {
     const startTime = Date.now();
 
     try {
-      // 1. Load rules for this subreddit
-      const rules = await this.storage.getRules(evalContext.subreddit);
+      // 1. Load rules from settings (validated and typed)
+      const ruleSet = await loadRulesFromSettings(this.context, evalContext.subreddit);
+      const rules = ruleSet.rules;
 
-      // 2. Add global rules
-      const globalRules = await this.storage.getRules('global');
-      const allRules = [...rules, ...globalRules];
+      // 2. Add global rules from settings
+      const globalRuleSet = await loadRulesFromSettings(this.context, 'global');
+      const allRules = [...rules, ...globalRuleSet.rules];
 
       // 3. Sort by priority (highest first)
       allRules.sort((a, b) => b.priority - a.priority);
 
-      // 4. Check if in dry-run mode
-      const ruleSet = await this.storage.getRuleSet(evalContext.subreddit);
-      const dryRunMode = ruleSet?.dryRunMode ?? true; // Default to safe mode
+      // 4. Check if in dry-run mode from ruleset
+      const dryRunMode = ruleSet.dryRunMode ?? true; // Default to safe mode
 
       // 5. Evaluate each rule
       let rulesEvaluated = 0;
@@ -226,9 +226,9 @@ export class RulesEngine {
    */
   async needsAIAnalysis(subreddit: string): Promise<boolean> {
     try {
-      const rules = await this.storage.getRules(subreddit);
-      const globalRules = await this.storage.getRules('global');
-      const allRules = [...rules, ...globalRules];
+      const ruleSet = await loadRulesFromSettings(this.context, subreddit);
+      const globalRuleSet = await loadRulesFromSettings(this.context, 'global');
+      const allRules = [...ruleSet.rules, ...globalRuleSet.rules];
 
       return allRules.some((rule) => rule.type === 'AI' && rule.enabled);
     } catch (error) {
@@ -254,9 +254,9 @@ export class RulesEngine {
     subreddit: string
   ): Promise<Array<{ id: string; question: string; context?: string }>> {
     try {
-      const rules = await this.storage.getRules(subreddit);
-      const globalRules = await this.storage.getRules('global');
-      const allRules = [...rules, ...globalRules];
+      const ruleSet = await loadRulesFromSettings(this.context, subreddit);
+      const globalRuleSet = await loadRulesFromSettings(this.context, 'global');
+      const allRules = [...ruleSet.rules, ...globalRuleSet.rules];
 
       // Filter to enabled AI rules
       const aiRules = allRules.filter((rule) => rule.type === 'AI' && rule.enabled);

@@ -1,8 +1,8 @@
 # Project Status
 
 **Last Updated**: 2025-10-28
-**Current Phase**: Phase 4 - Devvit Settings UI & Cost Dashboard (Phase 4 COMPLETE ✅, including Phase 4.5)
-**Overall Progress**: 95% (Phases 1, 2, 3, 4 Complete - Ready for Phase 5 Production Deployment)
+**Current Phase**: Phase 4 - Devvit Settings UI & Cost Dashboard (Phase 4 COMPLETE ✅, including Phase 4.6 Integration Fixes)
+**Overall Progress**: 96% (Phases 1, 2, 3, 4 Complete - Ready for Phase 5 Production Deployment)
 
 ---
 
@@ -314,6 +314,24 @@
   - ✅ Testing and troubleshooting guides
   - ✅ Redis key documentation
 - [x] TypeScript compilation verified - No new errors introduced ✅
+
+**Phase 4.6: Settings Integration Fixes (COMPLETE ✅ - 2025-10-28)**
+- [x] Fixed CRITICAL #1: RulesEngine now uses loadRulesFromSettings() - 2025-10-28
+  - ✅ Replaced storage.getRules() with loadRulesFromSettings()
+  - ✅ Added context parameter to RulesEngine constructor
+  - ✅ Removed unused RuleStorage dependency
+  - ✅ Updated evaluateRules(), needsAIAnalysis(), getRequiredAIQuestions()
+  - ✅ Rules now correctly loaded from settings with validation
+- [x] Fixed CRITICAL #2: AISelector now uses ConfigurationManager - 2025-10-28
+  - ✅ Replaced direct settings.get() calls with ConfigurationManager
+  - ✅ getProviderInstance() now uses getEffectiveAIConfig()
+  - ✅ API keys from settings take precedence over defaults
+  - ✅ Provider configuration properly merged with AI_CONFIG
+- [x] TypeScript compilation verified - Critical errors resolved ✅
+  - ✅ No errors in src/rules/engine.ts
+  - ✅ No errors in src/ai/selector.ts
+  - ✅ Only pre-existing errors in test files and handlers (non-blocking)
+- [x] Documentation updated - 2025-10-28
 
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27

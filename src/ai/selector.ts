@@ -43,6 +43,7 @@ import { DeepSeekProvider } from './deepseek.js';
 import { CircuitBreaker } from './circuitBreaker.js';
 import { AIProviderType, ProviderHealthStatus } from '../types/ai.js';
 import { AI_CONFIG, getEnabledProviders } from '../config/ai.js';
+import { ConfigurationManager } from '../config/configManager.js';
 
 /**
  * Provider Selector - Intelligent AI provider selection with automatic failover
@@ -404,35 +405,25 @@ export class ProviderSelector {
    * ```
    */
   private async getProviderInstance(type: AIProviderType): Promise<IAIProvider> {
-    // Get API key from Secrets Manager
-    let apiKey: string | undefined;
+    // Get effective config with settings-based API keys
+    const config = await ConfigurationManager.getEffectiveAIConfig(this.context);
+    const providerConfig = config.providers[type];
 
-    switch (type) {
-      case 'claude':
-        apiKey = await this.context.settings.get('claudeApiKey');
-        break;
-      case 'openai':
-        apiKey = await this.context.settings.get('openaiApiKey');
-        break;
-      case 'deepseek':
-        apiKey = await this.context.settings.get('deepseekApiKey');
-        break;
+    // Check if API key is configured
+    if (!providerConfig.apiKey) {
+      console.warn(`[ProviderSelector] No API key configured for ${type}`);
+      throw new Error(`No API key configured for ${type}. Please configure in Devvit settings.`);
     }
 
-    if (!apiKey) {
-      throw new Error(
-        `Missing API key for provider ${type}. Please configure in Devvit settings.`
-      );
-    }
-
-    // Create provider instance
+    // Create provider instance with settings-based API key
+    // Note: Models are hardcoded in provider classes (claude-3-5-haiku, gpt-4o-mini, deepseek-chat)
     switch (type) {
       case 'claude':
-        return new ClaudeProvider(apiKey);
+        return new ClaudeProvider(providerConfig.apiKey);
       case 'openai':
-        return new OpenAIProvider(apiKey);
+        return new OpenAIProvider(providerConfig.apiKey);
       case 'deepseek':
-        return new DeepSeekProvider(apiKey);
+        return new DeepSeekProvider(providerConfig.apiKey);
     }
   }
 
