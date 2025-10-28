@@ -72,14 +72,9 @@ export async function handlePostSubmit(
   }
 
   // Skip the bot's own posts to prevent infinite loops
-  // Hardcoded check first (fast), then API check as backup
-  if (author === 'ai-automod-app' || author === 'aiautomodapp' || author === 'AI-Automod-App') {
-    console.log(`[PostSubmit] Skipping bot's own post by u/${author}`);
-    return;
-  }
   const currentUser = await reddit.getCurrentUser();
   if (currentUser && author === currentUser.username) {
-    console.log(`[PostSubmit] Skipping bot's own post by u/${author} (via API check)`);
+    console.log(`[PostSubmit] Skipping bot's own post by u/${author}`);
     return;
   }
 
