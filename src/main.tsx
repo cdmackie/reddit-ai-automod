@@ -17,9 +17,13 @@ Devvit.configure({
  * Moderators configure these settings at:
  * reddit.com/r/SUBREDDIT/about/apps/APP_NAME
  *
- * Settings are per-installation (per-subreddit) and accessed via:
- * const settings = await context.settings.getAll();
+ * All settings are per-subreddit (installation-scoped).
+ * Each subreddit moderator configures their own API keys and pays for their own AI usage.
  *
+ * Note: API keys are NOT encrypted (Devvit limitation - only app-scoped settings can be secrets).
+ * However, they're only visible to moderators with Settings access.
+ *
+ * Settings accessed via: const settings = await context.settings.getAll();
  * See SettingsService for type-safe access to these settings.
  */
 Devvit.addSettings([
@@ -28,25 +32,22 @@ Devvit.addSettings([
     type: 'string',
     name: 'claudeApiKey',
     label: 'Claude API Key (Anthropic)',
-    helpText: 'Your Anthropic API key for Claude 3.5 Haiku. Get one at console.anthropic.com',
+    helpText: 'Your Anthropic API key for Claude 3.5 Haiku. Get one at console.anthropic.com. Each subreddit uses their own key.',
     scope: 'installation',
-    isSecret: true,
   },
   {
     type: 'string',
     name: 'openaiApiKey',
     label: 'OpenAI API Key',
-    helpText: 'Your OpenAI API key for GPT-4o Mini. Get one at platform.openai.com',
+    helpText: 'Your OpenAI API key for GPT-4o Mini. Get one at platform.openai.com. Each subreddit uses their own key.',
     scope: 'installation',
-    isSecret: true,
   },
   {
     type: 'string',
     name: 'deepseekApiKey',
     label: 'DeepSeek API Key',
-    helpText: 'Your DeepSeek API key for DeepSeek V3 (optional). Get one at platform.deepseek.com',
+    helpText: 'Your DeepSeek API key for DeepSeek V3 (optional). Get one at platform.deepseek.com. Each subreddit uses their own key.',
     scope: 'installation',
-    isSecret: true,
   },
 
   // ===== Provider Selection =====

@@ -68,38 +68,10 @@ export async function renderCostDashboard(context: Context): Promise<string> {
   // Get current month name
   const monthName = new Date().toLocaleString('en-US', { month: 'long' });
 
-  return `
-AI Automod - Cost Dashboard
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 Today's Costs
-  Claude:     $${data.daily.claude.toFixed(2)}
-  OpenAI:     $${data.daily.openai.toFixed(2)}
-  DeepSeek:   $${data.daily.deepseek.toFixed(2)}
-  ─────────────────────────
-  Total:      $${data.daily.total.toFixed(2)} / $${data.settings.dailyLimit.toFixed(2)} (${dailyPercent}%)
-  ${dailyStatus}
-
-📈 Monthly Costs (${monthName})
-  Claude:     $${data.monthly.claude.toFixed(2)}
-  OpenAI:     $${data.monthly.openai.toFixed(2)}
-  DeepSeek:   $${data.monthly.deepseek.toFixed(2)}
-  ─────────────────────────
-  Total:      $${data.monthly.total.toFixed(2)} / $${data.settings.monthlyLimit.toFixed(2)} (${monthlyPercent}%)
-  ${monthlyStatus}
-
-⚙️ Settings
-  Daily Limit:    $${data.settings.dailyLimit.toFixed(2)}
-  Monthly Limit:  $${data.settings.monthlyLimit.toFixed(2)}
-  Dry-Run Mode:   ${data.settings.dryRunMode ? 'Enabled ⚠️' : 'Disabled'}
-  Primary AI:     ${getProviderName(data.settings.primaryProvider)}
-  Fallback AI:    ${getProviderName(data.settings.fallbackProvider)}
-
-Last updated: ${lastUpdated}
-
-💡 To refresh, reopen this dashboard
-⚙️ To adjust settings, visit Subreddit Settings > Apps > AI Automod
-`.trim();
+  // Ultra-condensed version for toast display (strict character limit)
+  // Format: Day: $X/$Y (Z%) | Mo: $A/$B (C%) | Status
+  const dryRunText = data.settings.dryRunMode ? 'DRY-RUN' : 'LIVE';
+  return `Day: $${data.daily.total.toFixed(2)}/$${data.settings.dailyLimit.toFixed(2)} | Mo: $${data.monthly.total.toFixed(2)}/$${data.settings.monthlyLimit.toFixed(2)} | ${dryRunText}`.trim();
 }
 
 /**
