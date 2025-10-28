@@ -29,12 +29,12 @@ Devvit.configure({
  * See SettingsService for type-safe access to these settings.
  */
 Devvit.addSettings([
-  // ===== Provider Selection =====
+  // ===== Global Settings =====
   {
     type: 'select',
     name: 'primaryProvider',
     label: 'Primary AI Provider',
-    helpText: 'Which AI provider to use first (configure API key below)',
+    helpText: 'Which AI provider to use first for Layer 3 custom rules (configure API key below)',
     options: [
       { label: 'Claude 3.5 Haiku (Anthropic)', value: 'claude' },
       { label: 'GPT-4o Mini (OpenAI)', value: 'openai' },
@@ -57,77 +57,10 @@ Devvit.addSettings([
     defaultValue: ['openai'],
     scope: 'installation',
   },
-
-  // ===== AI Provider API Keys =====
-  {
-    type: 'string',
-    name: 'claudeApiKey',
-    label: 'Claude API Key (Anthropic)',
-    helpText: 'Your Anthropic API key for Claude 3.5 Haiku. Get one at console.anthropic.com. Each subreddit uses their own key.',
-    scope: 'installation',
-  },
-  {
-    type: 'string',
-    name: 'openaiApiKey',
-    label: 'OpenAI API Key',
-    helpText: 'Your OpenAI API key for GPT-4o Mini. Get one at platform.openai.com. Each subreddit uses their own key.',
-    scope: 'installation',
-  },
-  {
-    type: 'string',
-    name: 'deepseekApiKey',
-    label: 'DeepSeek API Key',
-    helpText: 'Your DeepSeek API key for DeepSeek V3 (optional). Get one at platform.deepseek.com. Each subreddit uses their own key.',
-    scope: 'installation',
-  },
-
-  // ===== Budget & Cost Controls =====
-  {
-    type: 'number',
-    name: 'dailyBudgetLimit',
-    label: 'Daily Budget Limit (USD)',
-    helpText: 'Maximum AI spend per day in USD. System will stop AI analysis when exceeded.',
-    defaultValue: 5,
-    scope: 'installation',
-  },
-  {
-    type: 'number',
-    name: 'monthlyBudgetLimit',
-    label: 'Monthly Budget Limit (USD)',
-    helpText: 'Maximum AI spend per month in USD. System will stop AI analysis when exceeded.',
-    defaultValue: 150,
-    scope: 'installation',
-  },
-  {
-    type: 'boolean',
-    name: 'budgetAlertThreshold50',
-    label: 'Alert at 50% Budget',
-    helpText: 'Log warning when 50% of daily/monthly budget is used',
-    defaultValue: true,
-    scope: 'installation',
-  },
-  {
-    type: 'boolean',
-    name: 'budgetAlertThreshold75',
-    label: 'Alert at 75% Budget',
-    helpText: 'Log warning when 75% of daily/monthly budget is used',
-    defaultValue: true,
-    scope: 'installation',
-  },
-  {
-    type: 'boolean',
-    name: 'budgetAlertThreshold90',
-    label: 'Alert at 90% Budget',
-    helpText: 'Log warning when 90% of daily/monthly budget is used',
-    defaultValue: true,
-    scope: 'installation',
-  },
-
-  // ===== Dry-Run Mode =====
   {
     type: 'boolean',
     name: 'dryRunMode',
-    label: 'Enable Dry-Run Mode (Global)',
+    label: '🧪 Enable Dry-Run Mode (Global)',
     helpText: 'When enabled, all actions are logged but NOT executed. Recommended for initial testing.',
     defaultValue: true,
     scope: 'installation',
@@ -135,102 +68,26 @@ Devvit.addSettings([
   {
     type: 'boolean',
     name: 'dryRunLogDetails',
-    label: 'Log Detailed Dry-Run Actions',
+    label: '🧪 Log Detailed Dry-Run Actions',
     helpText: 'Log detailed information about what WOULD happen in dry-run mode',
     defaultValue: true,
     scope: 'installation',
   },
 
-  // ===== Rule Management =====
-  {
-    type: 'paragraph',
-    name: 'rulesJson',
-    label: 'Rules Configuration (JSON)',
-    helpText: 'Configure moderation rules in JSON format. See documentation for examples. Leave empty to use default rules.',
-    defaultValue: '',
-    scope: 'installation',
-  },
-
-  // ===== Daily Digest Settings =====
-  {
-    type: 'boolean',
-    name: 'dailyDigestEnabled',
-    label: 'Enable Daily Digest',
-    helpText: 'Send a daily summary of moderation actions',
-    defaultValue: false,
-    scope: 'installation',
-  },
-  {
-    type: 'select',
-    name: 'dailyDigestRecipient',
-    label: 'Send Daily Digest To',
-    helpText: 'Where to send the daily digest',
-    options: [
-      { label: 'Mod Notifications (all moderators)', value: 'all' },
-      { label: 'Specific moderator(s)', value: 'specific' },
-    ],
-    defaultValue: ['all'],
-    scope: 'installation',
-  },
-  {
-    type: 'string',
-    name: 'dailyDigestRecipientUsernames',
-    label: 'Moderator Username(s) for Daily Digest',
-    helpText: 'Comma-separated usernames without u/ prefix (e.g., \'user1, user2\'). Only used if \'Specific moderator(s)\' selected above.',
-    scope: 'installation',
-  },
-  {
-    type: 'string',
-    name: 'dailyDigestTime',
-    label: 'Daily Digest Time (UTC)',
-    helpText: 'Time to send digest in HH:MM format (24-hour, UTC). Example: 09:00',
-    defaultValue: '09:00',
-    scope: 'installation',
-  },
-
-  // ===== Real-time Notification Settings =====
-  {
-    type: 'boolean',
-    name: 'realtimeNotificationsEnabled',
-    label: 'Enable Real-time Notifications',
-    helpText: 'Send immediate notification after each moderation action (useful for debugging)',
-    defaultValue: false,
-    scope: 'installation',
-  },
-  {
-    type: 'select',
-    name: 'realtimeRecipient',
-    label: 'Send Real-time Notifications To',
-    helpText: 'Where to send real-time notifications',
-    options: [
-      { label: 'Mod Notifications (all moderators)', value: 'all' },
-      { label: 'Specific moderator(s)', value: 'specific' },
-    ],
-    defaultValue: ['all'],
-    scope: 'installation',
-  },
-  {
-    type: 'string',
-    name: 'realtimeRecipientUsernames',
-    label: 'Moderator Username(s) for Real-time',
-    helpText: 'Comma-separated usernames without u/ prefix (e.g., \'user1, user2\'). Only used if \'Specific moderator(s)\' selected above.',
-    scope: 'installation',
-  },
-
-  // ===== Built-in Rules Settings (Layer 1) =====
+  // ===== Layer 1: Built-in Rules (Free & Fast) =====
   {
     type: 'boolean',
     name: 'enableBuiltInRules',
-    label: 'Enable Built-in Rules (Layer 1)',
-    helpText: 'Fast, deterministic checks like account age + karma + external links. Executes first to catch common patterns quickly.',
+    label: '🔧 Layer 1: Enable Built-in Rules',
+    helpText: 'Fast, deterministic checks like account age + karma + external links. Executes first to catch common patterns quickly. (Executes first, free)',
     defaultValue: true,
     scope: 'installation',
   },
   {
     type: 'paragraph',
     name: 'builtInRulesJson',
-    label: 'Built-in Rules Configuration (JSON)',
-    helpText: 'Configure simple built-in rules. See documentation for format. Rules are evaluated in array order.',
+    label: '🔧 Layer 1: Built-in Rules Configuration (JSON)',
+    helpText: 'Configure simple built-in rules. See documentation for format. Rules are evaluated in array order. (Executes first, free)',
     defaultValue: JSON.stringify([
       {
         id: 'new-account-links',
@@ -248,20 +105,20 @@ Devvit.addSettings([
     scope: 'installation',
   },
 
-  // ===== OpenAI Moderation Settings (Layer 2) =====
+  // ===== Layer 2: OpenAI Moderation (Free) =====
   {
     type: 'boolean',
     name: 'enableOpenAIMod',
-    label: 'Enable OpenAI Moderation (Layer 2)',
-    helpText: 'FREE content moderation for hate, harassment, violence, sexual content. Uses OpenAI Moderation API at no cost.',
+    label: '🛡️ Layer 2: Enable OpenAI Moderation',
+    helpText: 'FREE content moderation for hate, harassment, violence, sexual content. Uses OpenAI Moderation API at no cost. (Executes second, free)',
     defaultValue: false,
     scope: 'installation',
   },
   {
     type: 'select',
     name: 'openaiModCategories',
-    label: 'Moderation Categories',
-    helpText: 'Which content categories to check. Multiple selections allowed.',
+    label: '🛡️ Layer 2: Moderation Categories',
+    helpText: 'Which content categories to check. Multiple selections allowed. (Executes second, free)',
     options: [
       { label: 'Hate speech', value: 'hate' },
       { label: 'Hate speech (threatening)', value: 'hate/threatening' },
@@ -282,16 +139,16 @@ Devvit.addSettings([
   {
     type: 'number',
     name: 'openaiModThreshold',
-    label: 'Moderation Threshold (0.0-1.0)',
-    helpText: 'Confidence threshold to flag content. Lower = more strict. Recommended: 0.5 for balanced moderation, 0.3 for strict, 0.7 for lenient.',
+    label: '🛡️ Layer 2: Moderation Threshold (0.0-1.0)',
+    helpText: 'Confidence threshold to flag content. Lower = more strict. Recommended: 0.5 for balanced moderation, 0.3 for strict, 0.7 for lenient. (Executes second, free)',
     defaultValue: 0.5,
     scope: 'installation',
   },
   {
     type: 'select',
     name: 'openaiModAction',
-    label: 'Action for Flagged Content',
-    helpText: 'What to do when content is flagged. Note: sexual/minors is always REMOVE for safety.',
+    label: '🛡️ Layer 2: Action for Flagged Content',
+    helpText: 'What to do when content is flagged. Note: sexual/minors is always REMOVE for safety. (Executes second, free)',
     options: [
       { label: 'FLAG - Report to mod queue', value: 'FLAG' },
       { label: 'REMOVE - Remove post/comment', value: 'REMOVE' },
@@ -303,9 +160,146 @@ Devvit.addSettings([
   {
     type: 'string',
     name: 'openaiModMessage',
-    label: 'Custom Message (for REMOVE/COMMENT)',
-    helpText: 'Message to show users when content is flagged. Leave empty for default message.',
+    label: '🛡️ Layer 2: Custom Message (for REMOVE/COMMENT)',
+    helpText: 'Message to show users when content is flagged. Leave empty for default message. (Executes second, free)',
     defaultValue: 'Your content was flagged by our automated moderation system for violating community guidelines.',
+    scope: 'installation',
+  },
+
+  // ===== Layer 3: AI Rules (Custom) =====
+  {
+    type: 'paragraph',
+    name: 'rulesJson',
+    label: '🤖 Layer 3: Custom Rules Configuration (JSON)',
+    helpText: 'Configure AI-powered moderation rules in JSON format. See documentation for examples. Leave empty to use default rules. (Executes last if Layers 1-2 don\'t match)',
+    defaultValue: '',
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'claudeApiKey',
+    label: '🔑 Layer 3: Claude API Key (Anthropic)',
+    helpText: 'Your Anthropic API key for Claude 3.5 Haiku. Get one at console.anthropic.com. Only needed if using Layer 3 custom AI rules.',
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'openaiApiKey',
+    label: '🔑 Layer 3: OpenAI API Key',
+    helpText: 'Your OpenAI API key for GPT-4o Mini. Get one at platform.openai.com. Only needed if using Layer 3 custom AI rules.',
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'deepseekApiKey',
+    label: '🔑 Layer 3: DeepSeek API Key',
+    helpText: 'Your DeepSeek API key for DeepSeek V3 (optional). Get one at platform.deepseek.com. Only needed if using Layer 3 custom AI rules.',
+    scope: 'installation',
+  },
+  {
+    type: 'number',
+    name: 'dailyBudgetLimit',
+    label: '💰 Layer 3: Daily Budget Limit (USD)',
+    helpText: 'Maximum AI spend per day in USD. System will stop AI analysis when exceeded. Only applies to Layer 3 custom rules.',
+    defaultValue: 5,
+    scope: 'installation',
+  },
+  {
+    type: 'number',
+    name: 'monthlyBudgetLimit',
+    label: '💰 Layer 3: Monthly Budget Limit (USD)',
+    helpText: 'Maximum AI spend per month in USD. System will stop AI analysis when exceeded. Only applies to Layer 3 custom rules.',
+    defaultValue: 150,
+    scope: 'installation',
+  },
+  {
+    type: 'boolean',
+    name: 'budgetAlertThreshold50',
+    label: '💰 Layer 3: Alert at 50% Budget',
+    helpText: 'Log warning when 50% of daily/monthly budget is used. Only applies to Layer 3 custom rules.',
+    defaultValue: true,
+    scope: 'installation',
+  },
+  {
+    type: 'boolean',
+    name: 'budgetAlertThreshold75',
+    label: '💰 Layer 3: Alert at 75% Budget',
+    helpText: 'Log warning when 75% of daily/monthly budget is used. Only applies to Layer 3 custom rules.',
+    defaultValue: true,
+    scope: 'installation',
+  },
+  {
+    type: 'boolean',
+    name: 'budgetAlertThreshold90',
+    label: '💰 Layer 3: Alert at 90% Budget',
+    helpText: 'Log warning when 90% of daily/monthly budget is used. Only applies to Layer 3 custom rules.',
+    defaultValue: true,
+    scope: 'installation',
+  },
+
+  // ===== Daily Digest Notifications =====
+  {
+    type: 'boolean',
+    name: 'dailyDigestEnabled',
+    label: '📧 Daily Digest: Enable',
+    helpText: 'Send a daily summary of moderation actions',
+    defaultValue: false,
+    scope: 'installation',
+  },
+  {
+    type: 'select',
+    name: 'dailyDigestRecipient',
+    label: '📧 Daily Digest: Send To',
+    helpText: 'Where to send the daily digest',
+    options: [
+      { label: 'Mod Notifications (all moderators)', value: 'all' },
+      { label: 'Specific moderator(s)', value: 'specific' },
+    ],
+    defaultValue: ['all'],
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'dailyDigestRecipientUsernames',
+    label: '📧 Daily Digest: Recipient Username(s)',
+    helpText: 'Comma-separated usernames without u/ prefix (e.g., \'user1, user2\'). Only used if \'Specific moderator(s)\' selected above.',
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'dailyDigestTime',
+    label: '📧 Daily Digest: Time (UTC)',
+    helpText: 'Time to send digest in HH:MM format (24-hour, UTC). Example: 09:00',
+    defaultValue: '09:00',
+    scope: 'installation',
+  },
+
+  // ===== Real-time Notifications =====
+  {
+    type: 'boolean',
+    name: 'realtimeNotificationsEnabled',
+    label: '⚡ Real-time: Enable Notifications',
+    helpText: 'Send immediate notification after each moderation action (useful for debugging)',
+    defaultValue: false,
+    scope: 'installation',
+  },
+  {
+    type: 'select',
+    name: 'realtimeRecipient',
+    label: '⚡ Real-time: Send To',
+    helpText: 'Where to send real-time notifications',
+    options: [
+      { label: 'Mod Notifications (all moderators)', value: 'all' },
+      { label: 'Specific moderator(s)', value: 'specific' },
+    ],
+    defaultValue: ['all'],
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'realtimeRecipientUsernames',
+    label: '⚡ Real-time: Recipient Username(s)',
+    helpText: 'Comma-separated usernames without u/ prefix (e.g., \'user1, user2\'). Only used if \'Specific moderator(s)\' selected above.',
     scope: 'installation',
   },
 ]);
