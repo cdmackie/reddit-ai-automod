@@ -937,3 +937,100 @@ Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 
 **Status**: System validated and production-ready
 **Next**: Production upload with `devvit upload` and deployment to target subreddits
+
+---
+
+### Session 20 (2025-10-28): Phase 5.1 Complete - Modmail Digest Implementation
+
+**Achievements**:
+1. ✅ Implemented Daily Digest via Modmail
+   - User discovered post menu items don't work (Devvit platform limitation)
+   - Explored modmail as alternative notification method
+   - User requested specific moderator delivery for private testing
+2. ✅ Added Modmail Digest Settings (src/main.tsx)
+   - digestEnabled (boolean) - Enable/disable daily digest
+   - digestRecipient (select) - Send to all mods or specific moderator
+   - digestRecipientUsername (string) - Specific moderator username (without u/ prefix)
+   - digestTime (string) - Delivery time in UTC (HH:MM format, default: 09:00)
+3. ✅ Created Modmail Digest Module (src/notifications/modmailDigest.ts - 166 lines)
+   - sendDailyDigest() - Main function to send modmail via context.reddit.modMail.createModInboxConversation()
+   - formatDigestMessage() - Format audit logs into readable markdown digest
+   - Fetches yesterday's audit logs from Redis using AuditLogger.getLogsInRange()
+   - Calculates statistics: total actions, breakdown by type (APPROVE/FLAG/REMOVE/COMMENT), total AI costs
+   - Sends to specific user OR all mods (Mod Notifications) based on settings
+   - Handles no-actions case gracefully
+   - Dry-run mode indicator in digest
+   - Comprehensive error handling and logging
+4. ✅ Added Daily Digest Scheduler (src/main.tsx)
+   - Devvit.addSchedulerJob() with cron: '0 9 * * *' (9 AM UTC daily)
+   - Calls sendDailyDigest() when triggered
+   - Error handling to prevent scheduler crashes
+5. ✅ Updated Documentation
+   - Updated project-status.md with Phase 5.1 completion
+   - Updated resume-prompt.md with Session 20 summary
+
+**Files Created**: 1 new file (src/notifications/modmailDigest.ts)
+**Files Modified**: 2 files (src/main.tsx - imports + settings + scheduler, docs/project-status.md, docs/resume-prompt.md)
+**Production Code**: ~12,271 lines (+166 lines from Phase 5.1)
+
+**Testing Status**: ⏳ Pending manual testing
+- Need to test on r/AiAutomod with specific user delivery
+- Need to verify 'to' parameter works with Devvit modmail API
+- Need to test scheduled job triggering
+
+**User Intent**:
+- User specifically wants to test specific moderator delivery first
+- Wants to keep digests private during testing (not visible to other mods)
+- Plans to switch to "all mods" after validation
+
+**Status**: Implementation complete, ready for testing
+**Next**: Manual testing on r/AiAutomod with specific user delivery
+
+---
+
+### Session 21 (2025-10-28): Phase 5.2 Complete - Real-time Digest Implementation
+
+**Achievements**:
+1. ✅ Added digestMode setting to main.tsx (line 164-174)
+   - Select between "Daily Summary (9 AM UTC)" or "Real-time (after each action)"
+   - Enables immediate notifications for testing and monitoring
+   - Default: "daily"
+2. ✅ Implemented sendRealtimeDigest() function in modmailDigest.ts
+   - Sends notification immediately after each action
+   - Includes full action details (action, user, reason, confidence, cost, matched rule)
+   - Shows dry-run mode warnings
+   - Includes post/comment title and preview for context
+   - Respects digestEnabled and digestMode settings
+3. ✅ Integrated into event handlers
+   - PostSubmit handler calls sendRealtimeDigest after audit logging
+   - CommentSubmit handler calls sendRealtimeDigest after audit logging
+   - Modified AuditLogger.log() to return AuditLog for use by digest
+4. ✅ **Critical Bug Fix**: Modmail delivery mechanism
+   - **Issue**: Modmail API sends to all mods regardless of 'to' parameter
+   - **Root cause**: `createModInboxConversation()` is designed for mod team communication
+   - **Solution**: Use different APIs based on recipient setting
+     - Specific moderator → `sendPrivateMessage()` (PM to that user only)
+     - All moderators → `createModInboxConversation()` (modmail to mod team)
+   - Added debug logging to track settings and delivery method
+5. ✅ Testing complete
+   - Tested on r/AiAutomod with specific user delivery
+   - Confirmed private messages received correctly
+   - Verified modmail vs PM routing based on settings
+6. ✅ Updated documentation (project-status.md, resume-prompt.md)
+
+**Files Modified**:
+- src/main.tsx (added digestMode setting)
+- src/notifications/modmailDigest.ts (added sendRealtimeDigest + PM/modmail routing)
+- src/storage/audit.ts (changed log() return type to Promise<AuditLog>)
+- src/handlers/postSubmit.ts (integrated sendRealtimeDigest)
+- src/handlers/commentSubmit.ts (integrated sendRealtimeDigest)
+- docs/project-status.md (added Phase 5.2 section)
+- docs/resume-prompt.md (added Session 21 summary)
+
+**Production Code**: ~12,400 lines (+129 lines from Phase 5.2)
+**Versions deployed**: 0.0.6 (initial), 0.0.7 (debug logging), 0.0.8 (PM fix)
+
+**Key Learning**: Reddit's modmail API doesn't support sending to specific users - it's designed for mod team communication. Private messages must be used for user-specific notifications.
+
+**Status**: Phase 5.2 complete ✅
+**Next**: Production deployment to target subreddits

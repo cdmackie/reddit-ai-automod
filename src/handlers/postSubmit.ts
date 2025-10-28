@@ -19,6 +19,7 @@ import { PostBuilder } from './postBuilder.js';
 import { executeAction } from '../actions/executor.js';
 import { initializeDefaultRules, isInitialized } from './appInstall.js';
 import { SettingsService } from '../config/settingsService.js';
+import { sendRealtimeDigest } from '../notifications/modmailDigest.js';
 
 // Singleton rate limiter shared across all handler invocations
 const rateLimiter = new RateLimiter();
@@ -58,11 +59,13 @@ export async function handlePostSubmit(
   // Handle deleted or missing author
   if (!userId || author === '[deleted]') {
     console.log(`[PostSubmit] Post by deleted user, flagging for review`);
-    await auditLogger.logFlag(
-      postId,
-      userId || 'unknown',
-      'Post by deleted or unknown user'
-    );
+    const auditLog = await auditLogger.log({
+      action: ModAction.FLAG,
+      userId: userId || 'unknown',
+      contentId: postId,
+      reason: 'Post by deleted or unknown user',
+    });
+    await sendRealtimeDigest(context as Devvit.Context, auditLog);
     console.log(`[PostSubmit] Post ${postId} flagged successfully`);
     return;
   }
@@ -90,11 +93,13 @@ export async function handlePostSubmit(
   const isTrusted = await trustScoreCalc.isTrustedUser(userId, subredditName);
   if (isTrusted) {
     console.log(`[PostSubmit] User ${author} is trusted, auto-approving`);
-    await auditLogger.logApproval(
-      postId,
-      author,
-      'Trusted user (score >= 70)'
-    );
+    const auditLog = await auditLogger.log({
+      action: ModAction.APPROVE,
+      userId: author,
+      contentId: postId,
+      reason: 'Trusted user (score >= 70)',
+    });
+    await sendRealtimeDigest(context as Devvit.Context, auditLog);
     console.log(`[PostSubmit] Post ${postId} processed successfully`);
     return;
   }
@@ -110,11 +115,13 @@ export async function handlePostSubmit(
   if (!profile) {
     console.log(`[PostSubmit] Could not fetch profile for ${author}`);
     // Fallback: FLAG for manual review (fail safe)
-    await auditLogger.logFlag(
-      postId,
-      author,
-      'Profile fetch failed, flagged for manual review'
-    );
+    const auditLog = await auditLogger.log({
+      action: ModAction.FLAG,
+      userId: author,
+      contentId: postId,
+      reason: 'Profile fetch failed, flagged for manual review',
+    });
+    await sendRealtimeDigest(context as Devvit.Context, auditLog);
     console.log(`[PostSubmit] Post ${postId} flagged for manual review`);
     return;
   }
@@ -134,11 +141,13 @@ export async function handlePostSubmit(
   // If trusted now, mark as trusted and approve
   if (trustScore.isTrusted) {
     console.log(`[PostSubmit] User ${author} achieved trusted status`);
-    await auditLogger.logApproval(
-      postId,
-      author,
-      `Trusted user (score: ${trustScore.totalScore}/100)`
-    );
+    const auditLog = await auditLogger.log({
+      action: ModAction.APPROVE,
+      userId: author,
+      contentId: postId,
+      reason: `Trusted user (score: ${trustScore.totalScore}/100)`,
+    });
+    await sendRealtimeDigest(context as Devvit.Context, auditLog);
     // Increment approved count for next time
     await trustScoreCalc.incrementApprovedCount(userId, subredditName);
     console.log(`[PostSubmit] Post ${postId} processed successfully`);
@@ -264,7 +273,7 @@ export async function handlePostSubmit(
        ModAction.FLAG) // Unknown actions become FLAG in audit
     : ModAction.FLAG; // Failed actions become FLAG for manual review
 
-  await auditLogger.log({
+  const auditLog = await auditLogger.log({
     action: auditAction,
     userId: author,
     contentId: postId,
@@ -278,8 +287,13 @@ export async function handlePostSubmit(
       executionSuccess: executionResult.success,
       executionError: executionResult.error,
       executionDetails: executionResult.details,
+      postTitle: title,
+      bodyPreview: post.body?.substring(0, 200),
     },
   });
+
+  // Send realtime digest if enabled
+  await sendRealtimeDigest(context as Devvit.Context, auditLog);
 
   // Increment approved count for successful approvals
   if (executionResult.success && ruleResult.action === 'APPROVE') {

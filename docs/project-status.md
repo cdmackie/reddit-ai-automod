@@ -361,6 +361,48 @@
   - ✅ Updated project-status.md
   - ✅ Updated resume-prompt.md
 
+**Phase 5.1: Modmail Digest Implementation (COMPLETE ✅ - 2025-10-28)**
+- [x] Added modmail digest settings to main.tsx - 2025-10-28
+  - ✅ digestEnabled (boolean) - Enable/disable daily digest
+  - ✅ digestRecipient (select) - Send to all mods or specific moderator
+  - ✅ digestRecipientUsername (string) - Specific moderator username
+  - ✅ digestTime (string) - Time to send digest in UTC (HH:MM format)
+- [x] Created src/notifications/modmailDigest.ts - 2025-10-28
+  - ✅ sendDailyDigest() - Main function to send modmail digest
+  - ✅ formatDigestMessage() - Format audit logs into readable digest
+  - ✅ Fetches yesterday's audit logs from Redis
+  - ✅ Calculates statistics (total actions, breakdown by type, AI costs)
+  - ✅ Sends to specific user OR all mods via Mod Notifications
+  - ✅ Graceful error handling with comprehensive logging
+  - ✅ Handles no-actions case gracefully
+  - ✅ Dry-run mode indicator in digest
+- [x] Added daily digest scheduler to main.tsx - 2025-10-28
+  - ✅ Devvit.addSchedulerJob() with cron: '0 9 * * *' (9 AM UTC daily)
+  - ✅ Calls sendDailyDigest() when triggered
+  - ✅ Error handling to prevent scheduler crashes
+
+**Phase 5.2: Real-time Digest Implementation (COMPLETE ✅ - 2025-10-28)**
+- [x] Added digestMode setting to main.tsx - 2025-10-28
+  - ✅ Select between "Daily Summary" or "Real-time (after each action)"
+  - ✅ Enables immediate notifications for testing and monitoring
+- [x] Implemented sendRealtimeDigest() function - 2025-10-28
+  - ✅ Sends notification immediately after each action
+  - ✅ Includes full action details (action, user, reason, confidence, cost, etc.)
+  - ✅ Shows dry-run mode warnings
+  - ✅ Includes post/comment preview for context
+- [x] Integrated into event handlers - 2025-10-28
+  - ✅ PostSubmit handler calls sendRealtimeDigest after audit logging
+  - ✅ CommentSubmit handler calls sendRealtimeDigest after audit logging
+- [x] Fixed delivery mechanism - 2025-10-28
+  - ✅ **Issue discovered**: Modmail API sends to all mods regardless of 'to' parameter
+  - ✅ **Solution**: Use private message (PM) API for specific users, modmail for all mods
+  - ✅ Specific moderator → Sends as PM to that user only
+  - ✅ All moderators → Sends as modmail to mod team
+- [x] Testing complete - 2025-10-28
+  - ✅ Tested on r/AiAutomod with specific user delivery
+  - ✅ Confirmed PMs received correctly
+  - ✅ Debug logging verified settings and delivery method
+
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27
 - [x] Deploy architect-reviewer for design validation - 2025-10-27

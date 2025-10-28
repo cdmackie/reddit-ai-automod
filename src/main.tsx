@@ -4,6 +4,7 @@ import { handleCommentSubmit } from './handlers/commentSubmit';
 import { renderCostDashboard } from './dashboard/costDashboardUI';
 import { initializeDefaultRules } from './handlers/appInstall';
 import { getPostAnalysis } from './ui/postAnalysis';
+import { sendDailyDigest } from './notifications/modmailDigest';
 
 // Configure Devvit with required permissions
 Devvit.configure({
@@ -149,7 +150,59 @@ Devvit.addSettings([
     defaultValue: '',
     scope: 'installation',
   },
+
+  // ===== Modmail Digest Settings =====
+  {
+    type: 'boolean',
+    name: 'digestEnabled',
+    label: 'Enable Daily Digest',
+    helpText: 'Send a daily summary of AI moderation actions via modmail',
+    defaultValue: false,
+    scope: 'installation',
+  },
+  {
+    type: 'select',
+    name: 'digestMode',
+    label: 'Digest Mode',
+    helpText: 'When to send digest notifications',
+    options: [
+      { label: 'Daily Summary (9 AM UTC)', value: 'daily' },
+      { label: 'Real-time (after each action)', value: 'realtime' },
+    ],
+    defaultValue: ['daily'],
+    scope: 'installation',
+  },
+  {
+    type: 'select',
+    name: 'digestRecipient',
+    label: 'Send Digest To',
+    helpText: 'Where to send the daily digest',
+    options: [
+      { label: 'Mod Notifications (all moderators)', value: 'all' },
+      { label: 'Specific moderator', value: 'specific' },
+    ],
+    defaultValue: ['all'],
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'digestRecipientUsername',
+    label: 'Specific Moderator Username',
+    helpText: 'Username without u/ prefix. Only used if "Specific moderator" is selected above.',
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'digestTime',
+    label: 'Digest Delivery Time (UTC)',
+    helpText: 'Time to send digest in HH:MM format (24-hour, UTC timezone). Example: 09:00',
+    defaultValue: '09:00',
+    scope: 'installation',
+  },
 ]);
+
+// Register menu items
+console.log('[AI Automod] Registering menu items...');
 
 // Add menu action for settings (future Phase 5)
 Devvit.addMenuItem({
@@ -159,6 +212,7 @@ Devvit.addMenuItem({
     context.ui.showToast('Phase 4: Settings UI - Configure in Subreddit Settings');
   },
 });
+console.log('[AI Automod] ✓ Registered: AI Automod Settings (subreddit)');
 
 // Cost Dashboard Menu Item (Phase 4.4)
 Devvit.addMenuItem({
@@ -177,6 +231,7 @@ Devvit.addMenuItem({
     }
   },
 });
+console.log('[AI Automod] ✓ Registered: View AI Costs (subreddit)');
 
 // Post Analysis Menu Item (Phase 5)
 // NOTE: Post menu items don't appear during playtest mode (Devvit limitation)
@@ -199,6 +254,9 @@ Devvit.addMenuItem({
     });
   },
 });
+console.log('[AI Automod] ✓ Registered: View AI Analysis (post)');
+
+console.log('[AI Automod] Menu items registration complete');
 
 // Register event handlers
 console.log('[AI Automod] Registering event handlers...');
@@ -230,9 +288,24 @@ Devvit.addTrigger({
   },
 });
 
+// Daily Digest Scheduler (Phase 5)
+Devvit.addSchedulerJob({
+  name: 'dailyDigest',
+  cron: '0 9 * * *', // Run at 9:00 AM UTC daily (can be customized via settings)
+  onRun: async (_event, context) => {
+    console.log('[DailyDigest] Scheduler triggered');
+    try {
+      await sendDailyDigest(context);
+    } catch (error) {
+      console.error('[DailyDigest] Error in scheduled job:', error);
+      // Don't throw - we don't want to crash the scheduler
+    }
+  },
+});
+
 console.log('[AI Automod] Event handlers registered successfully');
 console.log('[AI Automod] Phase 1: Foundation & Setup');
-console.log('[AI Automod] Monitoring: PostSubmit, CommentSubmit, AppInstall');
+console.log('[AI Automod] Monitoring: PostSubmit, CommentSubmit, AppInstall, DailyDigest');
 
 // Export the app
 export default Devvit;

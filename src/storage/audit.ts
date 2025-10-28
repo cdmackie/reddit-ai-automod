@@ -20,8 +20,9 @@ export class AuditLogger {
 
   /**
    * Log a moderation action
+   * Returns the created audit log entry for further processing (e.g., real-time digest)
    */
-  async log(entry: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
+  async log(entry: Omit<AuditLog, 'id' | 'timestamp'>): Promise<AuditLog> {
     const auditEntry: AuditLog = {
       ...entry,
       id: this.generateId(),
@@ -37,6 +38,8 @@ export class AuditLogger {
     const existingLogs = await this.getLogsForContent(entry.contentId);
     const logs = existingLogs ? [...existingLogs, auditEntry] : [auditEntry];
     await this.storage.set(key, logs);
+
+    return auditEntry;
   }
 
   /**

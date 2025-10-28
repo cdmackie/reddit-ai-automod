@@ -4,8 +4,10 @@
  * Handles new comment submissions and applies moderation rules
  */
 
-import { TriggerContext, TriggerEvent } from '@devvit/public-api';
+import { TriggerContext, TriggerEvent, Devvit } from '@devvit/public-api';
 import { AuditLogger } from '../storage/audit';
+import { ModAction } from '../types/storage.js';
+import { sendRealtimeDigest } from '../notifications/modmailDigest.js';
 
 /**
  * Handle comment submission events
@@ -40,11 +42,18 @@ export async function handleCommentSubmit(
 
   // For now, just log that we received the event
   // In Phase 2, we'll add rule matching and evaluation
-  await auditLogger.logApproval(
-    commentId,
-    author,
-    'Phase 1: Auto-approved (no rules active yet)'
-  );
+  const auditLog = await auditLogger.log({
+    action: ModAction.APPROVE,
+    userId: author,
+    contentId: commentId,
+    reason: 'Phase 1: Auto-approved (no rules active yet)',
+    metadata: {
+      bodyPreview: body.substring(0, 200),
+    },
+  });
+
+  // Send realtime digest if enabled
+  await sendRealtimeDigest(context as Devvit.Context, auditLog);
 
   console.log(`[CommentSubmit] Comment ${commentId} processed successfully`);
 }
