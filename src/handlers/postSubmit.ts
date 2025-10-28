@@ -71,6 +71,13 @@ export async function handlePostSubmit(
     return;
   }
 
+  // Skip the bot's own posts to prevent infinite loops
+  const currentUser = await reddit.getCurrentUser();
+  if (currentUser && author === currentUser.username) {
+    console.log(`[PostSubmit] Skipping bot's own post by u/${author}`);
+    return;
+  }
+
   // Safety: Initialize default rules if not already done
   // This handles cases where AppInstall event was missed
   const initialized = await isInitialized(context as Devvit.Context, subredditName);

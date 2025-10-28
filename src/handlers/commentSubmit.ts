@@ -70,6 +70,13 @@ export async function handleCommentSubmit(
     return;
   }
 
+  // Skip the bot's own comments to prevent infinite loops
+  const currentUser = await reddit.getCurrentUser();
+  if (currentUser && author === currentUser.username) {
+    console.log(`[CommentSubmit] Skipping bot's own comment by u/${author}`);
+    return;
+  }
+
   // Initialize profiling services
   const profileFetcher = new UserProfileFetcher(redis, reddit, rateLimiter);
   const historyAnalyzer = new PostHistoryAnalyzer(redis, reddit, rateLimiter);
