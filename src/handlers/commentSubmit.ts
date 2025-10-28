@@ -72,7 +72,7 @@ export async function handleCommentSubmit(
 
   // Skip the bot's own comments to prevent infinite loops
   // Hardcoded check first (fast), then API check as backup
-  if (author === 'aiautomodapp' || author === 'AI-Automod-App') {
+  if (author === 'ai-automod-app' || author === 'aiautomodapp' || author === 'AI-Automod-App') {
     console.log(`[CommentSubmit] Skipping bot's own comment by u/${author}`);
     return;
   }
