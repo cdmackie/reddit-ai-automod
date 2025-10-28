@@ -538,13 +538,51 @@
   - ✅ Layer 2: "🛡️ Layer 2: Enable OpenAI Moderation"
   - ✅ Layer 3: "🤖 Layer 3: Custom Rules Configuration"
   - ✅ Notifications: "📧 Daily Digest" and "⚡ Real-time"
+- [x] Simplification: JSON to Form Fields - 2025-10-28
+  - ✅ **Discovery**: Budget alerts are console.log only, not sent to moderators
+  - ✅ Removed bold markdown (**) from labels (literal display issue)
+  - ✅ Replaced built-in rules JSON with 5 simple form fields
+  - ✅ Simplified to just age + karma checks (removed external links)
+  - ✅ Renamed "Built-in Rules" → "New Account Checks"
+  - ✅ Fixed blank field handling: supports zero, negative, and blank (ignore)
+  - ✅ Version 0.1.5 deployed
 - [x] Testing and deployment - 2025-10-28
   - ✅ TypeScript compilation successful
-  - ✅ Built and deployed (version 0.1.3)
+  - ✅ Built and deployed (versions 0.1.3 through 0.1.6)
   - ✅ Settings page displays correctly
 - [x] Documentation updated - 2025-10-28
   - ✅ resume-prompt.md: Added Phases 5.5 & 5.6
   - ✅ project-status.md: Added Phase 5.5 & 5.6 sections (this)
+
+**Phase 5.7: Unified Notification Recipients (NOT STARTED ⏳ - Next Up)**
+- [ ] Problem identified - 2025-10-28
+  - **Issue**: Duplicate recipient configuration across multiple settings groups
+  - Current: Daily digest has recipient selection, real-time has recipient selection
+  - Budget alerts (50%, 75%, 90%) only write to console.log (not sent to mods)
+  - **Proposal**: Single "Send Alerts and Notifications to" setting
+- [ ] Design consolidation - 2025-10-28
+  - Create unified recipient configuration (All Mods / Specific Users)
+  - Single comma-separated username list field
+  - Apply to:
+    - Daily digest notifications
+    - Real-time action notifications
+    - Budget alerts (upgrade from console.log to actual notifications)
+  - Remove duplicate recipient fields from daily/realtime groups
+- [ ] Implementation tasks
+  - [ ] Add unified recipient settings at top of notification section
+  - [ ] Remove duplicate recipient fields from daily digest group
+  - [ ] Remove duplicate recipient fields from real-time group
+  - [ ] Update sendDailyDigest() to use unified settings
+  - [ ] Update sendRealtimeDigest() to use unified settings
+  - [ ] Implement sendBudgetAlert() function (new - currently just console.log)
+  - [ ] Update CostTracker.checkBudgetAlert() to call sendBudgetAlert()
+  - [ ] Test all three notification types with unified recipients
+  - [ ] Update documentation
+  - [ ] Build and deploy (version 0.1.7)
+- [ ] Migration considerations
+  - Existing installations have separate recipient configs
+  - Need to handle migration gracefully (use daily digest recipient as default?)
+  - Document migration path for existing users
 
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27

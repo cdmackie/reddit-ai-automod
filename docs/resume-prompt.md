@@ -1226,3 +1226,58 @@ Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 
 **Status**: Phases 5.5 & 5.6 complete ✅
 **Next**: Test three-layer pipeline on r/AiAutomod, then production deployment
+
+---
+
+### Session 24 (2025-10-28): Phase 5.6 Continued - Simplification & Phase 5.7 Planning
+
+**Achievements**:
+1. ✅ **Phase 5.6 Continued**: Simplification and bug fixes (versions 0.1.3 → 0.1.6)
+   - **Issue discovered**: Bold markdown (** **) showed literally in Devvit (not rendered)
+   - **Fix**: Removed all bold markdown from labels
+   - **User feedback**: "What are the built-in rules exactly?"
+   - **Design change**: Replaced JSON configuration with simple form fields
+   - **Simplification**: Removed external links check, renamed to "New Account Checks"
+   - **Edge case fix**: Support zero, negative karma values; blank = ignore check
+   - **Bug fix**: Changed validation from `> 0` to `!== undefined && !== null`
+   - Deployed versions 0.1.3, 0.1.4, 0.1.5, 0.1.6
+
+2. ✅ **Discovery**: Budget alerts implementation investigation
+   - User question: "We have options like 'Alert at 50% Budget'. Who does it get sent to?"
+   - **Finding**: Budget alerts are **console.log only** (not sent to moderators)
+   - Located in `src/ai/costTracker.ts:501-546`
+   - checkBudgetAlert() only writes to console:
+     - 50% threshold: `console.warn('WARNING: 50% of daily budget used')`
+     - 75% threshold: `console.warn('WARNING: 75% of daily budget used')`
+     - 90% threshold: `console.warn('CRITICAL: 90% of daily budget used')`
+   - **Comment in code**: "future: notify mods" - feature was planned but not implemented
+
+3. ✅ **Phase 5.7 Planning**: Unified notification recipients
+   - **Problem identified**: Duplicate recipient configuration across settings
+   - Current state:
+     - Daily digest has recipient selection + usernames field
+     - Real-time notifications has recipient selection + usernames field
+     - Budget alerts (50%, 75%, 90%) are console.log only
+   - **Proposed solution**: Single "Send Alerts and Notifications to" setting
+     - Unified recipient configuration (All Mods / Specific Users)
+     - Single comma-separated username list
+     - Apply to: Daily digest, Real-time notifications, Budget alerts (upgrade from console.log)
+   - **Implementation tasks documented** in project-status.md
+   - **Migration considerations**: Existing installations have separate recipient configs
+
+**Files Investigated**:
+- src/ai/costTracker.ts (budget alert implementation)
+- src/config/settingsService.ts (settings structure)
+- src/main.tsx (settings UI)
+- src/moderation/pipeline.ts (built-in rules implementation)
+
+**Production Code**: ~12,734 lines (no change - investigation only)
+**Version**: 0.1.6 deployed
+
+**Key Decisions**:
+- Built-in rules simplified from JSON to form fields (age + karma only)
+- Budget alerts need upgrade from console.log to actual notifications
+- Notification recipient settings need consolidation
+
+**Status**: Phase 5.6 complete ✅ | Phase 5.7 documented but NOT STARTED
+**Next**: Implement Phase 5.7 - Unified notification recipients (version 0.1.7)
