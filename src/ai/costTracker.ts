@@ -43,6 +43,8 @@
 
 import { Devvit } from '@devvit/public-api';
 import { AIProviderType, CostRecord, BudgetStatus, SpendingReport } from '../types/ai.js';
+import { SettingsService } from '../config/settingsService.js';
+import { CostDashboardCache } from '../dashboard/costDashboardCache.js';
 
 /**
  * Default cost tracker configuration
@@ -84,6 +86,7 @@ function centsToUSD(cents: number): number {
  */
 export class CostTracker {
   private static instance: CostTracker | null = null;
+  private context: Devvit.Context;
   private redis: Devvit.Context['redis'];
   private config: typeof DEFAULT_CONFIG;
 
@@ -92,6 +95,7 @@ export class CostTracker {
    * Use CostTracker.getInstance() to get instance
    */
   private constructor(context: Devvit.Context) {
+    this.context = context;
     this.redis = context.redis;
     this.config = DEFAULT_CONFIG;
   }
@@ -134,7 +138,10 @@ export class CostTracker {
    */
   public async canAfford(estimatedCost: number): Promise<boolean> {
     const status = await this.getBudgetStatus();
-    const dailyLimitUSD = centsToUSD(this.config.dailyLimitCents);
+
+    // Get daily limit from settings (with fallback to config default)
+    const budgetConfig = await SettingsService.getBudgetConfig(this.context);
+    const dailyLimitUSD = budgetConfig.dailyLimitUSD ?? centsToUSD(this.config.dailyLimitCents);
 
     // Check if adding this cost would exceed daily limit
     const wouldExceed = status.dailySpent + estimatedCost > dailyLimitUSD;
@@ -198,6 +205,9 @@ export class CostTracker {
       // Check for budget alerts after recording cost
       const status = await this.getBudgetStatus();
       this.checkBudgetAlert(status);
+
+      // Invalidate dashboard cache to reflect new costs
+      await CostDashboardCache.invalidateCache(this.context);
     } catch (error) {
       // Log error but don't throw - cost tracking shouldn't break the app
       console.error('Failed to record cost:', error, record);
@@ -250,11 +260,15 @@ export class CostTracker {
         deepseek: centsToUSD(parseInt(deepseekSpent || '0')),
       };
 
+      // Get daily limit from settings (with fallback to config default)
+      const budgetConfig = await SettingsService.getBudgetConfig(this.context);
+      const dailyLimitUSD = budgetConfig.dailyLimitUSD ?? centsToUSD(this.config.dailyLimitCents);
+
       // Calculate remaining budget
-      const dailyRemaining = Math.max(0, centsToUSD(this.config.dailyLimitCents) - dailySpent);
+      const dailyRemaining = Math.max(0, dailyLimitUSD - dailySpent);
 
       // Determine alert level based on percentage of daily budget used
-      const percentUsed = dailySpent / centsToUSD(this.config.dailyLimitCents);
+      const percentUsed = dailySpent / dailyLimitUSD;
       let alertLevel: BudgetStatus['alertLevel'] = 'NONE';
 
       if (percentUsed >= 1.0) {
@@ -268,7 +282,7 @@ export class CostTracker {
       }
 
       return {
-        dailyLimit: centsToUSD(this.config.dailyLimitCents),
+        dailyLimit: dailyLimitUSD,
         dailySpent,
         dailyRemaining,
         monthlySpent,

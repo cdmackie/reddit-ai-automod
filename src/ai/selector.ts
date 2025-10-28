@@ -383,13 +383,13 @@ export class ProviderSelector {
   /**
    * Create provider instance with API key from Secrets Manager
    *
-   * Retrieves API key from Devvit Secrets Manager and creates the
+   * Retrieves API key from Devvit Settings and creates the
    * appropriate provider client instance (Claude, OpenAI, or DeepSeek).
    *
    * API keys are stored in Devvit settings:
-   * - Claude: ANTHROPIC_API_KEY
-   * - OpenAI: OPENAI_API_KEY
-   * - DeepSeek: DEEPSEEK_API_KEY
+   * - Claude: claudeApiKey
+   * - OpenAI: openaiApiKey
+   * - DeepSeek: deepseekApiKey
    *
    * @param type - Provider type to instantiate
    * @returns Promise resolving to provider instance
@@ -409,13 +409,13 @@ export class ProviderSelector {
 
     switch (type) {
       case 'claude':
-        apiKey = await this.context.settings.get('ANTHROPIC_API_KEY');
+        apiKey = await this.context.settings.get('claudeApiKey');
         break;
       case 'openai':
-        apiKey = await this.context.settings.get('OPENAI_API_KEY');
+        apiKey = await this.context.settings.get('openaiApiKey');
         break;
       case 'deepseek':
-        apiKey = await this.context.settings.get('DEEPSEEK_API_KEY');
+        apiKey = await this.context.settings.get('deepseekApiKey');
         break;
     }
 

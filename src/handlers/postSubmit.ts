@@ -18,6 +18,7 @@ import { ModAction } from '../types/storage.js';
 import { PostBuilder } from './postBuilder.js';
 import { executeAction } from '../actions/executor.js';
 import { initializeDefaultRules, isInitialized } from './appInstall.js';
+import { SettingsService } from '../config/settingsService.js';
 
 // Singleton rate limiter shared across all handler invocations
 const rateLimiter = new RateLimiter();
@@ -221,17 +222,25 @@ export async function handlePostSubmit(
   const ruleResult = await rulesEngine.evaluateRules(evalContext);
   const executionTime = Date.now() - startTime;
 
+  // Apply dry-run precedence: Settings OR RuleSet (safety first)
+  const dryRunConfig = await SettingsService.getDryRunConfig(context as Devvit.Context);
+  const effectiveDryRun = dryRunConfig.dryRunMode || ruleResult.dryRun;
+
   console.log(`[PostSubmit] Rule evaluation complete:`, {
     action: ruleResult.action,
     matchedRule: ruleResult.matchedRule,
     confidence: ruleResult.confidence,
-    dryRun: ruleResult.dryRun,
+    dryRun: effectiveDryRun,
+    ruleSetDryRun: ruleResult.dryRun,
+    settingsDryRun: dryRunConfig.dryRunMode,
     executionTime,
   });
 
   // 6. Handle result and audit log
   const metadata = {
-    dryRun: ruleResult.dryRun,
+    dryRun: effectiveDryRun,
+    ruleSetDryRun: ruleResult.dryRun,
+    settingsDryRun: dryRunConfig.dryRunMode,
     aiCost,
     executionTime,
     trustScore: trustScore.totalScore,
@@ -243,7 +252,7 @@ export async function handlePostSubmit(
     ruleResult,
     profile,
     context,
-    dryRun: ruleResult.dryRun,
+    dryRun: effectiveDryRun,
   });
 
   // Log to audit trail
