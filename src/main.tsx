@@ -27,35 +27,12 @@ Devvit.configure({
  * See SettingsService for type-safe access to these settings.
  */
 Devvit.addSettings([
-  // ===== AI Provider Configuration =====
-  {
-    type: 'string',
-    name: 'claudeApiKey',
-    label: 'Claude API Key (Anthropic)',
-    helpText: 'Your Anthropic API key for Claude 3.5 Haiku. Get one at console.anthropic.com. Each subreddit uses their own key.',
-    scope: 'installation',
-  },
-  {
-    type: 'string',
-    name: 'openaiApiKey',
-    label: 'OpenAI API Key',
-    helpText: 'Your OpenAI API key for GPT-4o Mini. Get one at platform.openai.com. Each subreddit uses their own key.',
-    scope: 'installation',
-  },
-  {
-    type: 'string',
-    name: 'deepseekApiKey',
-    label: 'DeepSeek API Key',
-    helpText: 'Your DeepSeek API key for DeepSeek V3 (optional). Get one at platform.deepseek.com. Each subreddit uses their own key.',
-    scope: 'installation',
-  },
-
   // ===== Provider Selection =====
   {
     type: 'select',
     name: 'primaryProvider',
     label: 'Primary AI Provider',
-    helpText: 'Which AI provider to use first (requires API key configured above)',
+    helpText: 'Which AI provider to use first (configure API key below)',
     options: [
       { label: 'Claude 3.5 Haiku (Anthropic)', value: 'claude' },
       { label: 'GPT-4o Mini (OpenAI)', value: 'openai' },
@@ -76,6 +53,29 @@ Devvit.addSettings([
       { label: 'None (no fallback)', value: 'none' },
     ],
     defaultValue: ['openai'],
+    scope: 'installation',
+  },
+
+  // ===== AI Provider API Keys =====
+  {
+    type: 'string',
+    name: 'claudeApiKey',
+    label: 'Claude API Key (Anthropic)',
+    helpText: 'Your Anthropic API key for Claude 3.5 Haiku. Get one at console.anthropic.com. Each subreddit uses their own key.',
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'openaiApiKey',
+    label: 'OpenAI API Key',
+    helpText: 'Your OpenAI API key for GPT-4o Mini. Get one at platform.openai.com. Each subreddit uses their own key.',
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'deepseekApiKey',
+    label: 'DeepSeek API Key',
+    helpText: 'Your DeepSeek API key for DeepSeek V3 (optional). Get one at platform.deepseek.com. Each subreddit uses their own key.',
     scope: 'installation',
   },
 
