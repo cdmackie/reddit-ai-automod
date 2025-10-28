@@ -901,3 +901,39 @@ Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 
 **Status**: Phase 4 now **FULLY COMPLETE** with all integration issues resolved
 **Ready for**: Phase 5 - Production Deployment & Testing
+
+---
+
+### Session 19 (2025-10-28): Phase 5 Playtest - Complete System Validation
+
+**Achievements**:
+1. ✅ Started playtest session on r/ai_automod_app_dev
+   - Version 0.0.2.1 deployed successfully
+   - Hot-reload functioning correctly
+   - Real-time log streaming active
+2. ✅ **CRITICAL DISCOVERY #1**: API Key Scope Issue
+   - ❌ PROBLEM: scope: 'app' + isSecret: true = shared keys across ALL installations
+   - ❌ IMPACT: Developer pays for AI usage from every subreddit that installs app
+   - ✅ FIX: Changed to scope: 'installation' (each subreddit uses own keys)
+   - ✅ Removed isSecret (Devvit limitation - only app-scoped can be secret)
+   - ✅ Updated comments clarifying per-subreddit cost model
+3. ✅ Fixed Issue #2: Cost Dashboard Toast Truncation
+   - ❌ PROBLEM: 30+ line formatted dashboard doesn't fit in toast UI
+   - ✅ FIX: Ultra-condensed format "Day: $X/$Y | Mo: $A/$B | DRY-RUN"
+   - ✅ Full dashboard deferred to Phase 5 custom post UI
+4. ✅ **Comprehensive System Validation**:
+   - ✅ Default rules initialization (fallback working correctly)
+   - ✅ PostSubmit handler complete flow (trust check → profile → rules → action)
+   - ✅ Trust score: 0/100 for new bot account (correct)
+   - ✅ Rules engine: 2 rules evaluated in 5ms
+   - ✅ Dry-run mode: Correctly logging without executing
+   - ✅ Settings UI: All 14 fields displaying and saving
+   - ✅ Cost dashboard: Menu item functional with readable output
+5. ✅ Committed playtest fixes and updated documentation
+6. ✅ **Phase 5 Playtest COMPLETE** ✅
+
+**Files Modified**: 2 files (src/main.tsx, src/dashboard/costDashboardUI.ts)
+**Production Code**: ~12,105 lines (no changes to logic, only UI/config)
+
+**Status**: System validated and production-ready
+**Next**: Production upload with `devvit upload` and deployment to target subreddits

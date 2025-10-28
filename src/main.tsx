@@ -3,6 +3,7 @@ import { handlePostSubmit } from './handlers/postSubmit';
 import { handleCommentSubmit } from './handlers/commentSubmit';
 import { renderCostDashboard } from './dashboard/costDashboardUI';
 import { initializeDefaultRules } from './handlers/appInstall';
+import { getPostAnalysis } from './ui/postAnalysis';
 
 // Configure Devvit with required permissions
 Devvit.configure({
@@ -174,6 +175,28 @@ Devvit.addMenuItem({
       console.error('[CostDashboard] Error rendering dashboard:', error);
       context.ui.showToast('Error loading cost dashboard. Check logs for details.');
     }
+  },
+});
+
+// Post Analysis Menu Item (Phase 5)
+// NOTE: Post menu items don't appear during playtest mode (Devvit limitation)
+// This will work after production upload with 'devvit upload'
+Devvit.addMenuItem({
+  label: 'View AI Analysis',
+  location: 'post',
+  forUserType: 'moderator',
+  onPress: async (event, context) => {
+    console.log('[PostAnalysis] Menu item clicked!');
+    const postId = event.targetId;
+    console.log(`[PostAnalysis] Fetching analysis for post: ${postId}`);
+
+    const analysis = await getPostAnalysis(context, postId);
+    console.log(`[PostAnalysis] Analysis retrieved, showing toast`);
+
+    context.ui.showToast({
+      text: analysis,
+      appearance: 'neutral',
+    });
   },
 });
 

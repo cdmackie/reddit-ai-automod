@@ -1,8 +1,8 @@
 # Project Status
 
 **Last Updated**: 2025-10-28
-**Current Phase**: Phase 4 - Devvit Settings UI & Cost Dashboard (Phase 4 COMPLETE ✅, including Phase 4.6 Integration Fixes)
-**Overall Progress**: 96% (Phases 1, 2, 3, 4 Complete - Ready for Phase 5 Production Deployment)
+**Current Phase**: Phase 5 - Production Deployment & Testing (Playtest COMPLETE ✅)
+**Overall Progress**: 98% (Phases 1, 2, 3, 4 Complete + Phase 5 Playtest Complete - Ready for Production Upload)
 
 ---
 
@@ -332,6 +332,34 @@
   - ✅ No errors in src/ai/selector.ts
   - ✅ Only pre-existing errors in test files and handlers (non-blocking)
 - [x] Documentation updated - 2025-10-28
+
+**Phase 5: Playtest Session (COMPLETE ✅ - 2025-10-28)**
+- [x] Started playtest session on r/ai_automod_app_dev - 2025-10-28
+  - ✅ Version 0.0.2.1 deployed successfully
+  - ✅ Hot-reload functioning
+  - ✅ Real-time log streaming
+- [x] Identified CRITICAL #1: API key scope issue - 2025-10-28
+  - ❌ PROBLEM: scope: 'app' + isSecret: true = shared keys across ALL installations
+  - ❌ IMPACT: Single developer would pay for AI usage from every subreddit
+  - ✅ FIX: Changed to scope: 'installation' (per-subreddit keys)
+  - ✅ Removed isSecret (Devvit limitation - secrets must be app-scoped)
+  - ✅ Updated comments to clarify each subreddit uses own keys
+- [x] Identified Issue #2: Cost dashboard toast truncation - 2025-10-28
+  - ❌ PROBLEM: 30+ line formatted dashboard doesn't fit in toast
+  - ✅ FIX: Ultra-condensed format "Day: $X/$Y | Mo: $A/$B | DRY-RUN"
+  - ✅ Deferred full dashboard to Phase 5 custom post UI
+- [x] Verified all functionality working - 2025-10-28
+  - ✅ Default rules initialization (with fallback)
+  - ✅ PostSubmit handler complete flow
+  - ✅ Trust score calculation (0/100 for new accounts)
+  - ✅ Rules engine evaluation (2 rules, 5ms execution)
+  - ✅ Dry-run mode functioning correctly
+  - ✅ Settings UI displaying all 14 fields correctly
+  - ✅ Cost dashboard menu item functional
+- [x] Committed playtest fixes - 2025-10-28
+  - ✅ Commit: "fix: Phase 5 playtest fixes - settings scope and cost dashboard UI"
+  - ✅ Updated project-status.md
+  - ✅ Updated resume-prompt.md
 
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27
