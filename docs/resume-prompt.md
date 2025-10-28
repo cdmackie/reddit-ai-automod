@@ -5,7 +5,7 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 **Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI/DeepSeek)
 **AI Providers**: Claude 3.5 Haiku (primary), OpenAI gpt-4o-mini (fallback), DeepSeek V3 (testing)
-**Current Phase**: Phase 4 - Devvit Settings UI & Cost Dashboard
+**Current Phase**: Phase 5 - Production Deployment & Testing
 **Phase 1 Status**: COMPLETE ✅
 **Phase 2 Status**: COMPLETE ✅
 **Phase 3 Status**: COMPLETE ✅ (Rules Engine & Actions)
@@ -13,12 +13,13 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - Phase 3.2: Rules Engine Implementation - COMPLETE ✅
   - Phase 3.3: Rules Engine Integration - COMPLETE ✅
   - Phase 3.4: Action Executors - COMPLETE ✅
-**Phase 4 Status**: COMPLETE ✅ (Settings Service + UI + Rule Management + Cost Dashboard)
+**Phase 4 Status**: COMPLETE ✅ (Settings Service + UI + Rule Management + Cost Dashboard + Default Rules Init)
   - Phase 4.1: Settings Service Foundation - COMPLETE ✅
   - Phase 4.2: Devvit Settings UI - COMPLETE ✅
   - Phase 4.3: Rule Management with Schema Validation - COMPLETE ✅
   - Phase 4.4: Cost Dashboard UI - COMPLETE ✅
-**Next**: Phase 5 - Production Deployment & Testing
+  - Phase 4.5: Default Rules Initialization with Atomic Locks - COMPLETE ✅
+**Next**: Phase 5 - Production Deployment & Testing (READY TO START)
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -799,6 +800,61 @@ Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 - Monthly costs use daily costs as placeholder
 - Toast-based display (Phase 5: custom post UI with charts)
 
-**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Engine ✅ | Integration ✅ | Actions ✅ | Security Fixes ✅ | Settings Foundation ✅ | Settings UI ✅ | Rule Management ✅ | **Cost Dashboard ✅** | Production (Next - Phase 5)
+**Status**: Foundation ✅ | User Profiling ✅ | AI Integration ✅ | Rules Engine ✅ | Integration ✅ | Actions ✅ | Security Fixes ✅ | Settings Foundation ✅ | Settings UI ✅ | Rule Management ✅ | Cost Dashboard ✅ | **Default Rules Init ✅** | Production (Next - Phase 5)
 **Ready for**: Phase 5 - Production Deployment & Testing
-**Estimated time to MVP**: ~3-5 days remaining
+**Estimated time to MVP**: ~2-3 days remaining
+
+---
+
+### Session 17 (2025-10-28): Phase 4.5 Complete - Default Rules Initialization
+
+**Achievements**:
+1. ✅ Created appInstall handler (src/handlers/appInstall.ts - 149 lines)
+   - initializeDefaultRules() with atomic Redis locks
+   - getDefaultRuleSetForSubreddit() for subreddit detection
+   - isInitialized() for checking initialization status
+   - Uses Redis SET with NX option for atomic locking
+   - 60-second TTL prevents lock persistence on crashes
+   - Finally block ensures lock always released
+   - Checks existing rules before overwriting (idempotent)
+   - Subreddit-specific defaults: FriendsOver40, FriendsOver50, bitcointaxes
+   - Falls back to global rules for unknown subreddits
+2. ✅ Added AppInstall trigger to main.tsx
+   - Calls initializeDefaultRules() on app installation
+   - Error handling (doesn't throw, logs instead)
+   - PostSubmit has fallback as safety net
+3. ✅ Added fallback initialization check to postSubmit.ts
+   - Checks isInitialized() at start of handler
+   - Calls initializeDefaultRules() if not initialized
+   - Double-check pattern for safety
+   - Continues processing even if initialization fails
+4. ✅ Updated handlers README.md with comprehensive documentation
+   - Documented appInstall handler functions
+   - Initialization flow diagram
+   - Atomic lock strategy explanation
+   - Testing and troubleshooting guides
+   - Redis key documentation
+5. ✅ Updated all project documentation (project-status.md, resume-prompt.md)
+6. ✅ TypeScript compilation verified - No new errors introduced
+7. ✅ **Phase 4.5 COMPLETE** ✅
+
+**Production Code**: ~12,105 lines (+149 lines from Phase 4.5)
+**Files Created**: 1 new file (src/handlers/appInstall.ts)
+**Files Modified**: 3 files (src/main.tsx, src/handlers/postSubmit.ts, src/handlers/README.md)
+
+**Key Features**:
+- Atomic initialization using Redis locks
+- Double-check pattern (AppInstall + PostSubmit fallback)
+- Idempotent design (safe to call multiple times)
+- Subreddit-specific default rulesets
+- Graceful error handling
+
+**Next Session**:
+- Phase 5: Production Deployment & Testing
+- Deploy to test subreddits (r/FriendsOver40, r/FriendsOver50, r/bitcointaxes)
+- Monitor in dry-run mode for 24-48 hours
+- Validate default rules initialization
+- Test all action types (FLAG, REMOVE, COMMENT)
+- Monitor AI costs and performance
+- Collect moderator feedback
+- Enable live actions after validation

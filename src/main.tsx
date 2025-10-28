@@ -2,6 +2,7 @@ import { Devvit } from '@devvit/public-api';
 import { handlePostSubmit } from './handlers/postSubmit';
 import { handleCommentSubmit } from './handlers/commentSubmit';
 import { renderCostDashboard } from './dashboard/costDashboardUI';
+import { initializeDefaultRules } from './handlers/appInstall';
 
 // Configure Devvit with required permissions
 Devvit.configure({
@@ -190,9 +191,24 @@ Devvit.addTrigger({
   onEvent: handleCommentSubmit,
 });
 
+// Handle app installation (initialize default rules)
+Devvit.addTrigger({
+  event: 'AppInstall',
+  onEvent: async (event, context) => {
+    console.log('[AppInstall] App installed, initializing default rules...');
+    try {
+      await initializeDefaultRules(context);
+    } catch (error) {
+      console.error('[AppInstall] Failed to initialize default rules:', error);
+      // Don't throw - let the app continue even if initialization fails
+      // PostSubmit handler has fallback initialization as safety net
+    }
+  },
+});
+
 console.log('[AI Automod] Event handlers registered successfully');
 console.log('[AI Automod] Phase 1: Foundation & Setup');
-console.log('[AI Automod] Monitoring: PostSubmit, CommentSubmit');
+console.log('[AI Automod] Monitoring: PostSubmit, CommentSubmit, AppInstall');
 
 // Export the app
 export default Devvit;

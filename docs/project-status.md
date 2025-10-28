@@ -1,8 +1,8 @@
 # Project Status
 
 **Last Updated**: 2025-10-28
-**Current Phase**: Phase 4 - Devvit Settings UI & Cost Dashboard (Phase 4 COMPLETE ✅)
-**Overall Progress**: 90% (Phases 1, 2, 3, 4 Complete)
+**Current Phase**: Phase 4 - Devvit Settings UI & Cost Dashboard (Phase 4 COMPLETE ✅, including Phase 4.5)
+**Overall Progress**: 95% (Phases 1, 2, 3, 4 Complete - Ready for Phase 5 Production Deployment)
 
 ---
 
@@ -287,6 +287,34 @@
   - ✅ Comprehensive documentation
   - ✅ Security verified (no sensitive data exposed)
 
+**Phase 4.5: Default Rules Initialization with Atomic Locks (COMPLETE ✅ - 2025-10-28)**
+- [x] Created appInstall handler (src/handlers/appInstall.ts - 149 lines) - 2025-10-28
+  - ✅ initializeDefaultRules() - Main initialization logic with atomic locks
+  - ✅ getDefaultRuleSetForSubreddit() - Subreddit detection (case-insensitive)
+  - ✅ isInitialized() - Check initialization status
+  - ✅ Atomic lock using Redis SET with NX option
+  - ✅ 60-second TTL prevents lock persistence on crashes
+  - ✅ Finally block ensures lock always released
+  - ✅ Checks existing rules before overwriting (idempotent)
+  - ✅ Subreddit-specific defaults: FriendsOver40, FriendsOver50, bitcointaxes
+  - ✅ Falls back to global rules for unknown subreddits
+- [x] Added AppInstall trigger to main.tsx - 2025-10-28
+  - ✅ Calls initializeDefaultRules() on app installation
+  - ✅ Error handling (doesn't throw, logs instead)
+  - ✅ PostSubmit has fallback as safety net
+- [x] Added fallback initialization check to postSubmit.ts - 2025-10-28
+  - ✅ Checks isInitialized() at start of handler
+  - ✅ Calls initializeDefaultRules() if not initialized
+  - ✅ Double-check pattern for safety
+  - ✅ Continues processing even if initialization fails
+- [x] Updated handlers README.md - 2025-10-28
+  - ✅ Documented appInstall handler
+  - ✅ Initialization flow diagram
+  - ✅ Atomic lock strategy explanation
+  - ✅ Testing and troubleshooting guides
+  - ✅ Redis key documentation
+- [x] TypeScript compilation verified - No new errors introduced ✅
+
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27
 - [x] Deploy architect-reviewer for design validation - 2025-10-27
@@ -430,13 +458,14 @@ _None currently_
 
 ## Next Steps
 
-### Immediate (Phase 4 - Settings UI & Cost Dashboard) - READY TO START
-1. **Devvit Settings**: Create settings form for API keys and configuration
-2. **Rule Management UI**: Settings for adding/editing rules (JSON format initially)
-3. **Cost Dashboard**: Display daily/monthly AI costs and budget limits
-4. **Dry-Run Toggle**: Settings toggle for dry-run mode
-5. **Default Rules**: Auto-populate default rules on first install
-6. **Testing**: Test settings persistence and updates
+### Immediate (Phase 5 - Production Deployment & Testing) - READY TO START
+1. **Deploy to Test Subreddits**: Install on r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
+2. **Dry-Run Mode Testing**: Monitor logs for 24-48 hours in dry-run mode
+3. **Validate Rules**: Ensure default rules are correctly initialized
+4. **Test All Actions**: FLAG, REMOVE, COMMENT actions in dry-run
+5. **Monitor AI Costs**: Track actual costs vs estimates
+6. **Collect Feedback**: Work with moderators to refine rules
+7. **Enable Live Actions**: Disable dry-run mode after validation
 
 ### Upcoming (Phase 4 & 5)
 1. Phase 4: Mod configuration UI + cost dashboard

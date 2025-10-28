@@ -17,6 +17,7 @@ import { AIQuestionBatchResult } from '../types/ai.js';
 import { ModAction } from '../types/storage.js';
 import { PostBuilder } from './postBuilder.js';
 import { executeAction } from '../actions/executor.js';
+import { initializeDefaultRules, isInitialized } from './appInstall.js';
 
 // Singleton rate limiter shared across all handler invocations
 const rateLimiter = new RateLimiter();
@@ -63,6 +64,20 @@ export async function handlePostSubmit(
     );
     console.log(`[PostSubmit] Post ${postId} flagged successfully`);
     return;
+  }
+
+  // Safety: Initialize default rules if not already done
+  // This handles cases where AppInstall event was missed
+  const initialized = await isInitialized(context as Devvit.Context, subredditName);
+  if (!initialized) {
+    console.log('[PostSubmit] Rules not initialized, initializing now...');
+    try {
+      await initializeDefaultRules(context as Devvit.Context);
+    } catch (error) {
+      console.error('[PostSubmit] Failed to initialize default rules:', error);
+      // Continue processing even if initialization fails
+      // Rules engine will handle missing rules gracefully
+    }
   }
 
   // Initialize profiling services
