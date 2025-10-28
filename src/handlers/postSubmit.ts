@@ -164,7 +164,7 @@ export async function handlePostSubmit(
   const rulesEngine = RulesEngine.getInstance(context as Devvit.Context);
 
   // 3. Check if AI analysis is needed for this subreddit
-  const needsAI = await rulesEngine.needsAIAnalysis(subredditName);
+  const needsAI = await rulesEngine.needsAIAnalysis(subredditName, 'submission');
   let aiAnalysis: AIQuestionBatchResult | undefined;
   let aiCost = 0;
 
@@ -172,7 +172,7 @@ export async function handlePostSubmit(
     console.log(`[PostSubmit] AI analysis required for ${subredditName}`);
 
     // Get required AI questions from rules
-    const aiQuestions = await rulesEngine.getRequiredAIQuestions(subredditName);
+    const aiQuestions = await rulesEngine.getRequiredAIQuestions(subredditName, 'submission');
 
     if (aiQuestions.length > 0) {
       console.log(`[PostSubmit] Running AI analysis with ${aiQuestions.length} questions`);
@@ -226,9 +226,9 @@ export async function handlePostSubmit(
     subreddit: subredditName,
   };
 
-  // 5. Evaluate rules
+  // 5. Evaluate rules with contentType='submission'
   const startTime = Date.now();
-  const ruleResult = await rulesEngine.evaluateRules(evalContext);
+  const ruleResult = await rulesEngine.evaluateRules(evalContext, 'submission');
   const executionTime = Date.now() - startTime;
 
   // Apply dry-run precedence: Settings OR RuleSet (safety first)

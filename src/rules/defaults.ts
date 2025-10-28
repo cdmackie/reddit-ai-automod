@@ -26,6 +26,7 @@ export const FRIENDSOVER40_RULES: RuleSet = {
       type: 'HARD',
       enabled: true,
       priority: 1000,
+      contentType: 'submission',
       subreddit: 'FriendsOver40',
       conditions: {
         field: 'profile.isModerator',
@@ -47,6 +48,7 @@ export const FRIENDSOVER40_RULES: RuleSet = {
       type: 'HARD',
       enabled: true,
       priority: 200,
+      contentType: 'submission',
       subreddit: 'FriendsOver40',
       conditions: {
         field: 'profile.totalKarma',
@@ -69,6 +71,7 @@ export const FRIENDSOVER40_RULES: RuleSet = {
       type: 'HARD',
       enabled: true,
       priority: 150,
+      contentType: 'submission',
       subreddit: 'FriendsOver40',
       conditions: {
         logicalOperator: 'AND',
@@ -106,6 +109,7 @@ export const FRIENDSOVER40_RULES: RuleSet = {
       type: 'AI',
       enabled: true,
       priority: 50,
+      contentType: 'submission',
       subreddit: 'FriendsOver40',
       aiQuestion: {
         id: 'dating_intent_40',
@@ -147,6 +151,7 @@ export const FRIENDSOVER40_RULES: RuleSet = {
       type: 'AI',
       enabled: true,
       priority: 75,
+      contentType: 'submission',
       subreddit: 'FriendsOver40',
       aiQuestion: {
         id: 'scammer_risk_40',
@@ -199,6 +204,7 @@ export const FRIENDSOVER50_RULES: RuleSet = {
       type: 'HARD',
       enabled: true,
       priority: 1000,
+      contentType: 'submission',
       subreddit: 'FriendsOver50',
       conditions: {
         field: 'profile.isModerator',
@@ -220,6 +226,7 @@ export const FRIENDSOVER50_RULES: RuleSet = {
       type: 'HARD',
       enabled: true,
       priority: 200,
+      contentType: 'submission',
       subreddit: 'FriendsOver50',
       conditions: {
         field: 'profile.totalKarma',
@@ -242,6 +249,7 @@ export const FRIENDSOVER50_RULES: RuleSet = {
       type: 'HARD',
       enabled: true,
       priority: 150,
+      contentType: 'submission',
       subreddit: 'FriendsOver50',
       conditions: {
         logicalOperator: 'AND',
@@ -279,6 +287,7 @@ export const FRIENDSOVER50_RULES: RuleSet = {
       type: 'AI',
       enabled: true,
       priority: 50,
+      contentType: 'submission',
       subreddit: 'FriendsOver50',
       aiQuestion: {
         id: 'dating_intent_50',
@@ -320,6 +329,7 @@ export const FRIENDSOVER50_RULES: RuleSet = {
       type: 'AI',
       enabled: true,
       priority: 75,
+      contentType: 'submission',
       subreddit: 'FriendsOver50',
       aiQuestion: {
         id: 'scammer_risk_50',
@@ -372,6 +382,7 @@ export const BITCOINTAXES_RULES: RuleSet = {
       type: 'HARD',
       enabled: true,
       priority: 1000,
+      contentType: 'submission',
       subreddit: 'bitcointaxes',
       conditions: {
         field: 'profile.isModerator',
@@ -393,6 +404,7 @@ export const BITCOINTAXES_RULES: RuleSet = {
       type: 'HARD',
       enabled: true,
       priority: 150,
+      contentType: 'submission',
       subreddit: 'bitcointaxes',
       conditions: {
         logicalOperator: 'AND',
@@ -430,6 +442,7 @@ export const BITCOINTAXES_RULES: RuleSet = {
       type: 'AI',
       enabled: true,
       priority: 100,
+      contentType: 'submission',
       subreddit: 'bitcointaxes',
       aiQuestion: {
         id: 'spam_detection_bt',
@@ -471,6 +484,7 @@ export const BITCOINTAXES_RULES: RuleSet = {
       type: 'AI',
       enabled: true,
       priority: 75,
+      contentType: 'submission',
       subreddit: 'bitcointaxes',
       aiQuestion: {
         id: 'bitcoin_tax_related',
@@ -522,6 +536,7 @@ export const GLOBAL_RULES: RuleSet = {
       type: 'HARD',
       enabled: true,
       priority: 50,
+      contentType: 'submission',
       subreddit: null, // Global rule
       conditions: {
         logicalOperator: 'AND',

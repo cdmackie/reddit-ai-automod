@@ -6,8 +6,22 @@
 
 import { TriggerContext, TriggerEvent, Devvit } from '@devvit/public-api';
 import { AuditLogger } from '../storage/audit';
+import { UserProfileFetcher } from '../profile/fetcher';
+import { PostHistoryAnalyzer } from '../profile/historyAnalyzer';
+import { TrustScoreCalculator } from '../profile/trustScore';
+import { RateLimiter } from '../profile/rateLimiter';
+import { RulesEngine } from '../rules/engine.js';
+import { RuleEvaluationContext } from '../types/rules.js';
+import { AIAnalyzer } from '../ai/analyzer.js';
+import { AIQuestionBatchResult } from '../types/ai.js';
 import { ModAction } from '../types/storage.js';
+import { executeAction } from '../actions/executor.js';
+import { SettingsService } from '../config/settingsService.js';
 import { sendRealtimeDigest } from '../notifications/modmailDigest.js';
+import { CurrentPost } from '../types/profile.js';
+
+// Singleton rate limiter shared across all handler invocations
+const rateLimiter = new RateLimiter();
 
 /**
  * Handle comment submission events
@@ -33,6 +47,7 @@ export async function handleCommentSubmit(
   const auditLogger = new AuditLogger(redis);
 
   const author = comment.authorName || '[deleted]';
+  const userId = comment.authorId;
   const body = comment.body || '';
   const subredditName = comment.subredditName || 'unknown';
 
@@ -40,20 +55,252 @@ export async function handleCommentSubmit(
   console.log(`[CommentSubmit] Subreddit: r/${subredditName}`);
   console.log(`[CommentSubmit] Body preview: ${body.substring(0, 100)}...`);
 
-  // For now, just log that we received the event
-  // In Phase 2, we'll add rule matching and evaluation
+  // Handle deleted or missing author
+  if (!userId || author === '[deleted]') {
+    console.log(`[CommentSubmit] Comment by deleted user, flagging for review`);
+    const auditLog = await auditLogger.log({
+      action: ModAction.FLAG,
+      userId: userId || 'unknown',
+      contentId: commentId,
+      reason: 'Comment by deleted or unknown user',
+    });
+    await sendRealtimeDigest(context as Devvit.Context, auditLog);
+    console.log(`[CommentSubmit] Comment ${commentId} flagged successfully`);
+    return;
+  }
+
+  // Initialize profiling services
+  const profileFetcher = new UserProfileFetcher(redis, reddit, rateLimiter);
+  const historyAnalyzer = new PostHistoryAnalyzer(redis, reddit, rateLimiter);
+  const trustScoreCalc = new TrustScoreCalculator(redis);
+
+  // Fast path: Check if user is already trusted (Redis lookup)
+  const isTrusted = await trustScoreCalc.isTrustedUser(userId, subredditName);
+  if (isTrusted) {
+    console.log(`[CommentSubmit] User ${author} is trusted, auto-approving`);
+    const auditLog = await auditLogger.log({
+      action: ModAction.APPROVE,
+      userId: author,
+      contentId: commentId,
+      reason: 'Trusted user (score >= 70)',
+    });
+    await sendRealtimeDigest(context as Devvit.Context, auditLog);
+    console.log(`[CommentSubmit] Comment ${commentId} processed successfully`);
+    return;
+  }
+
+  console.log(`[CommentSubmit] User ${author} not in trusted cache, fetching profile...`);
+
+  // Fetch profile and history in parallel (with cache)
+  const [profile, history] = await Promise.all([
+    profileFetcher.getUserProfile(userId),
+    historyAnalyzer.getPostHistory(userId, author),
+  ]);
+
+  if (!profile) {
+    console.log(`[CommentSubmit] Could not fetch profile for ${author}`);
+    // Fallback: FLAG for manual review (fail safe)
+    const auditLog = await auditLogger.log({
+      action: ModAction.FLAG,
+      userId: author,
+      contentId: commentId,
+      reason: 'Profile fetch failed, flagged for manual review',
+    });
+    await sendRealtimeDigest(context as Devvit.Context, auditLog);
+    console.log(`[CommentSubmit] Comment ${commentId} flagged for manual review`);
+    return;
+  }
+
+  console.log(
+    `[CommentSubmit] Profile fetched for ${author}: Age=${profile.accountAgeInDays}d, Karma=${profile.totalKarma}`
+  );
+
+  // Calculate trust score
+  const trustScore = await trustScoreCalc.calculateTrustScore(
+    profile,
+    history,
+    subredditName
+  );
+
+  console.log(`[CommentSubmit] Trust score for ${author}: ${trustScore.totalScore}/100`);
+
+  // If trusted now, mark as trusted and approve
+  if (trustScore.isTrusted) {
+    console.log(`[CommentSubmit] User ${author} achieved trusted status`);
+    const auditLog = await auditLogger.log({
+      action: ModAction.APPROVE,
+      userId: author,
+      contentId: commentId,
+      reason: `Trusted user (score: ${trustScore.totalScore}/100)`,
+    });
+    await sendRealtimeDigest(context as Devvit.Context, auditLog);
+    // Increment approved count for next time
+    await trustScoreCalc.incrementApprovedCount(userId, subredditName);
+    console.log(`[CommentSubmit] Comment ${commentId} processed successfully`);
+    return;
+  }
+
+  // Rules engine integration with optional AI analysis
+  console.log(`[CommentSubmit] User ${author} not trusted, evaluating rules...`);
+
+  // 1. Build CurrentPost-compatible object for comments
+  // Note: Comments don't have all fields posts have, provide safe defaults
+  const currentPost: CurrentPost = {
+    title: '', // Comments don't have titles
+    body: body,
+    subreddit: subredditName,
+    type: 'text', // Comments are always text
+    urls: [], // Could extract URLs from body if needed
+    domains: [],
+    wordCount: body.split(/\s+/).filter(Boolean).length,
+    charCount: body.length,
+    bodyLength: body.length,
+    titleLength: 0,
+    hasMedia: false,
+    linkUrl: undefined,
+    isEdited: false, // Comment API doesn't easily expose edit status
+  };
+
+  // 2. Initialize rules engine
+  const rulesEngine = RulesEngine.getInstance(context as Devvit.Context);
+
+  // 3. Check if AI analysis is needed for comments in this subreddit
+  const needsAI = await rulesEngine.needsAIAnalysis(subredditName, 'comment');
+  let aiAnalysis: AIQuestionBatchResult | undefined;
+  let aiCost = 0;
+
+  if (needsAI) {
+    console.log(`[CommentSubmit] AI analysis required for ${subredditName} comments`);
+
+    // Get required AI questions from rules
+    const aiQuestions = await rulesEngine.getRequiredAIQuestions(subredditName, 'comment');
+
+    if (aiQuestions.length > 0) {
+      console.log(`[CommentSubmit] Running AI analysis with ${aiQuestions.length} questions`);
+
+      // Initialize AI analyzer
+      const aiAnalyzer = AIAnalyzer.getInstance(context as Devvit.Context);
+
+      // Build current post data for AI
+      const aiCurrentPost = {
+        title: '', // No title for comments
+        body: currentPost.body,
+        subreddit: currentPost.subreddit,
+      };
+
+      // Run AI analysis
+      const aiResult = await aiAnalyzer.analyzeUserWithQuestions(
+        userId,
+        profile,
+        history,
+        aiCurrentPost,
+        aiQuestions,
+        subredditName,
+        trustScore.totalScore
+      );
+
+      if (aiResult !== null) {
+        aiAnalysis = aiResult;
+        aiCost = aiResult.costUSD;
+        console.log(`[CommentSubmit] AI analysis complete: cost=$${aiCost.toFixed(4)}`);
+      } else {
+        console.warn(
+          `[CommentSubmit] AI analysis failed or budget exceeded - rules will evaluate without AI data`,
+          {
+            subreddit: subredditName,
+            questionsRequested: aiQuestions.length,
+          }
+        );
+        // AI rules will be skipped by rules engine
+      }
+    }
+  } else {
+    console.log(`[CommentSubmit] No AI rules for ${subredditName} comments, skipping AI analysis`);
+  }
+
+  // 4. Build evaluation context
+  const evalContext: RuleEvaluationContext = {
+    profile,
+    postHistory: history,
+    currentPost,
+    aiAnalysis,
+    subreddit: subredditName,
+  };
+
+  // 5. Evaluate rules with contentType='comment'
+  const startTime = Date.now();
+  const ruleResult = await rulesEngine.evaluateRules(evalContext, 'comment');
+  const executionTime = Date.now() - startTime;
+
+  // Apply dry-run precedence: Settings OR RuleSet (safety first)
+  const dryRunConfig = await SettingsService.getDryRunConfig(context as Devvit.Context);
+  const effectiveDryRun = dryRunConfig.dryRunMode || ruleResult.dryRun;
+
+  console.log(`[CommentSubmit] Rule evaluation complete:`, {
+    action: ruleResult.action,
+    matchedRule: ruleResult.matchedRule,
+    confidence: ruleResult.confidence,
+    dryRun: effectiveDryRun,
+    executionTime,
+  });
+
+  // 6. Handle result and audit log
+  const metadata = {
+    dryRun: effectiveDryRun,
+    ruleSetDryRun: ruleResult.dryRun,
+    settingsDryRun: dryRunConfig.dryRunMode,
+    aiCost,
+    executionTime,
+    trustScore: trustScore.totalScore,
+  };
+
+  // Execute the action (pass comment as if it's a post - executeAction handles both)
+  const executionResult = await executeAction({
+    post: comment as any, // Comment API is compatible with Post API for basic fields
+    ruleResult,
+    profile,
+    context,
+    dryRun: effectiveDryRun,
+  });
+
+  // Log to audit trail
+  const auditAction = executionResult.success
+    ? (ruleResult.action === 'APPROVE'
+        ? ModAction.APPROVE
+        : ruleResult.action === 'FLAG'
+          ? ModAction.FLAG
+          : ruleResult.action === 'REMOVE'
+            ? ModAction.REMOVE
+            : ruleResult.action === 'COMMENT'
+              ? ModAction.COMMENT
+              : ModAction.FLAG) // Unknown actions become FLAG in audit
+    : ModAction.FLAG; // Failed actions become FLAG for manual review
+
   const auditLog = await auditLogger.log({
-    action: ModAction.APPROVE,
+    action: auditAction,
     userId: author,
     contentId: commentId,
-    reason: 'Phase 1: Auto-approved (no rules active yet)',
+    reason: executionResult.success
+      ? ruleResult.reason
+      : `Action execution failed: ${executionResult.error || 'Unknown error'}`,
+    ruleId: ruleResult.matchedRule,
+    confidence: ruleResult.confidence,
     metadata: {
+      ...metadata,
+      executionSuccess: executionResult.success,
+      executionError: executionResult.error,
+      executionDetails: executionResult.details,
       bodyPreview: body.substring(0, 200),
     },
   });
 
   // Send realtime digest if enabled
   await sendRealtimeDigest(context as Devvit.Context, auditLog);
+
+  // Increment approved count for successful approvals
+  if (executionResult.success && ruleResult.action === 'APPROVE') {
+    await trustScoreCalc.incrementApprovedCount(userId, subredditName);
+  }
 
   console.log(`[CommentSubmit] Comment ${commentId} processed successfully`);
 }

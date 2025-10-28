@@ -39,12 +39,14 @@ export class RulesEngine {
    *
    * This is the main entry point for rule evaluation. It:
    * 1. Loads rules for the subreddit (including global rules)
-   * 2. Sorts by priority
-   * 3. Evaluates each rule until one matches
-   * 4. Applies dry-run mode if enabled
-   * 5. Returns the appropriate action
+   * 2. Filters rules by content type
+   * 3. Sorts by priority
+   * 4. Evaluates each rule until one matches
+   * 5. Applies dry-run mode if enabled
+   * 6. Returns the appropriate action
    *
    * @param evalContext - The complete evaluation context
+   * @param contentType - Content type being evaluated ('submission' or 'comment')
    * @returns The evaluation result with action, reason, and metadata
    *
    * @example
@@ -56,11 +58,14 @@ export class RulesEngine {
    *   currentPost,
    *   aiAnalysis,
    *   subreddit: 'FriendsOver40'
-   * });
+   * }, 'submission');
    * // Returns: { action: 'FLAG', reason: '...', ... }
    * ```
    */
-  async evaluateRules(evalContext: RuleEvaluationContext): Promise<RuleEvaluationResult> {
+  async evaluateRules(
+    evalContext: RuleEvaluationContext,
+    contentType: 'submission' | 'comment' = 'submission'
+  ): Promise<RuleEvaluationResult> {
     const startTime = Date.now();
 
     try {
@@ -72,16 +77,24 @@ export class RulesEngine {
       const globalRuleSet = await loadRulesFromSettings(this.context, 'global');
       const allRules = [...rules, ...globalRuleSet.rules];
 
-      // 3. Sort by priority (highest first)
-      allRules.sort((a, b) => b.priority - a.priority);
+      // 3. Filter rules by content type
+      const applicableRules = allRules.filter((rule) => {
+        const ruleContentType = rule.contentType || 'submission';
+        // Normalize 'post' to 'submission'
+        const normalizedRuleType = ruleContentType === 'post' ? 'submission' : ruleContentType;
+        return normalizedRuleType === 'any' || normalizedRuleType === contentType;
+      });
 
-      // 4. Check if in dry-run mode from ruleset
+      // 4. Sort by priority (highest first)
+      applicableRules.sort((a, b) => b.priority - a.priority);
+
+      // 5. Check if in dry-run mode from ruleset
       const dryRunMode = ruleSet.dryRunMode ?? true; // Default to safe mode
 
-      // 5. Evaluate each rule
+      // 6. Evaluate each rule
       let rulesEvaluated = 0;
 
-      for (const rule of allRules) {
+      for (const rule of applicableRules) {
         // Skip disabled rules
         if (!rule.enabled) {
           continue;
@@ -216,24 +229,36 @@ export class RulesEngine {
   }
 
   /**
-   * Check if AI analysis is needed for this subreddit
+   * Check if AI analysis is needed for this subreddit and content type
    *
-   * Returns true if any enabled AI rules exist for the subreddit.
+   * Returns true if any enabled AI rules exist for the subreddit and content type.
    * This can be used to skip expensive AI analysis when not needed.
    *
    * @param subreddit - The subreddit name
+   * @param contentType - Content type being evaluated ('submission' or 'comment')
    * @returns true if AI analysis is needed
    */
-  async needsAIAnalysis(subreddit: string): Promise<boolean> {
+  async needsAIAnalysis(
+    subreddit: string,
+    contentType: 'submission' | 'comment' = 'submission'
+  ): Promise<boolean> {
     try {
       const ruleSet = await loadRulesFromSettings(this.context, subreddit);
       const globalRuleSet = await loadRulesFromSettings(this.context, 'global');
       const allRules = [...ruleSet.rules, ...globalRuleSet.rules];
 
-      return allRules.some((rule) => rule.type === 'AI' && rule.enabled);
+      // Filter by content type
+      const applicableRules = allRules.filter((rule) => {
+        const ruleContentType = rule.contentType || 'submission';
+        const normalizedRuleType = ruleContentType === 'post' ? 'submission' : ruleContentType;
+        return normalizedRuleType === 'any' || normalizedRuleType === contentType;
+      });
+
+      return applicableRules.some((rule) => rule.type === 'AI' && rule.enabled);
     } catch (error) {
       console.error('[RulesEngine] Error checking AI analysis need:', {
         subreddit,
+        contentType,
         error: error instanceof Error ? error.message : String(error),
       });
       // Assume we need it if we can't determine
@@ -242,24 +267,33 @@ export class RulesEngine {
   }
 
   /**
-   * Get AI questions needed for this subreddit
+   * Get AI questions needed for this subreddit and content type
    *
    * Returns all unique AI question IDs from enabled AI rules.
    * This can be used to batch AI analysis requests efficiently.
    *
    * @param subreddit - The subreddit name
+   * @param contentType - Content type being evaluated ('submission' or 'comment')
    * @returns Array of AI question objects
    */
   async getRequiredAIQuestions(
-    subreddit: string
+    subreddit: string,
+    contentType: 'submission' | 'comment' = 'submission'
   ): Promise<Array<{ id: string; question: string; context?: string }>> {
     try {
       const ruleSet = await loadRulesFromSettings(this.context, subreddit);
       const globalRuleSet = await loadRulesFromSettings(this.context, 'global');
       const allRules = [...ruleSet.rules, ...globalRuleSet.rules];
 
+      // Filter by content type
+      const applicableRules = allRules.filter((rule) => {
+        const ruleContentType = rule.contentType || 'submission';
+        const normalizedRuleType = ruleContentType === 'post' ? 'submission' : ruleContentType;
+        return normalizedRuleType === 'any' || normalizedRuleType === contentType;
+      });
+
       // Filter to enabled AI rules
-      const aiRules = allRules.filter((rule) => rule.type === 'AI' && rule.enabled);
+      const aiRules = applicableRules.filter((rule) => rule.type === 'AI' && rule.enabled);
 
       // Extract unique questions
       const questionsMap = new Map<
@@ -280,6 +314,7 @@ export class RulesEngine {
     } catch (error) {
       console.error('[RulesEngine] Error getting required AI questions:', {
         subreddit,
+        contentType,
         error: error instanceof Error ? error.message : String(error),
       });
       return [];

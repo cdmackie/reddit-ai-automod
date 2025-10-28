@@ -403,6 +403,46 @@
   - ✅ Confirmed PMs received correctly
   - ✅ Debug logging verified settings and delivery method
 
+**Phase 5.3: Content Type Filtering (COMPLETE ✅ - 2025-10-28)**
+- [x] Added contentType field to BaseRule interface - 2025-10-28
+  - ✅ Optional field: 'submission' | 'post' | 'comment' | 'any'
+  - ✅ Defaults to 'submission' if omitted (backward compatible)
+  - ✅ Both 'post' and 'submission' treated as equivalent
+- [x] Updated schema validator - 2025-10-28
+  - ✅ Validates contentType field values
+  - ✅ Generates warnings for invalid values
+  - ✅ Falls back gracefully to 'submission' default
+- [x] Updated RulesEngine with filtering logic - 2025-10-28
+  - ✅ evaluateRules() accepts contentType parameter
+  - ✅ needsAIAnalysis() filters by contentType
+  - ✅ getRequiredAIQuestions() filters by contentType
+  - ✅ Normalization: 'post' → 'submission' throughout
+  - ✅ Filtering: Only evaluates applicable rules for content type
+- [x] Implemented full rules engine for CommentSubmit - 2025-10-28
+  - ✅ Complete rewrite from stub to full integration (255 lines)
+  - ✅ Trust score checking (fast path for trusted users)
+  - ✅ Profile and history fetching
+  - ✅ CurrentPost-compatible object building for comments
+  - ✅ AI analysis with contentType='comment' filtering
+  - ✅ Rules engine evaluation
+  - ✅ Action execution (FLAG, REMOVE, COMMENT)
+  - ✅ Comprehensive audit logging
+  - ✅ Realtime digest integration
+- [x] Updated all default rules - 2025-10-28
+  - ✅ Added contentType: 'submission' to all 15 default rules
+  - ✅ FriendsOver40, FriendsOver50, bitcointaxes, global rules
+- [x] Testing complete - 2025-10-28
+  - ✅ Posts: Rules engine with contentType='submission' filtering
+  - ✅ Comments: Rules engine with contentType='comment' filtering
+  - ✅ Global spam rule correctly filtered (post-only, didn't trigger for comment)
+  - ✅ AI optimization: No AI calls when no applicable rules
+  - ✅ Real-time digest: Both posts and comments send notifications
+- [x] Documentation updated - 2025-10-28
+  - ✅ README.md updated with contentType examples and cost optimization tips
+  - ✅ Added Example 3: Comment-specific spam rule
+  - ✅ Documented contentType field behavior
+  - ✅ Updated status badges and roadmap
+
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27
 - [x] Deploy architect-reviewer for design validation - 2025-10-27

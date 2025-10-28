@@ -1034,3 +1034,76 @@ Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 
 **Status**: Phase 5.2 complete ✅
 **Next**: Production deployment to target subreddits
+
+---
+
+### Session 22 (2025-10-28): Phase 5.3 Complete - Content Type Filtering Implementation
+
+**Achievements**:
+1. ✅ Added contentType field to BaseRule interface (src/types/rules.ts)
+   - Optional field: 'submission' | 'post' | 'comment' | 'any'
+   - Default: 'submission' (backward compatible)
+   - Both 'post' and 'submission' treated as equivalent
+2. ✅ Updated RuleSchemaValidator (src/rules/schemaValidator.ts)
+   - Added contentType validation (lines 227-234)
+   - Validates against allowed values: submission, post, comment, any
+   - Warns on invalid contentType values
+3. ✅ Updated RulesEngine filtering (src/rules/engine.ts)
+   - evaluateRules() now accepts contentType parameter (defaults to 'submission')
+   - needsAIAnalysis() filters rules by contentType
+   - getRequiredAIQuestions() filters rules by contentType
+   - Normalizes 'post' → 'submission' for consistency
+   - Filtering logic: ruleContentType === 'any' OR ruleContentType === contentType
+4. ✅ **Complete rewrite of CommentSubmit handler** (src/handlers/commentSubmit.ts)
+   - Expanded from 60-line stub to 306-line full implementation
+   - Full trust score checking and caching
+   - Profile fetching and history analysis
+   - Conditional AI analysis for comments (only when AI rules exist for 'comment' contentType)
+   - Rules engine evaluation with contentType='comment'
+   - Action execution using executeAction()
+   - Real-time digest integration
+   - Enhanced audit logging with metadata
+   - Dry-run mode support
+   - **Achieved feature parity with PostSubmit handler**
+5. ✅ Updated all 15 default rules with contentType field (src/rules/defaults.ts)
+   - All rules explicitly set contentType: 'submission'
+   - Global spam rule now only applies to posts (not comments)
+   - Subreddit-specific rules scoped to submissions
+6. ✅ Testing complete on r/AiAutomod
+   - Test 1 (Post): Global spam rule triggered (FLAG action) ✅
+   - Test 2 (Comment): Approved with no matching rules ✅
+   - Test 3 (Comment filtering): Global spam rule did NOT trigger for comment ✅
+   - AI analysis skipped for both (no AI rules configured) ✅
+7. ✅ Updated all documentation
+   - README.md: Updated status (version 0.1.0, progress 99%), added contentType examples, roadmap
+   - project-status.md: Added Phase 5.3 section with implementation details
+   - resume-prompt.md: Added Session 22 summary
+
+**Files Modified**:
+- src/types/rules.ts (added contentType field to BaseRule)
+- src/rules/schemaValidator.ts (added validation for contentType)
+- src/rules/engine.ts (added filtering by contentType in 3 methods)
+- src/handlers/commentSubmit.ts (complete rewrite: 60 → 306 lines, +246 lines)
+- src/handlers/postSubmit.ts (added contentType='submission' parameter)
+- src/rules/defaults.ts (added contentType: 'submission' to all 15 rules)
+- README.md (updated status, examples, roadmap)
+- docs/project-status.md (added Phase 5.3 section)
+
+**Production Code**: ~12,734 lines (+334 lines from Phase 5.3)
+**Version**: 0.1.0 deployed and tested
+
+**Key Features**:
+- Reddit AutoMod-style content type filtering
+- Selective rule application (posts, comments, or both)
+- AI cost optimization (skip AI if no comment-specific AI rules)
+- Backward compatible (defaults to 'submission' if contentType missing)
+- Both 'post' and 'submission' supported as equivalent values
+
+**Testing Results**:
+- ✅ Post processing: Global spam rule correctly flagged short post
+- ✅ Comment processing: Comment approved with no matching rules
+- ✅ Content type filtering: Post-only rules did NOT trigger for comments
+- ✅ AI optimization: AI skipped when no AI rules exist for content type
+
+**Status**: Phase 5.3 complete ✅
+**Next**: Production deployment to target subreddits (r/FriendsOver40, r/FriendsOver50, r/bitcointaxes)

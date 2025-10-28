@@ -115,6 +115,8 @@ export interface BaseRule {
   enabled: boolean;
   /** Rule priority (higher values evaluated first, range: 1-1000) */
   priority: number;
+  /** Content type this rule applies to (defaults to 'submission' if missing) */
+  contentType?: 'submission' | 'post' | 'comment' | 'any';
   /** Subreddit this rule applies to (null = global rule) */
   subreddit?: string | null;
   /** Root condition tree */

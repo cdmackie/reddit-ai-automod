@@ -6,14 +6,14 @@ A Reddit Devvit app that uses AI to analyze new posters and detect problematic u
 
 [![Tests](https://img.shields.io/badge/tests-169%20passing-brightgreen)]()
 [![Coverage](https://img.shields.io/badge/coverage-90%25+-brightgreen)]()
-[![Phase](https://img.shields.io/badge/phase-3.3%20complete-blue)]()
-[![Progress](https://img.shields.io/badge/progress-75%25-blue)]()
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)]()
+[![Progress](https://img.shields.io/badge/progress-99%25-brightgreen)]()
 
 ---
 
 ## 🎯 What It Does
 
-Instead of waiting for bad actors to post harmful content, this app **proactively analyzes new users** when they make their first post. It examines:
+Instead of waiting for bad actors to post harmful content, this app **proactively analyzes new users** when they make their first post or comment. It examines:
 
 - **User Profile**: Account age, karma, email verification status
 - **Post History**: Last 20 posts/comments from ALL subreddits
@@ -29,7 +29,7 @@ Based on configurable rules, the app can:
 
 ## 🚀 Current Status
 
-**Phase 3.3 Complete** (75% to MVP) - Integration & Testing Phase
+**Version 0.1.0** (99% to MVP) - Production Ready
 
 | Component | Status | Details |
 |-----------|--------|---------|
@@ -37,13 +37,18 @@ Based on configurable rules, the app can:
 | User Profiling System | ✅ Complete | Profile fetching, history analysis, trust scoring (0-100) |
 | AI Integration | ✅ Complete | Claude 3.5 Haiku, OpenAI GPT-4o Mini, DeepSeek V3 providers |
 | Rules Engine | ✅ Complete | HardRule + AIRule evaluation, priority-based execution |
-| Rules Integration | ✅ Complete | PostSubmit handler wired to rules engine |
-| Action Executors | 🚧 Next | FLAG, REMOVE, COMMENT actions (Phase 3.4) |
-| Production Testing | ⏳ Upcoming | Integration testing in test subreddit (Phase 3.5) |
+| Content Type Filtering | ✅ Complete | Separate rules for posts, comments, or both |
+| Rules Integration | ✅ Complete | Full rules engine for posts AND comments |
+| Action Executors | ✅ Complete | FLAG, REMOVE, COMMENT actions with dry-run mode |
+| Settings UI | ✅ Complete | Full configuration via Devvit settings |
+| Cost Dashboard | ✅ Complete | Real-time cost tracking and budget monitoring |
+| Real-time Notifications | ✅ Complete | Instant PM/modmail after each action |
+| Production Testing | ✅ Complete | Tested on r/AiAutomod with posts and comments |
 
 **Test Results**: 169 tests passing, 90%+ coverage on critical paths
-**Production Code**: ~10,500 lines TypeScript
+**Production Code**: ~12,700 lines TypeScript
 **Security**: 13 security tests passing (ReDoS, Redis injection, field access controls)
+**Ready for**: Production deployment to target subreddits
 
 ---
 
@@ -77,6 +82,7 @@ Based on configurable rules, the app can:
    - Set confidence thresholds (e.g., >80% = REMOVE, 60-80% = FLAG)
 
 **Rule Features**:
+- **Content Type Filtering**: Specify if rule applies to posts, comments, or both
 - Priority-based execution (highest priority first)
 - Nested AND/OR condition logic
 - Variable substitution in messages (`{username}`, `{confidence}`, `{reason}`)
@@ -111,6 +117,7 @@ Based on configurable rules, the app can:
   "id": "new-account-spam",
   "type": "hard",
   "priority": 100,
+  "contentType": "submission",
   "conditions": {
     "operator": "AND",
     "conditions": [
@@ -137,13 +144,14 @@ Based on configurable rules, the app can:
 }
 ```
 
-### Example 2: AIRule - Dating Intent Detection
+### Example 2: AIRule - Dating Intent Detection (Posts Only)
 
 ```json
 {
   "id": "dating-seeker",
   "type": "ai",
   "priority": 90,
+  "contentType": "submission",
   "aiQuestions": [
     {
       "id": "dating-intent",
@@ -161,6 +169,44 @@ Based on configurable rules, the app can:
   "notifyMods": true
 }
 ```
+
+### Example 3: HardRule - Spam Links in Comments
+
+```json
+{
+  "id": "comment-spam-links",
+  "type": "hard",
+  "priority": 95,
+  "contentType": "comment",
+  "conditions": {
+    "operator": "AND",
+    "conditions": [
+      {
+        "field": "profile.accountAgeDays",
+        "operator": "<",
+        "value": 3
+      },
+      {
+        "field": "currentPost.urls",
+        "operator": "in",
+        "value": [".*"]
+      }
+    ]
+  },
+  "action": "REMOVE",
+  "message": "New accounts cannot post links in comments. Please build karma first.",
+  "notifyMods": false
+}
+```
+
+### Content Type Field
+
+The `contentType` field determines where a rule applies:
+- `"submission"` or `"post"` - Only on posts (default if omitted)
+- `"comment"` - Only on comments
+- `"any"` - Both posts and comments
+
+**Cost Optimization**: Use contentType to avoid expensive AI analysis on content you don't need to check. For example, if you only need to detect dating intent in posts, set `contentType: "submission"` to skip AI calls for comments entirely.
 
 ### Available Fields
 
@@ -360,35 +406,35 @@ npm run test:coverage
 - Differential caching (24-48h TTL)
 - Custom AI questions support
 
-### ✅ Phase 3.1-3.3: Rules Engine (Complete)
+### ✅ Phase 3: Rules Engine & Actions (Complete)
 - HardRule and AIRule type system
 - Condition evaluator (all Reddit AutoMod operators)
 - Variable substitution
 - Redis storage with priority-based execution
 - Default rule sets for 3 target subreddits
 - Security hardening (ReDoS, Redis injection prevention)
-- PostSubmit handler integration
-
-### 🚧 Phase 3.4: Action Executors (In Progress)
-- FLAG implementation (report to mod queue)
-- REMOVE implementation (remove + auto-comment)
-- COMMENT implementation (warn without removing)
-- Variable substitution in messages
+- **Content type filtering** (posts, comments, both)
+- PostSubmit and CommentSubmit handler integration
+- FLAG, REMOVE, COMMENT action executors
 - Dry-run mode support
 
-### ⏳ Phase 4: Mod UI & Configuration (Upcoming)
-- Devvit Settings UI for rule management
-- Cost dashboard
-- Performance metrics
-- Rule testing interface
+### ✅ Phase 4: Settings & Monitoring (Complete)
+- Devvit Settings UI with 14 configuration fields
+- Rule management with JSON schema validation
+- Cost dashboard with real-time tracking
+- Budget limits and alert thresholds
+- Default rules auto-initialization
+- **Real-time digest** (PM/modmail notifications)
+- Full settings integration with ConfigurationManager
 
-### ⏳ Phase 5: Production Deployment (Upcoming)
-- Deploy to r/FriendsOver40 (dry-run mode)
-- Deploy to r/FriendsOver50 (dry-run mode)
-- Deploy to r/bitcointaxes (dry-run mode)
-- Monitor for 24-48 hours
-- Disable dry-run mode after validation
-- Public release announcement
+### ⏳ Phase 5: Production Deployment (Ready)
+- ✅ Complete system testing on r/AiAutomod
+- ⏳ Deploy to r/FriendsOver40 (dry-run mode)
+- ⏳ Deploy to r/FriendsOver50 (dry-run mode)
+- ⏳ Deploy to r/bitcointaxes (dry-run mode)
+- ⏳ Monitor for 24-48 hours
+- ⏳ Disable dry-run mode after validation
+- ⏳ Public release announcement
 
 ---
 

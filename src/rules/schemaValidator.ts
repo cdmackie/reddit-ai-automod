@@ -224,6 +224,15 @@ export class RuleSchemaValidator {
         warnings.push(`${rulePrefix}: 'priority' must be a number (got ${typeof rule.priority})`);
       }
 
+      // Validate contentType (optional, defaults to 'submission')
+      if (rule.contentType !== undefined) {
+        if (!['submission', 'post', 'comment', 'any'].includes(rule.contentType)) {
+          warnings.push(
+            `${rulePrefix}: contentType must be one of: submission, post, comment, any (got '${rule.contentType}')`
+          );
+        }
+      }
+
       // Conditions check (basic structure)
       if (!rule.conditions) {
         warnings.push(`${rulePrefix}: missing 'conditions' field`);
