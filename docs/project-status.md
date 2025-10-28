@@ -638,6 +638,64 @@
 - [x] Documentation updated - 2025-10-28
   - ✅ Updated project-status.md (this file)
 
+**Phase 5.10: Pipeline Action Mapping Fix (COMPLETE ✅ - 2025-10-28)**
+- [x] Bug identification - 2025-10-28
+  - ✅ Error logs showing: "[ActionExecutor] COMMENT action missing comment text"
+  - ✅ Root cause: Pipeline returned reason field but executor expected comment field
+  - ✅ Impact: Layer 1/2 COMMENT and REMOVE actions were failing
+- [x] Implementation - 2025-10-28
+  - ✅ Updated postSubmit.ts (lines 186-203): Added field mapping based on action type
+  - ✅ Updated commentSubmit.ts (lines 186-204): Same field mapping
+  - ✅ Mapping logic:
+    - comment: pipelineResult.action === 'COMMENT' ? pipelineResult.reason : undefined
+    - removalReason: pipelineResult.action === 'REMOVE' ? pipelineResult.reason : undefined
+    - reason: Used for FLAG actions
+- [x] Testing and deployment - 2025-10-28
+  - ✅ TypeScript compilation successful
+  - ✅ Built and deployed (version 0.1.10)
+  - ✅ Verified COMMENT actions no longer failing
+
+**Phase 5.11: Infinite Loop Fix - Bot Self-Detection (COMPLETE ✅ - 2025-10-28)**
+- [x] Problem identification - 2025-10-28
+  - ✅ Critical infinite loop on r/AiAutomod
+  - ✅ Root cause: Bot processing its own COMMENT actions
+  - ✅ Pattern: New user post → Bot comments → CommentSubmit processes bot comment → Bot comments again → loop
+- [x] Implementation - Version 0.1.11 (partial fix) - 2025-10-28
+  - ✅ Added getCurrentUser() API check to skip bot's own content
+  - ✅ Problem: Loop continued, API check not reliable/fast enough
+- [x] Implementation - Version 0.1.12 (full fix) - 2025-10-28
+  - ✅ Added hardcoded username checks as primary defense
+  - ✅ Updated postSubmit.ts (lines 74-84): Check for 'aiautomodapp' or 'AI-Automod-App'
+  - ✅ Updated commentSubmit.ts (lines 73-83): Same hardcoded checks
+  - ✅ Two-tier defense: Hardcoded check (fast) + API check (backup)
+- [x] Testing and deployment - 2025-10-28
+  - ✅ TypeScript compilation successful
+  - ✅ Built and deployed (version 0.1.12)
+  - ✅ Loop stopped - bot no longer processes its own content
+
+**Phase 5.12: User Whitelist for Moderation Bypass (COMPLETE ✅ - 2025-10-28)**
+- [x] Feature request - 2025-10-28
+  - ✅ User requested: "We actually probably also want a whitelist of users who will always be skipped"
+  - ✅ Use cases: Moderators testing, trusted community members, bot accounts
+- [x] Settings UI - 2025-10-28
+  - ✅ Added whitelistedUsernames field to main.tsx (lines 32-40)
+  - ✅ Type: string (comma-separated usernames without u/ prefix)
+  - ✅ Placed at top of settings (before Layer 1)
+  - ✅ Label: "✅ Whitelisted Usernames"
+  - ✅ HelpText clarifies bot account is automatically whitelisted
+- [x] Handler integration - 2025-10-28
+  - ✅ Updated postSubmit.ts (lines 86-95): Check whitelist after bot self-detection
+  - ✅ Updated commentSubmit.ts (lines 85-94): Same whitelist check
+  - ✅ Parsing logic: Split by comma, trim whitespace, filter empty strings
+  - ✅ Case-insensitive matching
+  - ✅ Early return skips ALL moderation layers (1, 2, 3)
+- [x] Testing and deployment - 2025-10-28
+  - ✅ TypeScript compilation successful
+  - ✅ Built and deployed (version 0.1.13)
+  - ✅ Moderators can now add trusted users to bypass moderation
+- [x] Documentation updated - 2025-10-28
+  - ✅ Updated project-status.md (this file)
+
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27
 - [x] Deploy architect-reviewer for design validation - 2025-10-27

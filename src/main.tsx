@@ -29,6 +29,16 @@ Devvit.configure({
  * See SettingsService for type-safe access to these settings.
  */
 Devvit.addSettings([
+  // ===== Whitelist (Bypass All Moderation) =====
+  {
+    type: 'string',
+    name: 'whitelistedUsernames',
+    label: '✅ Whitelisted Usernames',
+    helpText: 'Comma-separated usernames to skip ALL moderation checks (without u/ prefix). Example: mod1, mod2, trusteduser. The bot account is automatically whitelisted.',
+    defaultValue: '',
+    scope: 'installation',
+  },
+
   // ===== Layer 1: New Account Checks (Free & Fast) =====
   {
     type: 'boolean',

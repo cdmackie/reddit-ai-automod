@@ -72,10 +72,26 @@ export async function handlePostSubmit(
   }
 
   // Skip the bot's own posts to prevent infinite loops
-  const currentUser = await reddit.getCurrentUser();
-  if (currentUser && author === currentUser.username) {
+  // Hardcoded check first (fast), then API check as backup
+  if (author === 'aiautomodapp' || author === 'AI-Automod-App') {
     console.log(`[PostSubmit] Skipping bot's own post by u/${author}`);
     return;
+  }
+  const currentUser = await reddit.getCurrentUser();
+  if (currentUser && author === currentUser.username) {
+    console.log(`[PostSubmit] Skipping bot's own post by u/${author} (via API check)`);
+    return;
+  }
+
+  // Check whitelist - skip all moderation for whitelisted users
+  const settings = await context.settings.getAll();
+  const whitelistedUsernames = settings.whitelistedUsernames as string;
+  if (whitelistedUsernames) {
+    const whitelist = whitelistedUsernames.split(',').map(u => u.trim().toLowerCase()).filter(u => u.length > 0);
+    if (whitelist.includes(author.toLowerCase())) {
+      console.log(`[PostSubmit] User ${author} is whitelisted, skipping all moderation`);
+      return;
+    }
   }
 
   // Safety: Initialize default rules if not already done
