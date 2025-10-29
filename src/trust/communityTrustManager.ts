@@ -130,13 +130,14 @@ export class CommunityTrustManager {
    * @param subreddit - Subreddit name
    * @param action - Moderation action taken ('APPROVE', 'FLAG', or 'REMOVE')
    * @param contentType - Type of content ('post' or 'comment')
+   * @returns Object with oldScore, newScore, and delta (all as percentages)
    */
   async updateTrust(
     userId: string,
     subreddit: string,
     action: 'APPROVE' | 'FLAG' | 'REMOVE',
     contentType: 'post' | 'comment'
-  ): Promise<void> {
+  ): Promise<{ oldScore: number; newScore: number; delta: number }> {
     try {
       const key = `trust:community:${userId}:${subreddit}`;
       const trustData = await this.redis.get(key);
@@ -154,6 +155,10 @@ export class CommunityTrustManager {
 
       const stats = contentType === 'post' ? trust.posts : trust.comments;
 
+      // Calculate old approval rate before updating
+      const oldApprovalRate =
+        stats.submitted > 0 ? (stats.approved / stats.submitted) * 100 : 0;
+
       // Update counts
       stats.submitted++;
       if (action === 'APPROVE') {
@@ -163,6 +168,11 @@ export class CommunityTrustManager {
       } else if (action === 'REMOVE') {
         stats.removed++;
       }
+
+      // Calculate new approval rate after updating
+      const newApprovalRate =
+        stats.submitted > 0 ? (stats.approved / stats.submitted) * 100 : 0;
+      const delta = newApprovalRate - oldApprovalRate;
 
       // Update timestamps
       trust.lastActivity = new Date();
@@ -178,12 +188,15 @@ export class CommunityTrustManager {
         `[CommunityTrust] Updated trust for ${userId} in r/${subreddit}: ` +
           `${action} ${contentType} (submitted=${stats.submitted}, approved=${stats.approved})`
       );
+
+      return { oldScore: oldApprovalRate, newScore: newApprovalRate, delta };
     } catch (error) {
       console.error(
         `[CommunityTrust] Error updating trust for user ${userId}:`,
         error
       );
-      // Don't throw - log and continue
+      // Return zero values on error
+      return { oldScore: 0, newScore: 0, delta: 0 };
     }
   }
 
@@ -238,15 +251,18 @@ export class CommunityTrustManager {
    * Decrements the approval count and increments the removal count.
    *
    * @param contentId - Content ID that was removed
+   * @returns Object with oldScore, newScore, and delta, or null if no tracking record exists
    */
-  async retroactiveRemoval(contentId: string): Promise<void> {
+  async retroactiveRemoval(
+    contentId: string
+  ): Promise<{ oldScore: number; newScore: number; delta: number } | null> {
     try {
       const trackingKey = `approved:tracking:${contentId}`;
       const recordData = await this.redis.get(trackingKey);
 
       if (!recordData) {
         // We didn't approve this content, nothing to update
-        return;
+        return null;
       }
 
       const record = JSON.parse(recordData) as ApprovedContentRecord;
@@ -258,7 +274,7 @@ export class CommunityTrustManager {
       if (!trustData) {
         // No trust record found, clean up tracking and return
         await this.redis.del(trackingKey);
-        return;
+        return null;
       }
 
       const trust = JSON.parse(trustData) as CommunityTrust;
@@ -267,9 +283,18 @@ export class CommunityTrustManager {
 
       const stats = contentType === 'post' ? trust.posts : trust.comments;
 
+      // Calculate old approval rate before updating
+      const oldApprovalRate =
+        stats.submitted > 0 ? (stats.approved / stats.submitted) * 100 : 0;
+
       // Undo the approval, add to removed
       stats.approved = Math.max(0, stats.approved - 1);
       stats.removed++;
+
+      // Calculate new approval rate after updating
+      const newApprovalRate =
+        stats.submitted > 0 ? (stats.approved / stats.submitted) * 100 : 0;
+      const delta = newApprovalRate - oldApprovalRate;
 
       trust.lastCalculated = new Date();
 
@@ -280,12 +305,15 @@ export class CommunityTrustManager {
         `[CommunityTrust] Retroactive removal for ${contentType} ${contentId}: ` +
           `user ${userId} in r/${subreddit} - approval count reduced`
       );
+
+      return { oldScore: oldApprovalRate, newScore: newApprovalRate, delta };
     } catch (error) {
       console.error(
         `[CommunityTrust] Error handling retroactive removal for ${contentId}:`,
         error
       );
-      // Don't throw - retroactive updates are best-effort
+      // Return null on error
+      return null;
     }
   }
 

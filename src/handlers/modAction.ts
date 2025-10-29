@@ -125,7 +125,7 @@ export async function handleModAction(
 
       // Update trust score with APPROVE
       const trustManager = new CommunityTrustManager(context as any);
-      await trustManager.updateTrust(authorId, subreddit, 'APPROVE', contentType);
+      const scoreChange = await trustManager.updateTrust(authorId, subreddit, 'APPROVE', contentType);
 
       // Create tracking record so this approval can be undone if later removed
       const trackingKey = `approved:tracking:${contentId}`;
@@ -141,7 +141,7 @@ export async function handleModAction(
       });
 
       console.log(
-        `[ModAction] ✅ Trust score increased for user ${authorId} after mod approval of ${contentType} ${contentId} by u/${moderatorName}`
+        `[ModAction] ✅ Trust score increased for user ${authorId}: ${scoreChange.newScore.toFixed(1)}% (+${scoreChange.delta.toFixed(1)}%) after mod approval of ${contentType} ${contentId} by u/${moderatorName}`
       );
       console.log(
         `[ModAction] Created tracking record for ${contentId} (24h expiry)`
@@ -171,11 +171,14 @@ export async function handleModAction(
 
     // Apply retroactive penalty via CommunityTrustManager
     const trustManager = new CommunityTrustManager(context as any);
-    await trustManager.retroactiveRemoval(contentId);
+    const scoreChange = await trustManager.retroactiveRemoval(contentId);
 
-    console.log(
-      `[ModAction] ✅ Trust score updated for user ${userId} after mod removal of ${contentType} ${contentId} by u/${moderatorName}`
-    );
+    if (scoreChange) {
+      const sign = scoreChange.delta >= 0 ? '+' : '';
+      console.log(
+        `[ModAction] ✅ Trust score updated for user ${userId}: ${scoreChange.newScore.toFixed(1)}% (${sign}${scoreChange.delta.toFixed(1)}%) after mod removal of ${contentType} ${contentId} by u/${moderatorName}`
+      );
+    }
 
     // Clean up tracking record
     await redis.del(trackingKey);
