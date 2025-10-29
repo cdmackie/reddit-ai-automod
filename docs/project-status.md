@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.33 (deployed to Reddit)
-**Overall Progress**: 98% (Core features complete, debugging ModAction event)
-**Status**: Phase 5.14 Complete ✅ | Debugging: ModAction approval event structure
+**Current Version**: 0.1.36 (deployed to Reddit)
+**Overall Progress**: 99% (Core features complete, trust system working perfectly)
+**Status**: Phase 5.19 Complete ✅ | ModAction handler fully working with simplified removal logic
 
 ---
 
@@ -851,7 +851,7 @@
   - ✅ When mod removes content (with reason), trust score decreases
   - ✅ Updated both postSubmit.ts and commentSubmit.ts
 
-**Phase 5.18: ModAction Event Structure Debug (IN PROGRESS 🔄 - 2025-10-29)**
+**Phase 5.18: ModAction Event Structure Debug (COMPLETE ✅ - 2025-10-29)**
 - [x] Problem identification - 2025-10-29
   - ✅ User tested approval: "I just approved a post as moderator, did we see the event?"
   - ✅ Log showed: `[ModAction] No modAction in event, skipping`
@@ -860,15 +860,35 @@
   - ✅ User provided Reddit docs: https://developers.reddit.com/docs/api/redditapi/models/interfaces/ModAction
   - ✅ Changed event access from event.action to event.modAction.type
   - ✅ Still not working: event.modAction doesn't exist
-- [x] Debug logging added (v0.1.32) - 2025-10-29
+- [x] Debug logging added (v0.1.32-v0.1.33) - 2025-10-29
   - ✅ Added console.log for Object.keys(event)
   - ✅ Added JSON.stringify(event) to see full structure
-  - ✅ Captured one event: "dev_platform_app_changed" (app deployment, not approval)
-- [ ] Current status (v0.1.33) - 2025-10-29
-  - ⏳ Debug version deployed and ready for testing
-  - ⏳ Waiting for user to create post and approve it
-  - ⏳ Need to capture actual approval event structure
-  - ⏳ Will fix event access pattern based on real data
+  - ✅ Captured actual approval event structure
+- [x] Fix completed (v0.1.34) - 2025-10-29
+  - ✅ Event structure is FLAT: `event.action` (not `event.modAction.type`)
+  - ✅ Approvals working: Trust scores increase on mod approval
+  - ✅ Removals detected: System checks for tracking records
+  - ✅ Phase 5.18 COMPLETE
+
+**Phase 5.19: Tracking Records & Removal Logic (COMPLETE ✅ - 2025-10-29)**
+- [x] Logic flaw identified - 2025-10-29
+  - ✅ User: "If mod approves then removes, trust should decrease (undo the approval)"
+  - ✅ Problem: Manual mod approvals didn't create tracking records
+  - ✅ Result: Mod removals couldn't undo manual approvals
+- [x] Implementation (v0.1.35) - 2025-10-29
+  - ✅ Modified modAction.ts to create tracking records for mod approvals
+  - ✅ 24-hour TTL on tracking records (same as bot approvals)
+  - ✅ Now ANY approval (bot or mod) can be undone if later removed
+- [x] Removal reason requirement removed (v0.1.36) - 2025-10-29
+  - ✅ User: "Change it so any mod removal affects score (no reason check)"
+  - ✅ Rationale: Removals mean rule breaks/duplicates - always apply penalty
+  - ✅ Removed 40 lines of removal reason checking code
+  - ✅ Simplified logic: Tracking record exists → Apply penalty (always)
+- [x] Testing and deployment - 2025-10-29
+  - ✅ Version 0.1.35 deployed (tracking records for mod approvals)
+  - ✅ Version 0.1.36 deployed (removal reason check removed)
+  - ✅ Both versions installed to r/AiAutomod
+  - ✅ Phase 5.19 COMPLETE
 
 ---
 

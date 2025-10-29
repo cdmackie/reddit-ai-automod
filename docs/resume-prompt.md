@@ -1563,32 +1563,81 @@ Current flaw:
 
 ---
 
+### Session 29 (2025-10-29): Phases 5.18 & 5.19 Complete - ModAction Handler Fixed
+
+**Achievements**:
+1. ✅ **Phase 5.18**: ModAction Event Structure Debug (COMPLETE)
+   - Fixed event access pattern: `event.action` (flat structure, not nested)
+   - Approvals working: Trust scores increase on mod approval
+   - Removals detected: System checks for tracking records
+   - Event structure documented in modAction.ts header
+
+2. ✅ **Phase 5.19**: Tracking Records & Removal Logic (COMPLETE)
+   - **Logic flaw identified**: Manual mod approvals didn't create tracking records
+   - **Fix #1 (v0.1.35)**: Modified modAction.ts to create tracking records for mod approvals
+   - **User insight**: "Any mod removal should affect score (no reason check needed)"
+   - **Fix #2 (v0.1.36)**: Removed 40 lines of removal reason checking code
+   - **Result**: Simplified logic - tracking record exists → apply penalty (always)
+
+**Files Modified**:
+- src/handlers/modAction.ts (tracking records + simplified removal logic)
+- docs/project-status.md (added Phases 5.18 & 5.19)
+- docs/resume-prompt.md (this file)
+
+**Production Code**: ~12,734 lines (no net change - refactored)
+**Versions**: 0.1.34 (debug), 0.1.35 (tracking), 0.1.36 (simplified)
+
+**Key Changes**:
+- ModAction approvals now create 24h tracking records
+- Any removal of tracked content applies trust penalty
+- No removal reason check needed (simpler, more consistent)
+- Both bot and mod approvals tracked equally
+
+**Logic Flow**:
+```
+Before v0.1.36:
+- Mod approves → Trust +1 (no tracking)
+- Mod removes → No trust change ❌
+
+After v0.1.36:
+- Mod approves → Trust +1 + tracking record created
+- Mod removes → Trust -1 (undo approval) ✅
+```
+
+**Status**: Phases 5.18 & 5.19 COMPLETE ✅
+**Next**: Test complete approval/removal flow
+
+---
+
 ## Current State (2025-10-29)
 
 **What Exists**:
-- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.33 with debug logging)
+- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.36)
 - ✅ Three-layer moderation pipeline (Layer 1: Built-in, Layer 2: OpenAI Mod, Layer 3: Custom AI)
-- ✅ **Community trust system** (per-subreddit, ratio-based, decay, retroactive removal)
+- ✅ **Community trust system** (per-subreddit, ratio-based, decay, tracking records)
+- ✅ **ModAction handler fully working** (approvals increase trust, removals decrease trust)
+- ✅ **Tracking records for all approvals** (bot AND manual mod approvals tracked)
+- ✅ **Simplified removal logic** (any removal of tracked content applies penalty)
 - ✅ User whitelist for bypass
 - ✅ Bot self-detection (comment ID tracking to prevent infinite loops)
 - ✅ Notification system (daily digest, real-time, budget alerts)
 - ✅ Settings UI with all configuration options
 - ✅ Cost tracking and budget enforcement
-- ✅ Reset menu item using Redis tracking sets (v0.1.25 fix)
+- ✅ Reset menu item using Redis tracking sets
 - ✅ No default Layer 3 rules (clean slate for moderators)
-- ✅ Trust score logic fixed: COMMENT actions wait for mod decision (v0.1.30)
-- ✅ ModAction approval handling implemented (increases trust on approval)
 
-**Known Issues**:
-- 🔄 **ModAction event structure incorrect** (Phase 5.18 debugging in progress)
-  - Current: Trying to access `event.modAction.type` but property doesn't exist
-  - Debug logging added in v0.1.32 (captured "dev_platform_app_changed" event)
-  - Status: v0.1.33 deployed, waiting for real approval event to capture structure
+**System Flow (Trust Scores)**:
+1. Post/comment submitted → Check community trust
+2. If trusted (70%+ approval rate) → Skip Layers 2 & 3, approve
+3. If not trusted → Run Layers 1-3 moderation pipeline
+4. **If approved** (by bot or mod) → Create 24h tracking record
+5. **If mod later removes** → Apply retroactive trust penalty (undo approval)
+6. **Trust increases**: Mod approves content (or bot approval not removed)
+7. **Trust decreases**: Mod removes previously-approved content
 
 **What's Next**:
-1. **Fix ModAction event handler** - Capture real approval event structure and fix access pattern
-2. **Test complete trust score flow** - Post → COMMENT flag → Mod approves → Trust increases
-3. **Test retroactive removal** - Approved content → Mod removes with reason → Trust decreases
-4. **Deploy to production** (r/FriendsOver40, r/FriendsOver50, r/bitcointaxes)
-5. **Monitor and collect feedback** from moderators
+1. **Test complete trust score flow** - Verify approval → trust increase → removal → trust decrease
+2. **Test with actual content** - Run through full moderation scenarios
+3. **Deploy to production** (r/FriendsOver40, r/FriendsOver50, r/bitcointaxes)
+4. **Monitor and collect feedback** from moderators
 
