@@ -97,6 +97,13 @@ Devvit.addSettings([
     scope: 'installation',
   },
   {
+    type: 'string',
+    name: 'openaiModApiKey',
+    label: '🛡️ OpenAI Moderation API Key',
+    helpText: 'Your OpenAI API key for the Moderation API (free to use, but requires authentication). Can be same as Layer 3 OpenAI key, or separate for different billing/quota tracking. Get one at platform.openai.com.',
+    scope: 'installation',
+  },
+  {
     type: 'select',
     name: 'openaiModCategories',
     label: '🛡️ Moderation Categories',

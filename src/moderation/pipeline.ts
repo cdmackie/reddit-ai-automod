@@ -154,12 +154,14 @@ export async function executeModerationPipeline(
     });
 
     // Get OpenAI API key from settings
+    // Check Layer 2 specific key first, then fall back to Layer 3 OpenAI key
     const settings = await context.settings.getAll();
-    const apiKey = (settings.openaiApiKey as string) || '';
+    const apiKey = (settings.openaiModApiKey as string) || (settings.openaiApiKey as string) || '';
 
     if (!apiKey || apiKey.trim().length === 0) {
-      console.warn('[Pipeline] OpenAI Moderation enabled but no API key', {
+      console.warn('[Pipeline] OpenAI Moderation enabled but no API key configured', {
         correlationId,
+        note: 'Configure openaiModApiKey (Layer 2) or openaiApiKey (Layer 3) in settings',
       });
     } else {
       // Build text to check (title + body for submissions, just body for comments)
