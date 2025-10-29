@@ -168,6 +168,10 @@ export class CommunityTrustManager {
       trust.lastActivity = new Date();
       trust.lastCalculated = new Date();
 
+      // Track this user in the users set for this subreddit (for reset functionality)
+      const usersSetKey = `trust:users:${subreddit}`;
+      await this.redis.zAdd(usersSetKey, { member: userId, score: Date.now() });
+
       await this.redis.set(key, JSON.stringify(trust));
 
       console.log(

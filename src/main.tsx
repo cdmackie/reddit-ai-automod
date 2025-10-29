@@ -369,29 +369,36 @@ Devvit.addMenuItem({
   onPress: async (_event, context) => {
     try {
       console.log('[ResetTrust] Starting community trust reset...');
-      const { redis } = context;
+      const { redis, subredditName } = context;
 
-      // Delete all community trust records
-      const trustKeys = await redis.keys('trust:community:*');
-      console.log(`[ResetTrust] Found ${trustKeys.length} trust records to delete`);
+      // Get all tracked users for this subreddit
+      const usersSetKey = `trust:users:${subredditName}`;
+      const trackedUsers = await redis.zRange(usersSetKey, 0, -1);
+      console.log(`[ResetTrust] Found ${trackedUsers.length} tracked users in r/${subredditName}`);
 
-      for (const key of trustKeys) {
-        await redis.del(key);
+      let trustDeleted = 0;
+      let trackingDeleted = 0;
+
+      // Delete trust records for each user
+      for (const userId of trackedUsers) {
+        const trustKey = `trust:community:${userId.member}:${subredditName}`;
+        await redis.del(trustKey);
+        trustDeleted++;
+
+        // Delete approved content tracking for this user
+        const trackingKey = `approved:tracking:${userId.member}:${subredditName}`;
+        await redis.del(trackingKey);
+        trackingDeleted++;
       }
 
-      // Delete all approved content tracking records
-      const trackingKeys = await redis.keys('approved:tracking:*');
-      console.log(`[ResetTrust] Found ${trackingKeys.length} tracking records to delete`);
+      // Delete the users tracking set itself
+      await redis.del(usersSetKey);
 
-      for (const key of trackingKeys) {
-        await redis.del(key);
-      }
-
-      const totalDeleted = trustKeys.length + trackingKeys.length;
-      console.log(`[ResetTrust] Reset complete: ${totalDeleted} records deleted`);
+      const totalDeleted = trustDeleted + trackingDeleted;
+      console.log(`[ResetTrust] Reset complete: ${trustDeleted} trust records and ${trackingDeleted} tracking records deleted`);
 
       context.ui.showToast({
-        text: `✅ Reset complete! Deleted ${trustKeys.length} trust records and ${trackingKeys.length} tracking records. All users will start fresh.`,
+        text: `✅ Reset complete! Deleted ${trustDeleted} trust records and ${trackingDeleted} tracking records for r/${subredditName}. All users will start fresh.`,
         appearance: 'success',
       });
     } catch (error) {
