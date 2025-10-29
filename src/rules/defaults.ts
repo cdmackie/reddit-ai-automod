@@ -43,22 +43,10 @@ export const BITCOINTAXES_RULES: RuleSet = {
 };
 
 /**
- * Global rules that apply to all subreddits
- * Empty by default - configure via settings UI
- */
-export const GLOBAL_RULES: RuleSet = {
-  subreddit: 'global',
-  dryRunMode: false,
-  updatedAt: Date.now(),
-  rules: [],
-};
-
-/**
  * Default rules map for easy lookup
  */
 export const DEFAULT_RULES: Record<string, RuleSet> = {
   FriendsOver40: FRIENDSOVER40_RULES,
   FriendsOver50: FRIENDSOVER50_RULES,
   bitcointaxes: BITCOINTAXES_RULES,
-  global: GLOBAL_RULES,
 };

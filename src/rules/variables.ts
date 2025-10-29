@@ -11,13 +11,24 @@
  * @module rules/variables
  */
 
-import { RuleEvaluationContext } from '../types/rules.js';
+import { RuleEvaluationContext, Rule } from '../types/rules.js';
 
 /**
  * Variable Substitutor class
  * Replaces {variable} placeholders in strings with actual values from context
  */
 export class VariableSubstitutor {
+  // Current rule being evaluated (for {ai.answer} shorthand access)
+  private currentRule?: Rule;
+
+  /**
+   * Set the current rule being evaluated (for {ai.answer} shorthand access)
+   *
+   * @param rule - The rule being evaluated
+   */
+  setCurrentRule(rule: Rule): void {
+    this.currentRule = rule;
+  }
   /**
    * Substitute variables in a string
    *
@@ -71,6 +82,7 @@ export class VariableSubstitutor {
       'currentPost.',
       'postHistory.',
       'aiAnalysis.',
+      'ai.',  // New shorthand for AI fields
       'subreddit'
     ];
 
@@ -86,7 +98,9 @@ export class VariableSubstitutor {
    * - Profile fields: profile.commentKarma
    * - Post fields: currentPost.title
    * - History fields: postHistory.totalPosts
-   * - AI fields: aiAnalysis.answers.{id}.confidence
+   * - Legacy AI fields: aiAnalysis.answers.{id}.confidence
+   * - New AI shorthand (current rule): ai.answer, ai.confidence, ai.reasoning
+   * - New AI shorthand (other rules): ai.dating_intent.answer, ai.dating_intent.confidence
    *
    * Security features:
    * - Validates field paths against allowed prefixes
@@ -102,6 +116,11 @@ export class VariableSubstitutor {
     if (!this.isAllowedField(fieldPath)) {
       console.error('[VariableSubstitutor] Unauthorized field access attempt:', fieldPath);
       return undefined;
+    }
+
+    // Handle new ai.* field access patterns
+    if (fieldPath.startsWith('ai.') && !fieldPath.startsWith('aiAnalysis.')) {
+      return this.getAIFieldValue(fieldPath, context);
     }
 
     const parts = fieldPath.split('.');
@@ -136,6 +155,60 @@ export class VariableSubstitutor {
     }
 
     return current;
+  }
+
+  /**
+   * Get AI field value using new shorthand syntax
+   *
+   * Supports:
+   * - ai.answer - Current rule's answer
+   * - ai.confidence - Current rule's confidence
+   * - ai.reasoning - Current rule's reasoning
+   * - ai.[questionId].answer - Other rule's answer
+   * - ai.[questionId].confidence - Other rule's confidence
+   * - ai.[questionId].reasoning - Other rule's reasoning
+   *
+   * @param fieldPath - AI field path (e.g., "ai.answer" or "ai.dating_intent.confidence")
+   * @param context - The evaluation context
+   * @returns The field value, or undefined if not found
+   */
+  private getAIFieldValue(fieldPath: string, context: RuleEvaluationContext): any {
+    if (!context.aiAnalysis?.answers) {
+      return undefined;
+    }
+
+    // Pattern 1: ai.answer, ai.confidence, ai.reasoning (current rule)
+    const currentRuleMatch = fieldPath.match(/^ai\.(answer|confidence|reasoning)$/);
+    if (currentRuleMatch) {
+      const [, subfield] = currentRuleMatch;
+
+      // Get current rule's AI question ID
+      const currentAIId = this.currentRule?.type === 'AI'
+        ? (this.currentRule.ai?.id || this.currentRule.aiQuestion?.id)
+        : undefined;
+
+      if (!currentAIId) {
+        console.error('[VariableSubstitutor] {ai.*} shorthand used but no current rule AI ID found');
+        return undefined;
+      }
+
+      // Find answer for this question ID
+      const answer = context.aiAnalysis.answers.find((a) => a.questionId === currentAIId);
+      return answer?.[subfield as 'answer' | 'confidence' | 'reasoning'];
+    }
+
+    // Pattern 2: ai.[questionId].answer, ai.[questionId].confidence, ai.[questionId].reasoning
+    const otherRuleMatch = fieldPath.match(/^ai\.([^.]+)\.(answer|confidence|reasoning)$/);
+    if (otherRuleMatch) {
+      const [, questionId, subfield] = otherRuleMatch;
+
+      // Find answer for this question ID
+      const answer = context.aiAnalysis.answers.find((a) => a.questionId === questionId);
+      return answer?.[subfield as 'answer' | 'confidence' | 'reasoning'];
+    }
+
+    console.error('[VariableSubstitutor] Invalid {ai.*} field path:', fieldPath);
+    return undefined;
   }
 
   /**

@@ -101,22 +101,26 @@ export interface ActionConfig {
 }
 
 /**
- * Base rule interface
+ * Base rule interface (after validation)
  * Common fields for all rule types
+ *
+ * Note: While the JSON schema accepts 'post' | 'comment' | 'all',
+ * internally rules are normalized to 'submission' | 'comment' | 'any'
+ * for backward compatibility with existing code.
  */
 export interface BaseRule {
-  /** Unique rule identifier */
+  /** Unique rule identifier (auto-generated if not provided) */
   id: string;
   /** Human-readable rule name */
   name: string;
-  /** Rule type discriminator */
+  /** Rule type discriminator (auto-deduced from aiQuestion if not provided) */
   type: 'HARD' | 'AI';
-  /** Whether this rule is enabled */
+  /** Whether this rule is enabled (defaults to true) */
   enabled: boolean;
-  /** Rule priority (higher values evaluated first, range: 1-1000) */
+  /** Rule priority (defaults to array index * 10) */
   priority: number;
-  /** Content type this rule applies to (defaults to 'submission' if missing) */
-  contentType?: 'submission' | 'post' | 'comment' | 'any';
+  /** Content type this rule applies to */
+  contentType: 'submission' | 'post' | 'comment' | 'any' | 'all';
   /** Subreddit this rule applies to (null = global rule) */
   subreddit?: string | null;
   /** Root condition tree */
@@ -145,10 +149,19 @@ export interface HardRule extends BaseRule {
  */
 export interface AIRule extends BaseRule {
   type: 'AI';
-  /** AI question this rule depends on */
-  aiQuestion: {
+  /** AI question this rule depends on (legacy - use 'ai' instead) */
+  aiQuestion?: {
     /** Question identifier */
     id: string;
+    /** Natural language question */
+    question: string;
+    /** Optional additional context for the question */
+    context?: string;
+  };
+  /** AI question this rule depends on (new field - auto-generates id if missing) */
+  ai?: {
+    /** Question identifier (optional - auto-generated from question if not provided) */
+    id?: string;
     /** Natural language question */
     question: string;
     /** Optional additional context for the question */
@@ -164,8 +177,13 @@ export type Rule = HardRule | AIRule;
 /**
  * Rule set for a subreddit
  * Contains all rules applicable to a specific subreddit
+ *
+ * Note: While the JSON schema only requires 'rules',
+ * the validator adds these fields for internal use.
  */
 export interface RuleSet {
+  /** Schema version */
+  version?: string;
   /** Subreddit name ('global' for global rules) */
   subreddit: string;
   /** Whether dry-run mode is enabled (log actions but don't execute) */

@@ -22,8 +22,8 @@ import {
   FRIENDSOVER40_RULES,
   FRIENDSOVER50_RULES,
   BITCOINTAXES_RULES,
-  GLOBAL_RULES,
 } from './defaults.js';
+import { randomUUID } from 'crypto';
 
 /**
  * Rule Schema Validator
@@ -148,14 +148,94 @@ export class RuleSchemaValidator {
   }
 
   /**
+   * Deduce rule type from presence of aiQuestion or ai field
+   *
+   * @param rule - Rule object to analyze
+   * @returns 'AI' if rule has aiQuestion or ai, 'HARD' otherwise
+   */
+  private static deduceRuleType(rule: any): 'HARD' | 'AI' {
+    return (rule.aiQuestion || rule.ai) ? 'AI' : 'HARD';
+  }
+
+  /**
+   * Generate a sanitized ID from a question string
+   *
+   * @param question - The question string
+   * @returns A sanitized ID string
+   */
+  private static generateIdFromQuestion(question: string): string {
+    const sanitized = question
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '_')
+      .substring(0, 50);
+
+    return sanitized || `ai_${Date.now()}`;
+  }
+
+  /**
+   * Normalize ai/aiQuestion fields - convert old format to new format internally
+   *
+   * @param rule - Rule object to normalize
+   */
+  private static normalizeAIFields(rule: any): void {
+    // If both ai and aiQuestion exist, ai takes precedence
+    if (rule.ai && rule.aiQuestion) {
+      console.warn('[RuleSchemaValidator] Rule has both "ai" and "aiQuestion" fields, using "ai"');
+      delete rule.aiQuestion;
+    }
+
+    // Convert old aiQuestion to new ai format
+    if (rule.aiQuestion && !rule.ai) {
+      rule.ai = rule.aiQuestion;
+      delete rule.aiQuestion;
+    }
+
+    // Auto-generate id if missing
+    if (rule.ai && !rule.ai.id) {
+      rule.ai.id = this.generateIdFromQuestion(rule.ai.question);
+    }
+
+    // For backward compatibility, also populate aiQuestion from ai
+    // This ensures existing code that reads aiQuestion still works
+    if (rule.ai && !rule.aiQuestion) {
+      rule.aiQuestion = rule.ai;
+    }
+  }
+
+  /**
+   * Normalize contentType value for backward compatibility
+   *
+   * Maps old values to new schema:
+   * - 'submission' → 'post'
+   * - 'any' → 'all'
+   *
+   * @param contentType - Original contentType value
+   * @returns Normalized contentType value
+   */
+  private static normalizeContentType(contentType: string): 'post' | 'comment' | 'all' {
+    if (contentType === 'submission') {
+      return 'post';
+    }
+    if (contentType === 'any') {
+      return 'all';
+    }
+    return contentType as 'post' | 'comment' | 'all';
+  }
+
+  /**
    * Validate against RuleSet schema
    *
    * Performs comprehensive validation of rule structure including:
-   * - Required fields (version, subreddit, rules array)
-   * - Rule structure (id, type, priority, conditions, action)
+   * - Required fields (rules array)
+   * - Rule structure (conditions, action)
    * - Type and action validation
    * - AI question ID uniqueness
    * - Condition structure basic checks
+   * - Auto-generates missing optional fields (id, type, priority, enabled, contentType, etc.)
+   *
+   * The validator accepts a simplified JSON schema but outputs a fully-populated
+   * RuleSet with all internal fields for backward compatibility.
    *
    * @param data - Parsed JSON data
    * @returns ValidationResult with RuleSet or errors/warnings
@@ -171,15 +251,20 @@ export class RuleSchemaValidator {
       };
     }
 
-    // Version check (optional, defaults to 1.0)
+    // Version defaults to 1.0 if missing (no warning)
     if (!data.version) {
-      warnings.push("Missing 'version' field (assuming 1.0)");
       data.version = '1.0';
     }
 
-    // Subreddit check (optional but recommended)
+    // Add internal fields if missing
     if (!data.subreddit) {
-      warnings.push("Missing 'subreddit' field");
+      data.subreddit = 'unknown';
+    }
+    if (data.dryRunMode === undefined) {
+      data.dryRunMode = true; // Safe default
+    }
+    if (!data.updatedAt) {
+      data.updatedAt = Date.now();
     }
 
     // Rules array is required
@@ -195,42 +280,81 @@ export class RuleSchemaValidator {
 
     for (let i = 0; i < data.rules.length; i++) {
       const rule = data.rules[i];
-      const rulePrefix = `Rule ${i} (${rule.id || 'no id'})`;
 
-      // Required fields
+      // Auto-generate id if missing
       if (!rule.id) {
-        warnings.push(`${rulePrefix}: missing 'id' field`);
+        rule.id = randomUUID();
       }
 
+      const rulePrefix = `Rule ${i} (${rule.id})`;
+
+      // Auto-generate name if missing
+      if (!rule.name) {
+        rule.name = `Rule ${i + 1}`;
+      }
+
+      // Normalize ai/aiQuestion fields
+      this.normalizeAIFields(rule);
+
+      // Auto-deduce type if missing
       if (!rule.type) {
-        warnings.push(`${rulePrefix}: missing 'type' field`);
+        rule.type = this.deduceRuleType(rule);
       } else if (!this.VALID_TYPES.includes(rule.type)) {
         warnings.push(
           `${rulePrefix}: invalid 'type' (must be 'HARD' or 'AI', got '${rule.type}')`
         );
       }
 
+      // Auto-default enabled to true if missing
+      if (rule.enabled === undefined || rule.enabled === null) {
+        rule.enabled = true;
+      }
+
+      // Auto-assign priority based on array index if missing
+      if (rule.priority === undefined || rule.priority === null) {
+        rule.priority = i * 10;
+      } else if (typeof rule.priority !== 'number') {
+        warnings.push(`${rulePrefix}: 'priority' must be a number (got ${typeof rule.priority})`);
+      }
+
+      // Normalize and default contentType
+      // Accept: 'post' | 'comment' | 'all' from JSON
+      // Output: 'submission' | 'comment' | 'any' for internal use
+      if (rule.contentType !== undefined) {
+        const normalized = this.normalizeContentType(rule.contentType);
+        // Map to internal values
+        if (normalized === 'post') {
+          rule.contentType = 'submission';
+        } else if (normalized === 'all') {
+          rule.contentType = 'any';
+        } else {
+          rule.contentType = normalized;
+        }
+      } else {
+        // Default to 'any'
+        rule.contentType = 'any';
+      }
+
+      // Add timestamps if missing
+      if (!rule.createdAt) {
+        rule.createdAt = Date.now();
+      }
+      if (!rule.updatedAt) {
+        rule.updatedAt = Date.now();
+      }
+
+      // Subreddit field (optional, for rule-level overrides)
+      if (rule.subreddit === undefined) {
+        rule.subreddit = null;
+      }
+
+      // Validate action (required)
       if (!rule.action) {
         warnings.push(`${rulePrefix}: missing 'action' field`);
       } else if (!this.VALID_ACTIONS.includes(rule.action)) {
         warnings.push(
           `${rulePrefix}: invalid 'action' (must be one of ${this.VALID_ACTIONS.join(', ')}, got '${rule.action}')`
         );
-      }
-
-      if (rule.priority === undefined || rule.priority === null) {
-        warnings.push(`${rulePrefix}: missing 'priority' field`);
-      } else if (typeof rule.priority !== 'number') {
-        warnings.push(`${rulePrefix}: 'priority' must be a number (got ${typeof rule.priority})`);
-      }
-
-      // Validate contentType (optional, defaults to 'submission')
-      if (rule.contentType !== undefined) {
-        if (!['submission', 'post', 'comment', 'any'].includes(rule.contentType)) {
-          warnings.push(
-            `${rulePrefix}: contentType must be one of: submission, post, comment, any (got '${rule.contentType}')`
-          );
-        }
       }
 
       // Conditions check (basic structure)
@@ -263,32 +387,33 @@ export class RuleSchemaValidator {
 
       // AI-specific validation
       if (rule.type === 'AI') {
-        if (!rule.aiQuestion) {
-          warnings.push(`${rulePrefix}: AI rule missing 'aiQuestion' field`);
+        // After normalization, we always have rule.ai populated
+        if (!rule.ai) {
+          warnings.push(`${rulePrefix}: AI rule missing 'ai' field`);
         } else {
-          if (!rule.aiQuestion.id) {
-            warnings.push(`${rulePrefix}: AI rule missing 'aiQuestion.id'`);
+          if (!rule.ai.id) {
+            warnings.push(`${rulePrefix}: AI rule missing 'ai.id' (should have been auto-generated)`);
           } else {
             // Check for duplicate AI question IDs
-            if (aiQuestionIds.has(rule.aiQuestion.id)) {
+            if (aiQuestionIds.has(rule.ai.id)) {
               warnings.push(
-                `${rulePrefix}: duplicate AI question ID '${rule.aiQuestion.id}' (each AI question must have a unique ID)`
+                `${rulePrefix}: duplicate AI question ID '${rule.ai.id}' (each AI question must have a unique ID)`
               );
             }
-            aiQuestionIds.add(rule.aiQuestion.id);
+            aiQuestionIds.add(rule.ai.id);
           }
 
-          if (!rule.aiQuestion.question) {
-            warnings.push(`${rulePrefix}: AI rule missing 'aiQuestion.question'`);
+          if (!rule.ai.question) {
+            warnings.push(`${rulePrefix}: AI rule missing 'ai.question'`);
           }
         }
       }
 
-      // ActionConfig validation
+      // ActionConfig validation and defaults
       if (!rule.actionConfig) {
-        warnings.push(`${rulePrefix}: missing 'actionConfig' field`);
+        rule.actionConfig = { reason: 'Rule matched' };
       } else if (!rule.actionConfig.reason) {
-        warnings.push(`${rulePrefix}: 'actionConfig' missing 'reason' field`);
+        rule.actionConfig.reason = 'Rule matched';
       }
     }
 
@@ -338,7 +463,7 @@ export class RuleSchemaValidator {
  * Get default rule set for a subreddit
  *
  * Returns the appropriate default rule set based on subreddit name.
- * Falls back to global rules if subreddit not recognized.
+ * Falls back to empty rule set if subreddit not recognized.
  *
  * @param subredditName - Subreddit name (case-sensitive)
  * @returns Default RuleSet for the subreddit
@@ -352,7 +477,12 @@ function getDefaultRuleSet(subredditName: string): RuleSet {
     case 'bitcointaxes':
       return BITCOINTAXES_RULES;
     default:
-      return GLOBAL_RULES;
+      return {
+        subreddit: subredditName,
+        dryRunMode: true,
+        updatedAt: Date.now(),
+        rules: [],
+      };
   }
 }
 

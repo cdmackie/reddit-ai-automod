@@ -12,7 +12,7 @@
  * @module rules/evaluator
  */
 
-import { Condition, RuleEvaluationContext, ConditionOperator } from '../types/rules.js';
+import { Condition, RuleEvaluationContext, ConditionOperator, Rule } from '../types/rules.js';
 
 /**
  * Condition Evaluator class
@@ -23,6 +23,18 @@ export class ConditionEvaluator {
   private regexCache: Map<string, RegExp> = new Map();
   private readonly MAX_CACHE_SIZE = 100;
   private readonly MAX_PATTERN_LENGTH = 200;
+
+  // Current rule being evaluated (for ai.answer shorthand access)
+  private currentRule?: Rule;
+
+  /**
+   * Set the current rule being evaluated (for ai.answer shorthand access)
+   *
+   * @param rule - The rule being evaluated
+   */
+  setCurrentRule(rule: Rule): void {
+    this.currentRule = rule;
+  }
 
   /**
    * Evaluate a condition (supports nested AND/OR logic)
@@ -136,6 +148,7 @@ export class ConditionEvaluator {
       'currentPost.',
       'postHistory.',
       'aiAnalysis.',
+      'ai.',  // New shorthand for AI fields
       'subreddit'
     ];
 
@@ -150,7 +163,9 @@ export class ConditionEvaluator {
    * Supports:
    * - Simple paths: "profile.commentKarma"
    * - Nested paths: "currentPost.body"
-   * - Array lookups for AI answers: "aiAnalysis.answers.dating_intent.confidence"
+   * - Legacy AI answers: "aiAnalysis.answers.dating_intent.confidence"
+   * - New AI shorthand (current rule): "ai.answer", "ai.confidence", "ai.reasoning"
+   * - New AI shorthand (other rules): "ai.dating_intent.answer", "ai.dating_intent.confidence"
    *
    * Security features:
    * - Validates field paths against allowed prefixes
@@ -164,7 +179,8 @@ export class ConditionEvaluator {
    * @example
    * ```typescript
    * getFieldValue('profile.commentKarma', context); // Returns: 1500
-   * getFieldValue('aiAnalysis.answers.q_dating.confidence', context); // Returns: 85
+   * getFieldValue('ai.answer', context); // Returns: "YES" (current rule's answer)
+   * getFieldValue('ai.dating_intent.confidence', context); // Returns: 85 (other rule's answer)
    * getFieldValue('__proto__.polluted', context); // Returns: undefined (blocked)
    * ```
    */
@@ -173,6 +189,11 @@ export class ConditionEvaluator {
     if (!this.isAllowedField(fieldPath)) {
       console.error('[ConditionEvaluator] Unauthorized field access attempt:', fieldPath);
       return undefined;
+    }
+
+    // Handle new ai.* field access patterns
+    if (fieldPath.startsWith('ai.') && !fieldPath.startsWith('aiAnalysis.')) {
+      return this.getAIFieldValue(fieldPath, context);
     }
 
     const parts = fieldPath.split('.');
@@ -207,6 +228,60 @@ export class ConditionEvaluator {
     }
 
     return current;
+  }
+
+  /**
+   * Get AI field value using new shorthand syntax
+   *
+   * Supports:
+   * - ai.answer - Current rule's answer
+   * - ai.confidence - Current rule's confidence
+   * - ai.reasoning - Current rule's reasoning
+   * - ai.[questionId].answer - Other rule's answer
+   * - ai.[questionId].confidence - Other rule's confidence
+   * - ai.[questionId].reasoning - Other rule's reasoning
+   *
+   * @param fieldPath - AI field path (e.g., "ai.answer" or "ai.dating_intent.confidence")
+   * @param context - The evaluation context
+   * @returns The field value, or undefined if not found
+   */
+  private getAIFieldValue(fieldPath: string, context: RuleEvaluationContext): any {
+    if (!context.aiAnalysis?.answers) {
+      return undefined;
+    }
+
+    // Pattern 1: ai.answer, ai.confidence, ai.reasoning (current rule)
+    const currentRuleMatch = fieldPath.match(/^ai\.(answer|confidence|reasoning)$/);
+    if (currentRuleMatch) {
+      const [, subfield] = currentRuleMatch;
+
+      // Get current rule's AI question ID
+      const currentAIId = this.currentRule?.type === 'AI'
+        ? (this.currentRule.ai?.id || this.currentRule.aiQuestion?.id)
+        : undefined;
+
+      if (!currentAIId) {
+        console.error('[ConditionEvaluator] ai.* shorthand used but no current rule AI ID found');
+        return undefined;
+      }
+
+      // Find answer for this question ID
+      const answer = context.aiAnalysis.answers.find((a) => a.questionId === currentAIId);
+      return answer?.[subfield as 'answer' | 'confidence' | 'reasoning'];
+    }
+
+    // Pattern 2: ai.[questionId].answer, ai.[questionId].confidence, ai.[questionId].reasoning
+    const otherRuleMatch = fieldPath.match(/^ai\.([^.]+)\.(answer|confidence|reasoning)$/);
+    if (otherRuleMatch) {
+      const [, questionId, subfield] = otherRuleMatch;
+
+      // Find answer for this question ID
+      const answer = context.aiAnalysis.answers.find((a) => a.questionId === questionId);
+      return answer?.[subfield as 'answer' | 'confidence' | 'reasoning'];
+    }
+
+    console.error('[ConditionEvaluator] Invalid ai.* field path:', fieldPath);
+    return undefined;
   }
 
   /**

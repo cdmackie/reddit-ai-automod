@@ -112,6 +112,10 @@ export class RulesEngine {
         }
 
         try {
+          // Set current rule for ai.* field access in both evaluator and substitutor
+          this.evaluator.setCurrentRule(rule);
+          this.substitutor.setCurrentRule(rule);
+
           // Evaluate condition
           const matched = this.evaluator.evaluate(rule.conditions, evalContext);
 
@@ -208,8 +212,8 @@ export class RulesEngine {
   private getConfidence(rule: Rule, context: RuleEvaluationContext): number {
     // For AI rules, extract confidence from AI answer
     if (rule.type === 'AI' && context.aiAnalysis) {
-      // Find the AI question this rule depends on
-      const questionId = rule.aiQuestion?.id;
+      // Find the AI question this rule depends on (check both ai and aiQuestion)
+      const questionId = rule.ai?.id || rule.aiQuestion?.id;
 
       if (questionId && context.aiAnalysis.answers) {
         // Find the answer for this question
@@ -302,10 +306,14 @@ export class RulesEngine {
       >();
 
       for (const rule of aiRules) {
-        if (rule.type === 'AI' && rule.aiQuestion) {
-          const { id, question, context } = rule.aiQuestion;
-          if (!questionsMap.has(id)) {
-            questionsMap.set(id, { id, question, context });
+        if (rule.type === 'AI') {
+          // Use ai field if present, otherwise fall back to aiQuestion
+          const aiData = rule.ai || rule.aiQuestion;
+          if (aiData && aiData.id) {
+            const { id, question, context } = aiData;
+            if (!questionsMap.has(id)) {
+              questionsMap.set(id, { id, question, context });
+            }
           }
         }
       }
