@@ -35,6 +35,30 @@ export async function handlePostSubmit(
 ): Promise<void> {
   const { reddit, redis } = context;
 
+  // Check if community trust reset is requested (for immediate reset on activity)
+  try {
+    const settings = await context.settings.getAll();
+    const resetRequested = settings.resetCommunityTrust === true || settings.resetCommunityTrust === 'true';
+
+    if (resetRequested) {
+      console.log('[ResetTrust] Reset requested, performing immediate reset...');
+      const trustKeys = await redis.keys('trust:community:*');
+      const trackingKeys = await redis.keys('approved:tracking:*');
+
+      for (const key of [...trustKeys, ...trackingKeys]) {
+        await redis.del(key);
+      }
+
+      const totalDeleted = trustKeys.length + trackingKeys.length;
+      console.log(`[ResetTrust] Deleted ${totalDeleted} records (${trustKeys.length} trust, ${trackingKeys.length} tracking)`);
+
+      await context.settings.set('resetCommunityTrust', false);
+      console.log('[ResetTrust] Toggle reset to OFF');
+    }
+  } catch (error) {
+    console.error('[ResetTrust] Error during reset:', error);
+  }
+
   // Get post from event (type guard for TriggerEvent union)
   if (!('post' in event) || !event.post) {
     console.error('[PostSubmit] No post in event');
