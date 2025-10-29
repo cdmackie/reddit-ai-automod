@@ -82,7 +82,7 @@ approved:tracking:{contentId} → ApprovedContentRecord (24h TTL)
 
 **Thresholds:**
 - Minimum approval rate: **70%**
-- Minimum submissions: **3** (updated from 10 based on user feedback)
+- Minimum submissions: **3 for posts, 2 for comments** (updated from 10 based on user feedback)
 - Decay rate: **-5% per month** of inactivity
 
 **Formula:**
@@ -95,17 +95,24 @@ monthsInactive = getMonthsSince(lastActivity)
 decayAmount = monthsInactive * 5
 approvalRate = Math.max(0, approvalRate - decayAmount)
 
-// Step 3: Check if trusted
-isTrusted = (submitted >= 3) && (approvalRate >= 70)
+// Step 3: Check if trusted (different thresholds for posts vs comments)
+minSubmissions = contentType === 'post' ? 3 : 2
+isTrusted = (submitted >= minSubmissions) && (approvalRate >= 70)
 ```
 
-**Examples:**
+**Examples (Posts - 3 minimum):**
 - 3 posts, 3 approved = 100% ✅ TRUSTED
 - 3 posts, 2 approved, 1 flagged = 67% ❌ NOT TRUSTED
 - 4 posts, 3 approved, 1 flagged = 75% ✅ TRUSTED
 - 10 posts, 7 approved, 3 flagged = 70% ✅ TRUSTED
 - 2 posts, 2 approved = 100% but < 3 minimum ❌ NOT TRUSTED
 - 5 posts, 4 approved, 3 months inactive = 80% - 15% = 65% ❌ NOT TRUSTED
+
+**Examples (Comments - 2 minimum):**
+- 2 comments, 2 approved = 100% ✅ TRUSTED
+- 2 comments, 1 approved, 1 flagged = 50% ❌ NOT TRUSTED
+- 3 comments, 2 approved, 1 flagged = 67% ❌ NOT TRUSTED
+- 1 comment, 1 approved = 100% but < 2 minimum ❌ NOT TRUSTED
 
 ### 3. Flow Changes
 
@@ -179,7 +186,9 @@ async getTrust(userId, subreddit, contentType) {
     (stats.approved / stats.submitted) * 100 - decayAmount
   );
 
-  const isTrusted = stats.submitted >= 3 && approvalRate >= 70;
+  // Different thresholds for posts vs comments
+  const minSubmissions = contentType === 'post' ? 3 : 2;
+  const isTrusted = stats.submitted >= minSubmissions && approvalRate >= 70;
 
   return { isTrusted, approvalRate, submissions: stats.submitted, ... };
 }
@@ -426,25 +435,17 @@ If community trust causes issues:
 
 ---
 
-## Open Questions
+## Decisions Made
 
-1. **ModAction removal reason:** Since we can't access removal reason, should we:
-   - Count ALL mod removals? (Current plan)
-   - Only count SPAM removals (harsher penalty)?
-   - Skip ModAction, use hourly audit instead?
+1. **ModAction removal tracking:** ✅ Use ModAction event + fetch post to check for removal reason/mod comment. If no reason given, skip penalty. (See implementation in Component 2)
 
-2. **Decay rate:** -5% per month appropriate, or should it be:
-   - Higher (e.g., -10%/month for faster reset)?
-   - Lower (e.g., -2%/month for seasonal posters)?
-   - None (hard reset at 6 months)?
+2. **Decay rate:** ✅ -5% per month of inactivity (monitor and adjust if needed)
 
-3. **Minimum submissions:** 10 posts seems high for low-traffic subs. Should it be:
-   - Configurable per subreddit?
-   - Based on sub activity (e.g., 1% of monthly posts)?
+3. **Minimum submissions:** ✅ Posts: 3 minimum, Comments: 2 minimum
 
-4. **Cross-subreddit trust:** Should trust in r/FriendsOver40 give partial trust in r/FriendsOver50 (sister communities)?
+4. **Cross-subreddit trust:** ⏸️ Deferred to Phase 5.15. Will implement as configurable "sister subreddits" setting.
 
-5. **Comments vs Posts:** Should comments require lower threshold (e.g., 5 approved comments vs 10 posts)?
+5. **Comments vs Posts:** ✅ Comments require 2 minimum (lower threshold than posts' 3 minimum)
 
 ---
 

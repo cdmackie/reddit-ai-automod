@@ -16,7 +16,8 @@ class CommunityTrustManager {
   private redis: MockRedis;
   private config = {
     minApprovalRate: 70,
-    minSubmissions: 3,  // Updated from 10 to 3
+    minSubmissionsPost: 3,
+    minSubmissionsComment: 2,  // Lower threshold for comments
     decayRatePerMonth: 5,
   };
 
@@ -52,16 +53,19 @@ class CommunityTrustManager {
     const decayAmount = monthsInactive * this.config.decayRatePerMonth;
     const approvalRate = Math.max(0, rawApprovalRate - decayAmount);
 
-    // Check if trusted
+    // Check if trusted (different thresholds for posts vs comments)
+    const minSubmissions = contentType === 'post'
+      ? this.config.minSubmissionsPost
+      : this.config.minSubmissionsComment;
     const isTrusted =
-      stats.submitted >= this.config.minSubmissions &&
+      stats.submitted >= minSubmissions &&
       approvalRate >= this.config.minApprovalRate;
 
     return {
       isTrusted,
       approvalRate,
       submissions: stats.submitted,
-      reason: isTrusted ? 'Trusted contributor' : this.getReason(stats, approvalRate),
+      reason: isTrusted ? 'Trusted contributor' : this.getReason(stats, approvalRate, contentType),
       monthsInactive,
       decayApplied: decayAmount,
     };
@@ -139,9 +143,13 @@ class CommunityTrustManager {
     return Math.max(0, months);
   }
 
-  private getReason(stats: any, approvalRate: number): string {
-    if (stats.submitted < this.config.minSubmissions) {
-      return `Need ${this.config.minSubmissions - stats.submitted} more submissions`;
+  private getReason(stats: any, approvalRate: number, contentType: 'post' | 'comment'): string {
+    const minSubmissions = contentType === 'post'
+      ? this.config.minSubmissionsPost
+      : this.config.minSubmissionsComment;
+
+    if (stats.submitted < minSubmissions) {
+      return `Need ${minSubmissions - stats.submitted} more submissions`;
     }
     if (approvalRate < this.config.minApprovalRate) {
       return `Approval rate ${approvalRate.toFixed(1)}% below ${this.config.minApprovalRate}%`;
