@@ -1,10 +1,10 @@
 # Project Status
 
 **Last Updated**: 2025-10-29
-**Current Phase**: Phase 5 - Refinement & Optimization (Phase 5.14 Complete)
-**Current Version**: 0.1.24 (deployed to Reddit)
-**Overall Progress**: 98% (Core features complete, architectural refinement in progress)
-**Status**: Phase 5.13 COMPLETE ✅ | Phase 5.14 PLANNING (awaiting approval)
+**Current Phase**: Phase 5 - Refinement & Optimization
+**Current Version**: 0.1.33 (deployed to Reddit)
+**Overall Progress**: 98% (Core features complete, debugging ModAction event)
+**Status**: Phase 5.14 Complete ✅ | Debugging: ModAction approval event structure
 
 ---
 
@@ -807,6 +807,68 @@
   - ✅ Removed two-flag reset logic from postSubmit.ts (35 lines removed)
   - ✅ Removed two-flag reset logic from commentSubmit.ts (35 lines removed)
   - ✅ Provides immediate action with clear feedback
+
+**Phase 5.15: Redis API Fix for Reset Menu (COMPLETE ✅ - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User reported: "Clicking the reset scores menu gives '❌ Error resetting trust scores. Check logs for details.'"
+  - ✅ Root cause: `TypeError: redis.keys is not a function` - Devvit Redis doesn't support `keys()` method
+  - ✅ Devvit only supports: set, get, del, zAdd, zRange, zRem, hSet, hGet, hDel
+- [x] Implementation (v0.1.25) - 2025-10-29
+  - ✅ Implemented user tracking system using Redis sorted sets
+  - ✅ Modified CommunityTrustManager to track users via zAdd() when updating trust
+  - ✅ Modified main.tsx reset menu to use zRange() to iterate tracked users
+  - ✅ Reset now deletes individual keys via del() instead of using keys()
+  - ✅ User confirmed understanding of correct Redis API methods
+
+**Phase 5.16: Infinite Loop Fix - Comment ID Tracking (COMPLETE ✅ - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User reported: "I posted from cdm9002 to the sub, it looks like it is stuck in an infinite loop again"
+  - ✅ Root cause: Bot was processing its own comments because getCurrentUser() returns developer account, not bot account
+  - ✅ Two accounts: u/aiautomodapp (developer) and u/ai-automod-app (app bot)
+  - ✅ Bot detection via username comparison wasn't working
+- [x] Failed approaches (v0.1.26-0.1.28) - 2025-10-29
+  - ❌ Case-insensitive username comparison - still looped
+  - ❌ Hardcoded pattern matching rejected by user: "Do not hard code names in there"
+- [x] Proper fix (v0.1.29) - 2025-10-29
+  - ✅ Implemented comment ID tracking system
+  - ✅ Modified executor.ts: Save comment ID to Redis with 1-minute expiration when posting
+  - ✅ Modified commentSubmit.ts: Check if comment ID exists in Redis, skip if found
+  - ✅ Self-cleaning (automatic expiration after 1 minute)
+  - ✅ No hardcoded usernames or patterns
+  - ✅ Works regardless of account structure
+
+**Phase 5.17: Trust Score Update Logic Fix (COMPLETE ✅ - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User asked: "Now, if I approve the post, do we pick that up and increase the score?"
+  - ✅ Two problems discovered:
+    1. COMMENT actions were incorrectly treated as REMOVE, immediately decreasing trust
+    2. ModAction handler only handled removals, not approvals
+- [x] Implementation (v0.1.30) - 2025-10-29
+  - ✅ Fixed trust action mapping: COMMENT actions now return null (wait for mod decision)
+  - ✅ Only APPROVE, FLAG, and REMOVE actions update trust scores
+  - ✅ Added ModAction approval handling (approvelink, approvecomment)
+  - ✅ When mod approves content, trust score increases
+  - ✅ When mod removes content (with reason), trust score decreases
+  - ✅ Updated both postSubmit.ts and commentSubmit.ts
+
+**Phase 5.18: ModAction Event Structure Debug (IN PROGRESS 🔄 - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User tested approval: "I just approved a post as moderator, did we see the event?"
+  - ✅ Log showed: `[ModAction] No modAction in event, skipping`
+  - ✅ Event structure incorrect: accessing event.modAction.type but property doesn't exist
+- [x] Initial fix attempt (v0.1.31) - 2025-10-29
+  - ✅ User provided Reddit docs: https://developers.reddit.com/docs/api/redditapi/models/interfaces/ModAction
+  - ✅ Changed event access from event.action to event.modAction.type
+  - ✅ Still not working: event.modAction doesn't exist
+- [x] Debug logging added (v0.1.32) - 2025-10-29
+  - ✅ Added console.log for Object.keys(event)
+  - ✅ Added JSON.stringify(event) to see full structure
+  - ✅ Captured one event: "dev_platform_app_changed" (app deployment, not approval)
+- [ ] Current status (v0.1.33) - 2025-10-29
+  - ⏳ Debug version deployed and ready for testing
+  - ⏳ Waiting for user to create post and approve it
+  - ⏳ Need to capture actual approval event structure
+  - ⏳ Will fix event access pattern based on real data
 
 ---
 

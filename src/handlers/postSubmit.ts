@@ -72,7 +72,7 @@ export async function handlePostSubmit(
     return;
   }
 
-  // Skip the bot's own posts to prevent infinite loops
+  // Skip posts by the developer account (bot doesn't create posts, only comments)
   const currentUser = await reddit.getCurrentUser();
   if (currentUser && author.toLowerCase() === currentUser.username.toLowerCase()) {
     console.log(`[PostSubmit] Skipping bot's own post by u/${author}`);
@@ -239,17 +239,23 @@ export async function handlePostSubmit(
       const trustManager = new CommunityTrustManager(context as Devvit.Context);
 
       // Map action to trust action
-      let trustAction: 'APPROVE' | 'FLAG' | 'REMOVE';
+      // COMMENT actions should NOT update trust - wait for moderator decision
+      let trustAction: 'APPROVE' | 'FLAG' | 'REMOVE' | null = null;
       if (pipelineResult.action === 'APPROVE') {
         trustAction = 'APPROVE';
       } else if (pipelineResult.action === 'FLAG') {
         trustAction = 'FLAG';
-      } else {
+      } else if (pipelineResult.action === 'REMOVE') {
         trustAction = 'REMOVE';
       }
+      // COMMENT action results in trustAction = null (no update)
 
-      await trustManager.updateTrust(userId, subredditName, trustAction, 'post');
-      console.log(`[PostSubmit] Updated community trust (pipeline): ${trustAction}`);
+      if (trustAction) {
+        await trustManager.updateTrust(userId, subredditName, trustAction, 'post');
+        console.log(`[PostSubmit] Updated community trust (pipeline): ${trustAction}`);
+      } else {
+        console.log(`[PostSubmit] Action ${pipelineResult.action} - waiting for moderator decision before updating trust`);
+      }
 
       // If approved, track for ModAction
       if (pipelineResult.action === 'APPROVE') {

@@ -1,20 +1,29 @@
 /**
  * ModAction Event Handler
  *
- * Monitors moderator actions to detect when mods manually remove content
- * that was previously approved by our automod system. This enables the
- * Community Trust System to retroactively update trust scores when our
- * approvals are overridden by human moderators.
+ * Monitors moderator actions to:
+ * 1. Increase trust scores when mods approve content (approvelink, approvecomment)
+ * 2. Decrease trust scores when mods remove content we approved (removelink, etc.)
  *
- * Flow:
+ * Flow for Approvals:
+ * 1. Detects approval actions (approvelink, approvecomment)
+ * 2. Extracts author and subreddit from event
+ * 3. Increases community trust score
+ *
+ * Flow for Removals:
  * 1. Detects removal actions (removelink, spamlink, removecomment, spamcomment)
  * 2. Checks if we previously approved the content (via tracking record)
  * 3. Verifies moderator provided a removal reason (per user requirement)
  * 4. Applies retroactive trust penalty if reason exists
  * 5. Cleans up tracking records
  *
- * User Requirement: "If no comment then ignore it" - we only penalize when
- * moderators provide a removal reason, indicating intentional moderation.
+ * Event Structure (FLAT):
+ * - event.action: 'approvelink' | 'removelink' | etc.
+ * - event.targetPost: { id, authorId, subredditName, ... }
+ * - event.targetComment: { id, authorId, subredditName, ... }
+ * - event.targetUser: { id, name, ... }
+ * - event.subreddit: { name, ... }
+ * - event.moderator: { name, ... }
  *
  * @module handlers/modAction
  */
@@ -39,34 +48,41 @@ export async function handleModAction(
   const { redis, reddit } = context;
 
   try {
-    // Extract action from event
-    // Type guard: ModAction events have 'action' property
-    if (!('action' in event) || !event.action) {
+    // Extract action type from event
+    // Event structure is FLAT - properties are directly on event object
+    const action = (event as any).action;
+
+    if (!action) {
       console.log('[ModAction] No action in event, skipping');
       return;
     }
 
-    const action = event.action;
+    // Filter for removal and approval actions
+    // Track both removals and approvals to update community trust
+    const isRemoval =
+      action === 'removelink' ||
+      action === 'spamlink' ||
+      action === 'removecomment' ||
+      action === 'spamcomment';
 
-    // Filter for removal actions only
-    // We only care when mods remove content (not approve, lock, flair, etc.)
-    if (
-      action !== 'removelink' &&
-      action !== 'spamlink' &&
-      action !== 'removecomment' &&
-      action !== 'spamcomment'
-    ) {
-      console.log(`[ModAction] Ignoring non-removal action: ${action}`);
+    const isApproval =
+      action === 'approvelink' ||
+      action === 'approvecomment';
+
+    if (!isRemoval && !isApproval) {
+      console.log(`[ModAction] Ignoring action (not removal or approval): ${action}`);
       return;
     }
 
-    // Extract content ID from target post or comment
-    let contentId: string | undefined;
-    if ('targetPost' in event && event.targetPost) {
-      contentId = (event.targetPost as any).id;
-    } else if ('targetComment' in event && event.targetComment) {
-      contentId = (event.targetComment as any).id;
-    }
+    // Extract content ID from target
+    // For posts: event.targetPost.id, for comments: event.targetComment.id
+    const targetPost = (event as any).targetPost;
+    const targetComment = (event as any).targetComment;
+
+    const contentId = (isRemoval || isApproval) &&
+                     (action.includes('link') || action.includes('Link'))
+      ? targetPost?.id
+      : targetComment?.id;
 
     if (!contentId) {
       console.log(
@@ -77,16 +93,45 @@ export async function handleModAction(
 
     // Determine content type for logging
     const contentType =
-      action === 'removelink' || action === 'spamlink' ? 'post' : 'comment';
+      action === 'removelink' || action === 'spamlink' || action === 'approvelink'
+        ? 'post'
+        : 'comment';
 
     // Get moderator name for logging
-    const moderatorName =
-      ('moderator' in event && (event.moderator as any)?.username) || 'unknown';
+    const moderator = (event as any).moderator;
+    const moderatorName = moderator?.name || 'unknown';
 
     console.log(
       `[ModAction] Detected ${action} on ${contentType} ${contentId} by mod u/${moderatorName}`
     );
 
+    // Handle approval actions
+    if (isApproval) {
+      console.log(`[ModAction] Processing manual approval of ${contentType} ${contentId}`);
+
+      // Get author and subreddit from event
+      const targetUser = (event as any).targetUser;
+      const subredditObj = (event as any).subreddit;
+
+      const authorId = targetUser?.id;
+      const subreddit = subredditObj?.name;
+
+      if (!authorId || !subreddit) {
+        console.log(`[ModAction] Could not get author/subreddit from event for ${contentId}, skipping`);
+        return;
+      }
+
+      // Update trust score with APPROVE
+      const trustManager = new CommunityTrustManager(context as any);
+      await trustManager.updateTrust(authorId, subreddit, 'APPROVE', contentType);
+
+      console.log(
+        `[ModAction] ✅ Trust score increased for user ${authorId} after mod approval of ${contentType} ${contentId} by u/${moderatorName}`
+      );
+      return;
+    }
+
+    // Handle removal actions (existing logic)
     // Check if WE approved this content
     const trackingKey = `approved:tracking:${contentId}`;
     const approvedRecord = await redis.get(trackingKey);
@@ -159,12 +204,9 @@ export async function handleModAction(
     await redis.del(trackingKey);
   } catch (error) {
     // Extract content ID for logging if available
-    let contentId = 'unknown';
-    if ('targetPost' in event && event.targetPost) {
-      contentId = (event.targetPost as any).id || 'unknown';
-    } else if ('targetComment' in event && event.targetComment) {
-      contentId = (event.targetComment as any).id || 'unknown';
-    }
+    const targetPost = (event as any).targetPost;
+    const targetComment = (event as any).targetComment;
+    const contentId = targetPost?.id || targetComment?.id || 'unknown';
 
     console.error(
       `[ModAction] Error handling ModAction for content ${contentId}:`,

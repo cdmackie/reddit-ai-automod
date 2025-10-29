@@ -7,12 +7,14 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 **AI Providers**: Claude 3.5 Haiku (primary), OpenAI gpt-4o-mini (fallback), DeepSeek V3 (testing)
 **Current Phase**: Phase 5 - Refinement & Optimization
 **Phase 1-4 Status**: COMPLETE ✅ (Foundation, AI, Rules Engine, Settings UI)
-**Phase 5 Status**: In Progress - Architectural Refinement
-  - Phase 5.1-5.12: Notifications, 3-layer pipeline, settings UX, whitelist - COMPLETE ✅
-  - Phase 5.13: Dynamic Bot Username Detection - COMPLETE ✅ (version 0.1.15)
-  - Phase 5.14: Community Trust System - COMPLETE ✅ (version 0.1.18, 0.1.24)
-**Current Version**: 0.1.24 (deployed to Reddit)
-**Next**: Production deployment to target subreddits OR additional features
+**Phase 5 Status**: In Progress - Debugging ModAction events
+  - Phase 5.1-5.14: Notifications, 3-layer pipeline, settings UX, whitelist, community trust - COMPLETE ✅
+  - Phase 5.15: Redis API fix for reset menu - COMPLETE ✅ (version 0.1.25)
+  - Phase 5.16: Infinite loop fix via comment ID tracking - COMPLETE ✅ (version 0.1.29)
+  - Phase 5.17: Trust score update logic fix - COMPLETE ✅ (version 0.1.30)
+  - Phase 5.18: ModAction event structure debug - IN PROGRESS 🔄 (version 0.1.33)
+**Current Version**: 0.1.33 (deployed to Reddit with debug logging)
+**Next**: Fix ModAction event handler to capture mod approvals correctly
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -1564,23 +1566,29 @@ Current flaw:
 ## Current State (2025-10-29)
 
 **What Exists**:
-- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.18)
+- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.33 with debug logging)
 - ✅ Three-layer moderation pipeline (Layer 1: Built-in, Layer 2: OpenAI Mod, Layer 3: Custom AI)
 - ✅ **Community trust system** (per-subreddit, ratio-based, decay, retroactive removal)
 - ✅ User whitelist for bypass
-- ✅ Bot self-detection (dynamic username lookup)
+- ✅ Bot self-detection (comment ID tracking to prevent infinite loops)
 - ✅ Notification system (daily digest, real-time, budget alerts)
 - ✅ Settings UI with all configuration options
 - ✅ Cost tracking and budget enforcement
-- ✅ Reset menu item for community trust scores
+- ✅ Reset menu item using Redis tracking sets (v0.1.25 fix)
 - ✅ No default Layer 3 rules (clean slate for moderators)
+- ✅ Trust score logic fixed: COMMENT actions wait for mod decision (v0.1.30)
+- ✅ ModAction approval handling implemented (increases trust on approval)
 
 **Known Issues**:
-- None currently (Phase 5.14 resolved global trust bypass issue)
+- 🔄 **ModAction event structure incorrect** (Phase 5.18 debugging in progress)
+  - Current: Trying to access `event.modAction.type` but property doesn't exist
+  - Debug logging added in v0.1.32 (captured "dev_platform_app_changed" event)
+  - Status: v0.1.33 deployed, waiting for real approval event to capture structure
 
 **What's Next**:
-1. **Test community trust with high-karma account** (bot account fails Layer 1, blocks trust check)
-2. **Deploy to production** (r/FriendsOver40, r/FriendsOver50, r/bitcointaxes)
-3. **Monitor and collect feedback** from moderators
-4. **Additional features** as requested by user
+1. **Fix ModAction event handler** - Capture real approval event structure and fix access pattern
+2. **Test complete trust score flow** - Post → COMMENT flag → Mod approves → Trust increases
+3. **Test retroactive removal** - Approved content → Mod removes with reason → Trust decreases
+4. **Deploy to production** (r/FriendsOver40, r/FriendsOver50, r/bitcointaxes)
+5. **Monitor and collect feedback** from moderators
 

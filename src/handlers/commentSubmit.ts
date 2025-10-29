@@ -71,10 +71,14 @@ export async function handleCommentSubmit(
     return;
   }
 
-  // Skip the bot's own comments to prevent infinite loops
-  const currentUser = await reddit.getCurrentUser();
-  if (currentUser && author.toLowerCase() === currentUser.username.toLowerCase()) {
-    console.log(`[CommentSubmit] Skipping bot's own comment by u/${author}`);
+  // Skip comments posted by this app to prevent infinite loops
+  // Check if this comment was posted by us within the last minute
+  const recentCommentKey = `recent_comment:${commentId}`;
+  const wasPostedByUs = await redis.get(recentCommentKey);
+
+  if (wasPostedByUs) {
+    console.log(`[CommentSubmit] Skipping our own comment ${commentId}`);
+    await redis.del(recentCommentKey); // Clean up
     return;
   }
 
@@ -238,17 +242,23 @@ export async function handleCommentSubmit(
       const trustManager = new CommunityTrustManager(context as Devvit.Context);
 
       // Map action to trust action
-      let trustAction: 'APPROVE' | 'FLAG' | 'REMOVE';
+      // COMMENT actions should NOT update trust - wait for moderator decision
+      let trustAction: 'APPROVE' | 'FLAG' | 'REMOVE' | null = null;
       if (pipelineResult.action === 'APPROVE') {
         trustAction = 'APPROVE';
       } else if (pipelineResult.action === 'FLAG') {
         trustAction = 'FLAG';
-      } else {
+      } else if (pipelineResult.action === 'REMOVE') {
         trustAction = 'REMOVE';
       }
+      // COMMENT action results in trustAction = null (no update)
 
-      await trustManager.updateTrust(userId, subredditName, trustAction, 'comment');
-      console.log(`[CommentSubmit] Updated community trust (pipeline): ${trustAction}`);
+      if (trustAction) {
+        await trustManager.updateTrust(userId, subredditName, trustAction, 'comment');
+        console.log(`[CommentSubmit] Updated community trust (pipeline): ${trustAction}`);
+      } else {
+        console.log(`[CommentSubmit] Action ${pipelineResult.action} - waiting for moderator decision before updating trust`);
+      }
 
       // If approved, track for ModAction
       if (pipelineResult.action === 'APPROVE') {
