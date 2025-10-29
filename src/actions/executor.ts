@@ -280,10 +280,7 @@ async function executeRemoveAction(
       };
     }
 
-    // Execute: Remove post (false = not spam)
-    await context.reddit.remove(post.id, false);
-
-    // Execute: Add removal comment
+    // Execute: Add removal comment FIRST (before removing post)
     let commentAdded = false;
     try {
       const comment = await context.reddit.submitComment({
@@ -302,13 +299,15 @@ async function executeRemoveAction(
       }
     } catch (commentError) {
       // Log comment failure but don't fail the entire action
-      // (post is already removed, which is the primary action)
       const commentErrorMsg = commentError instanceof Error ? commentError.message : String(commentError);
       console.error(`[ActionExecutor:${correlationId}] Failed to add removal comment:`, {
         postId: post.id,
         error: commentErrorMsg,
       });
     }
+
+    // Execute: Remove post SECOND (false = not spam)
+    await context.reddit.remove(post.id, false);
 
     console.log(`[ActionExecutor:${correlationId}] Successfully removed post:`, {
       postId: post.id,

@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.43 (deployed to Reddit)
+**Current Version**: 0.1.47 (deployed to Reddit)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.27 Complete ✅ | Debug logging added to AI pipeline
+**Status**: Phase 5.31 Complete ✅ | Layer 3 REMOVE action comment posting fixed
 
 ---
 
@@ -1695,3 +1695,28 @@ _None currently_
 - **Result**: Trust score changes are now clearly visible with before/after values and delta
 - **User Impact**: Moderators can see exactly how their actions affect user trust scores
 - **Phase 5.30 COMPLETE** ✅
+
+### 2025-10-29 - Session 13 (Phase 5.31 - Layer 3 REMOVE Action Fix)
+- User reported bug: Layer 3 REMOVE action with actionConfig.comment not posting comment
+  - Post was being removed but removal comment was not appearing
+  - User's rule had both `reason` and `comment` fields in actionConfig
+- **Root Cause Identified**:
+  - In `src/actions/executor.ts`, the `executeRemoveAction()` function was:
+    1. Removing the post FIRST (line 284)
+    2. Then trying to post the comment SECOND (lines 286-292)
+  - Once the post was removed, Reddit's API wouldn't allow posting comments on it
+  - Comment submission was failing silently in the try-catch block
+- **Fix Implemented** (v0.1.47):
+  - ✅ Swapped order of operations in `executeRemoveAction()`
+  - ✅ Comment is now posted FIRST (while post is still available)
+  - ✅ Post is removed SECOND (after comment is successfully posted)
+  - ✅ This ensures the comment API call succeeds before content is removed
+- Modified files:
+  - src/actions/executor.ts (lines 283-310 - reordered operations)
+  - devvit.yaml (bumped version to 0.1.47)
+  - README.md (updated version badge)
+- Deployed successfully as **v0.1.47**
+- Committed to git: [pending]
+- **Result**: Layer 3 REMOVE actions now correctly post removal comments before removing content
+- **User Impact**: Users will see the removal comment explaining why their post was removed
+- **Phase 5.31 COMPLETE** ✅

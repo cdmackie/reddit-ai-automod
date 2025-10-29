@@ -25,8 +25,9 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - Phase 5.28: Dry-run mode fix (remove per-RuleSet field) - COMPLETE ✅ (version 0.1.44)
   - Phase 5.29: Notification format improvements (trust score, cleaner dry-run) - COMPLETE ✅ (version 0.1.45)
   - Phase 5.30: Trust score delta logging in ModAction handler - COMPLETE ✅ (version 0.1.46)
-**Current Version**: 0.1.46 (deployed to Reddit, committed to git)
-**Next**: Continue testing with Layer 3 Custom Rules to verify dry-run fix
+  - Phase 5.31: Layer 3 REMOVE action comment posting fix - COMPLETE ✅ (version 0.1.47)
+**Current Version**: 0.1.47 (deployed to Reddit, not yet committed to git)
+**Next**: Continue testing with Layer 3 Custom Rules to verify REMOVE action fix
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -1624,7 +1625,7 @@ After v0.1.36:
 ## Current State (2025-10-29)
 
 **What Exists**:
-- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.46)
+- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.47)
 - ✅ Three-layer moderation pipeline (Layer 1: Built-in, Layer 2: OpenAI Mod, Layer 3: Custom AI)
 - ✅ **Community trust system** (per-subreddit, ratio-based, decay, tracking records)
 - ✅ **ModAction handler fully working** (approvals increase trust, removals decrease trust)
@@ -1889,3 +1890,80 @@ After v0.1.36:
 1. With global dry-run OFF → Actions execute (posts get flagged/removed)
 2. With global dry-run ON → Actions logged only ([DRY RUN] in notifications)
 3. No need to modify rules JSON to control dry-run behavior
+
+### Session 33 (2025-10-29): Phases 5.29-5.30 Complete - Notification & Logging Improvements
+
+**Phase 5.29 - Notification Format Improvements**:
+- User requested trust score visibility in real-time notifications  
+- User requested cleaner dry-run indication in notifications
+- **Implemented** (v0.1.45):
+  - ✅ Added `**Trust Score:** {metadata.trustScore}%` to real-time notifications
+  - ✅ Simplified dry-run indicator to single line at top
+  - ✅ Cleaner formatting in `formatRealtimeMessage()` function
+- Modified files: src/notifications/modmailDigest.ts (lines 143-202)
+
+**Phase 5.30 - Trust Score Delta Logging**:
+- User requested trust score changes include delta in logs
+  - Example format: "50% (+5%)" or "45% (-10%)"
+- **Implemented** (v0.1.46):
+  - ✅ Updated `CommunityTrustManager.updateTrust()` to return `{ oldScore, newScore, delta }`
+  - ✅ Updated `CommunityTrustManager.retroactiveRemoval()` to return score changes (or null)
+  - ✅ Modified ModAction handler to capture and log score changes
+  - ✅ Approval logs now show: "Trust score increased for user t2_xxx: 50.0% (+5.0%) after mod approval..."
+  - ✅ Removal logs now show: "Trust score updated for user t2_xxx: 40.0% (-10.0%) after mod removal..."
+- Modified files:
+  - src/trust/communityTrustManager.ts (updated return types and calculations)
+  - src/handlers/modAction.ts (capture return values and format logs)
+
+**Deployment**:
+- Phase 5.29 deployed as v0.1.45
+- Phase 5.30 deployed as v0.1.46
+- Both committed to git: commits f08c637 and 7aa10df
+
+**Result**:
+- Notifications now show trust scores for better moderator visibility
+- Trust score changes are clearly visible with before/after values and delta
+- Cleaner dry-run mode indication
+
+### Session 34 (2025-10-29): Phase 5.31 Complete - Layer 3 REMOVE Action Fix
+
+**Problem Reported**:
+- User reported bug: Layer 3 REMOVE action with actionConfig.comment not posting comment
+  - Post was being removed but removal comment was not appearing
+  - User's rule had both `reason` and `comment` fields in actionConfig
+  - Dry-run mode was OFF
+
+**Root Cause Identified**:
+- In `src/actions/executor.ts`, the `executeRemoveAction()` function was:
+  1. Removing the post FIRST (line 284)
+  2. Then trying to post the comment SECOND (lines 286-292)
+- Once the post was removed, Reddit's API wouldn't allow posting comments on it
+- Comment submission was failing silently in the try-catch block
+
+**Fix Implemented** (v0.1.47):
+- ✅ Swapped order of operations in `executeRemoveAction()`
+- ✅ Comment is now posted FIRST (while post is still available)
+- ✅ Post is removed SECOND (after comment is successfully posted)
+- ✅ This ensures the comment API call succeeds before content is removed
+
+**Modified Files**:
+- src/actions/executor.ts (lines 283-310 - reordered operations)
+- devvit.yaml (bumped version to 0.1.47)
+- README.md (updated version badge to 0.1.47)
+
+**Deployment**:
+- Built and uploaded to Reddit successfully
+- Installed to r/AiAutomod (upgraded from 0.1.46 to 0.1.47)
+- Not yet committed to git (pending)
+
+**Result**:
+- Layer 3 REMOVE actions now correctly post removal comments before removing content
+- Users will see the removal comment explaining why their post was removed
+
+**User Impact**:
+- REMOVE action with `actionConfig.comment` now works as expected
+- Removal comments appear on posts before they are removed
+
+**Status**: Phase 5.31 COMPLETE ✅
+**Next**: Commit changes to git and continue testing Layer 3 Custom Rules
+

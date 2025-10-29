@@ -4,7 +4,7 @@
 
 A Reddit Devvit app that uses AI to analyze new posters and detect problematic users before they cause harm. Built for moderators who want to protect their communities from undesirable users or scammers.
 
-[![Version](https://img.shields.io/badge/version-0.1.41-blue)]()
+[![Version](https://img.shields.io/badge/version-0.1.47-blue)]()
 [![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen)]()
 
 ---
