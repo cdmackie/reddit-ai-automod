@@ -304,16 +304,6 @@ Devvit.addSettings([
     defaultValue: true,
     scope: 'installation',
   },
-
-  // ===== Community Trust System (Phase 5.14) =====
-  {
-    type: 'boolean',
-    name: 'useCommunityTrust',
-    label: '🎯 Use Community Trust System (BETA)',
-    helpText: 'Enable community-specific trust tracking (Phase 5.14). When enabled, trust is tracked per-subreddit instead of globally. Posts: 3 minimum @ 70% approval. Comments: 2 minimum @ 70% approval. Defaults to OFF for gradual rollout.',
-    defaultValue: false,
-    scope: 'installation',
-  },
 ]);
 
 // Register menu items

@@ -94,120 +94,34 @@ export async function handleCommentSubmit(
   const historyAnalyzer = new PostHistoryAnalyzer(redis, reddit, rateLimiter);
   const trustScoreCalc = new TrustScoreCalculator(redis);
 
-  // Feature flag: Use community trust or old global trust
-  const settingsService = new SettingsService(context.settings);
-  const useCommunityTrust = await settingsService.getSetting('useCommunityTrust', false);
+  // ALWAYS fetch profile for pipeline (Layer 1/2)
+  console.log(`[CommentSubmit] Fetching profile for ${author}...`);
+  const [profile, history] = await Promise.all([
+    profileFetcher.getUserProfile(userId),
+    historyAnalyzer.getPostHistory(userId, author)
+  ]);
 
-  // Fetch profile and history (needed by both trust systems)
-  let profile;
-  let history;
-  let trustScore;
-
-  if (useCommunityTrust) {
-    console.log('[CommentSubmit] Using community trust system');
-
-    // ALWAYS fetch profile for pipeline (Layer 1/2)
-    console.log(`[CommentSubmit] Fetching profile for ${author}...`);
-    const [fetchedProfile, fetchedHistory] = await Promise.all([
-      profileFetcher.getUserProfile(userId),
-      historyAnalyzer.getPostHistory(userId, author)
-    ]);
-
-    if (!fetchedProfile) {
-      console.log(`[CommentSubmit] Could not fetch profile for ${author}`);
-      const auditLog = await auditLogger.log({
-        action: ModAction.FLAG,
-        userId: author,
-        contentId: commentId,
-        reason: 'Profile fetch failed, flagged for manual review',
-      });
-      await sendRealtimeDigest(context as Devvit.Context, auditLog);
-      console.log(`[CommentSubmit] Comment ${commentId} flagged for manual review`);
-      return;
-    }
-
-    profile = fetchedProfile;
-    history = fetchedHistory;
-
-    // Calculate trust score for metadata (used in audit logs)
-    trustScore = await trustScoreCalc.calculateTrustScore(
-      profile,
-      history,
-      subredditName
-    );
-
-    console.log(`[CommentSubmit] Profile fetched for ${author}: Age=${profile.accountAgeInDays}d, Karma=${profile.totalKarma}`);
-
-    // Will execute pipeline below
-
-  } else {
-    // OLD LOGIC: Global trust score bypass (keep for rollback)
-    console.log('[CommentSubmit] Using legacy global trust system');
-
-    const isTrusted = await trustScoreCalc.isTrustedUser(userId, subredditName);
-    if (isTrusted) {
-      console.log(`[CommentSubmit] User ${author} is trusted, auto-approving`);
-      const auditLog = await auditLogger.log({
-        action: ModAction.APPROVE,
-        userId: author,
-        contentId: commentId,
-        reason: 'Trusted user (score >= 70)',
-      });
-      await sendRealtimeDigest(context as Devvit.Context, auditLog);
-      console.log(`[CommentSubmit] Comment ${commentId} processed successfully`);
-      return;
-    }
-
-    console.log(`[CommentSubmit] User ${author} not in trusted cache, fetching profile...`);
-
-    // Fetch profile and history in parallel (with cache)
-    const [fetchedProfile, fetchedHistory] = await Promise.all([
-      profileFetcher.getUserProfile(userId),
-      historyAnalyzer.getPostHistory(userId, author)
-    ]);
-
-    if (!fetchedProfile) {
-      console.log(`[CommentSubmit] Could not fetch profile for ${author}`);
-      const auditLog = await auditLogger.log({
-        action: ModAction.FLAG,
-        userId: author,
-        contentId: commentId,
-        reason: 'Profile fetch failed, flagged for manual review',
-      });
-      await sendRealtimeDigest(context as Devvit.Context, auditLog);
-      console.log(`[CommentSubmit] Comment ${commentId} flagged for manual review`);
-      return;
-    }
-
-    profile = fetchedProfile;
-    history = fetchedHistory;
-
-    console.log(`[CommentSubmit] Profile fetched for ${author}: Age=${profile.accountAgeInDays}d, Karma=${profile.totalKarma}`);
-
-    const calculatedTrustScore = await trustScoreCalc.calculateTrustScore(
-      profile,
-      history,
-      subredditName
-    );
-
-    trustScore = calculatedTrustScore;
-
-    console.log(`[CommentSubmit] Trust score for ${author}: ${trustScore.totalScore}/100`);
-
-    if (trustScore.isTrusted) {
-      console.log(`[CommentSubmit] User ${author} achieved trusted status`);
-      const auditLog = await auditLogger.log({
-        action: ModAction.APPROVE,
-        userId: author,
-        contentId: commentId,
-        reason: `Trusted user (score: ${trustScore.totalScore}/100)`,
-      });
-      await sendRealtimeDigest(context as Devvit.Context, auditLog);
-      await trustScoreCalc.incrementApprovedCount(userId, subredditName);
-      console.log(`[CommentSubmit] Comment ${commentId} processed successfully`);
-      return;
-    }
+  if (!profile) {
+    console.log(`[CommentSubmit] Could not fetch profile for ${author}`);
+    const auditLog = await auditLogger.log({
+      action: ModAction.FLAG,
+      userId: author,
+      contentId: commentId,
+      reason: 'Profile fetch failed, flagged for manual review',
+    });
+    await sendRealtimeDigest(context as Devvit.Context, auditLog);
+    console.log(`[CommentSubmit] Comment ${commentId} flagged for manual review`);
+    return;
   }
+
+  console.log(`[CommentSubmit] Profile fetched for ${author}: Age=${profile.accountAgeInDays}d, Karma=${profile.totalKarma}`);
+
+  // Calculate trust score for metadata (used in audit logs)
+  const trustScore = await trustScoreCalc.calculateTrustScore(
+    profile,
+    history,
+    subredditName
+  );
 
   // 1. Build CurrentPost-compatible object for comments (needed for both pipeline and rules)
   // Note: Comments don't have all fields posts have, provide safe defaults
@@ -320,7 +234,7 @@ export async function handleCommentSubmit(
     }
 
     // Update community trust for pipeline actions
-    if (useCommunityTrust && executionResult.success) {
+    if (executionResult.success) {
       const trustManager = new CommunityTrustManager(context as Devvit.Context);
 
       // Map action to trust action
@@ -346,8 +260,8 @@ export async function handleCommentSubmit(
     return; // Short-circuit, don't continue to custom rules
   }
 
-  // === Community Trust Check (NEW) ===
-  if (useCommunityTrust && pipelineResult.action === 'APPROVE') {
+  // === Community Trust Check ===
+  if (pipelineResult.action === 'APPROVE') {
     // Layer 1 passed, check community trust
     const trustManager = new CommunityTrustManager(context as Devvit.Context);
     const trustEval = await trustManager.getTrust(userId, subredditName, 'comment');
@@ -534,7 +448,7 @@ export async function handleCommentSubmit(
   }
 
   // Update community trust based on action
-  if (useCommunityTrust && executionResult.success) {
+  if (executionResult.success) {
     const trustManager = new CommunityTrustManager(context as Devvit.Context);
 
     // Map action to trust action
