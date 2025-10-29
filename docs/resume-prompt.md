@@ -10,8 +10,8 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 **Phase 5 Status**: In Progress - Architectural Refinement
   - Phase 5.1-5.12: Notifications, 3-layer pipeline, settings UX, whitelist - COMPLETE ✅
   - Phase 5.13: Dynamic Bot Username Detection - COMPLETE ✅ (version 0.1.15)
-  - Phase 5.14: Community Trust System - COMPLETE ✅ (version 0.1.18)
-**Current Version**: 0.1.18 (deployed to Reddit)
+  - Phase 5.14: Community Trust System - COMPLETE ✅ (version 0.1.18, 0.1.24)
+**Current Version**: 0.1.24 (deployed to Reddit)
 **Next**: Production deployment to target subreddits OR additional features
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
@@ -209,6 +209,30 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 ---
 
 ## What's Next
+
+### Latest Completion: Reset Menu Item (2025-10-29)
+**Phase 5.14 Final Implementation** - v0.1.24
+
+**Problem**: Reset toggle in settings didn't auto-reset after clicking Save (Devvit has no onSettingsSave hook).
+
+**Attempted Solutions** (v0.1.20-0.1.23):
+- ❌ Event-driven reset: Only triggered on next post/comment
+- ❌ Scheduler polling: User rejected ("NO. No scheduler")
+- ❌ Two-flag system: Still required event to reset UI toggle
+
+**Final Solution** (v0.1.24):
+- ✅ Menu item "Reset Community Trust Scores" (subreddit location, moderator-only)
+- ✅ Removed toggle from settings completely
+- ✅ Removed two-flag logic from both handlers (70 lines removed)
+- ✅ Provides immediate action with success toast feedback
+- ✅ User accepted: "OK, let's move it to the menu"
+
+Files modified:
+- `main.tsx`: Removed toggle, added menu item (lines 364-406)
+- `postSubmit.ts`: Removed two-flag logic (lines 38-72 deleted)
+- `commentSubmit.ts`: Removed two-flag logic (lines 37-71 deleted)
+
+**Status**: Phase 5.14 fully complete. Community trust is now the ONLY behavior (no feature flag).
 
 ### Security Fixes Complete (2025-10-27)
 **CRITICAL**: Fixed 5 critical security vulnerabilities in rules engine:

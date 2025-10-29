@@ -304,16 +304,6 @@ Devvit.addSettings([
     defaultValue: true,
     scope: 'installation',
   },
-
-  // ===== Reset Community Trust =====
-  {
-    type: 'boolean',
-    name: 'resetCommunityTrust',
-    label: '🗑️ Reset All Community Trust Scores',
-    helpText: '⚠️ WARNING: Turn this ON and click Save to delete all community trust data. This will reset ALL users to zero. The toggle will automatically turn OFF after reset. This cannot be undone!',
-    defaultValue: false,
-    scope: 'installation',
-  },
 ]);
 
 // Register menu items
@@ -370,6 +360,50 @@ Devvit.addMenuItem({
   },
 });
 console.log('[AI Automod] ✓ Registered: View AI Analysis (post)');
+
+// Reset Community Trust Scores Menu Item
+Devvit.addMenuItem({
+  label: 'Reset Community Trust Scores',
+  location: 'subreddit',
+  forUserType: 'moderator',
+  onPress: async (_event, context) => {
+    try {
+      console.log('[ResetTrust] Starting community trust reset...');
+      const { redis } = context;
+
+      // Delete all community trust records
+      const trustKeys = await redis.keys('trust:community:*');
+      console.log(`[ResetTrust] Found ${trustKeys.length} trust records to delete`);
+
+      for (const key of trustKeys) {
+        await redis.del(key);
+      }
+
+      // Delete all approved content tracking records
+      const trackingKeys = await redis.keys('approved:tracking:*');
+      console.log(`[ResetTrust] Found ${trackingKeys.length} tracking records to delete`);
+
+      for (const key of trackingKeys) {
+        await redis.del(key);
+      }
+
+      const totalDeleted = trustKeys.length + trackingKeys.length;
+      console.log(`[ResetTrust] Reset complete: ${totalDeleted} records deleted`);
+
+      context.ui.showToast({
+        text: `✅ Reset complete! Deleted ${trustKeys.length} trust records and ${trackingKeys.length} tracking records. All users will start fresh.`,
+        appearance: 'success',
+      });
+    } catch (error) {
+      console.error('[ResetTrust] Error resetting trust scores:', error);
+      context.ui.showToast({
+        text: '❌ Error resetting trust scores. Check logs for details.',
+        appearance: 'neutral',
+      });
+    }
+  },
+});
+console.log('[AI Automod] ✓ Registered: Reset Community Trust Scores (subreddit)');
 
 console.log('[AI Automod] Menu items registration complete');
 

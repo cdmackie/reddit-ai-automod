@@ -1,8 +1,8 @@
 # Project Status
 
-**Last Updated**: 2025-10-28
-**Current Phase**: Phase 5 - Refinement & Optimization (Phase 5.14 Planning)
-**Current Version**: 0.1.15 (deployed to Reddit)
+**Last Updated**: 2025-10-29
+**Current Phase**: Phase 5 - Refinement & Optimization (Phase 5.14 Complete)
+**Current Version**: 0.1.24 (deployed to Reddit)
 **Overall Progress**: 98% (Core features complete, architectural refinement in progress)
 **Status**: Phase 5.13 COMPLETE ✅ | Phase 5.14 PLANNING (awaiting approval)
 
@@ -789,6 +789,24 @@
   - ✅ Commit 3ac2578: "feat: add reset community trust scores menu item (Phase 5.14)"
 
 **Status**: Phase 5.14 COMPLETE ✅. Community trust system is now the ONLY behavior (no feature flag). Moderators can reset all trust scores via subreddit menu item.
+
+**Phase 5.14: Reset Menu Item Approach (COMPLETE ✅ - 2025-10-29)**
+- [x] Settings page 500 error fix (v0.1.19) - 2025-10-29
+  - ✅ Fixed select field defaults: Changed from arrays to strings
+  - ✅ Fixed 5 fields: commentAction, openaiModAction, primaryProvider, fallbackProvider, notificationRecipient
+- [x] Reset toggle in settings attempts (v0.1.20-0.1.23) - 2025-10-29
+  - ❌ Reset toggle didn't auto-reset after save (no onSettingsSave hook available)
+  - ❌ Scheduler approach rejected by user
+  - ❌ Two-flag system still required event trigger
+  - ✅ Technical limitation discovered: No way to run code immediately after settings save
+- [x] Menu item implementation (v0.1.24) - 2025-10-29
+  - ✅ Removed resetCommunityTrust toggle from settings
+  - ✅ Added "Reset Community Trust Scores" menu item (subreddit location, moderator-only)
+  - ✅ Deletes trust:community:* and approved:tracking:* keys
+  - ✅ Shows success toast with deletion count
+  - ✅ Removed two-flag reset logic from postSubmit.ts (35 lines removed)
+  - ✅ Removed two-flag reset logic from commentSubmit.ts (35 lines removed)
+  - ✅ Provides immediate action with clear feedback
 
 ---
 
