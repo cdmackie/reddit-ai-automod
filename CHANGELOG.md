@@ -1,0 +1,440 @@
+# Changelog
+
+All notable changes to Reddit AI Automod will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.1.47] - 2025-10-29
+
+### Fixed
+- Layer 3 REMOVE action now posts notification comment before removing post/comment (prevents comment from disappearing with content)
+
+### Added
+- Trust score delta logging in ModAction handler shows trust score changes when user actions are taken
+
+## [0.1.46] - 2025-10-29
+
+### Added
+- Trust score delta display in ModAction event handler
+
+## [0.1.45] - 2025-10-29
+
+### Changed
+- Improved notification format with trust score display
+- Cleaner dry-run indicator in notifications (Phase 5.29)
+- Better formatting for moderator notifications
+
+## [0.1.44] - 2025-10-29
+
+### Fixed
+- Removed per-RuleSet dry-run field (Phase 5.28)
+- Dry-run mode now configured globally at Layer 3 level only
+
+## [0.1.43] - 2025-10-29
+
+### Added
+- Comprehensive AI debug logging across all providers (Claude, OpenAI, DeepSeek)
+- Request/response tracing with correlation IDs
+- Token usage and cost tracking in logs
+- Sanitization metrics showing content reduction percentages
+- Enhanced visibility for troubleshooting AI pipeline issues
+
+## [0.1.42] - 2025-10-29
+
+### Fixed
+- Provider selection logic now respects settings UI configuration
+- `getEnabledProviders()` now uses ConfigurationManager instead of hardcoded AI_CONFIG
+- OpenAI provider now supports question-based analysis (implemented missing `analyzeWithQuestions()` method)
+- All three providers (Claude, OpenAI, DeepSeek) now fully support custom questions
+
+## [0.1.41] - 2025-10-29
+
+### Changed
+- Expanded post history to 200 items (100 posts + 100 comments, up from 20 total)
+- Improved content sanitization reduces token usage by 40-60%
+- Post bodies truncated to 500 characters
+- Comment bodies truncated to 300 characters
+- URLs replaced with [URL] placeholder
+- Excessive whitespace and markdown formatting removed
+
+## [0.1.40] - 2025-10-29
+
+### Changed
+- Layer 3 schema simplification with auto-generation of optional fields
+- `id`, `name`, `type`, `enabled`, `priority`, and `version` now auto-generated when omitted
+- Renamed `aiQuestion` → `ai` with simpler field access patterns
+- Removed unnecessary fields: `subreddit`, `createdAt`, `updatedAt`
+- Minimal rule format now just requires: `{conditions:[...], action:'...'}`
+- Updated contentType mapping: "post"→"submission", "all"→"any"
+- Backward compatibility maintained for legacy `aiQuestion` field
+
+## [0.1.39] - 2025-10-29
+
+### Added
+- Enhanced OpenAI Moderation logging with individual category scores
+- Better visibility into severity of content violations
+- Threshold values included in logs for context
+
+## [0.1.38] - 2025-10-29
+
+### Added
+- Separate OpenAI API key configuration for Layer 2 (Moderation API)
+- Independent API key management allows different billing/quota tracking per layer
+- Layer 2 checks Layer 2 key first, falls back to Layer 3 key if not configured
+
+## [0.1.37] - 2025-10-29
+
+### Changed
+- Ultra-concise toast format for "View AI Analysis" menu item
+- Single-line format: `{ACTION} {trustScore}/100. ${cost} {time}ms. {ruleId}.`
+- Improved UX for viewing AI analysis results in toast display
+
+## [0.1.34] - 2025-10-29
+
+### Fixed
+- Corrected ModAction event structure access (flat structure, not nested)
+- Event property is `event.action` not `event.modAction.type`
+- Approvals now correctly increase trust scores
+- Removals properly detected for retroactive trust penalties
+
+## [0.1.36] - 2025-10-29
+
+### Changed
+- Removed removal reason requirement for trust score penalties
+- Any mod removal now affects trust score (removals indicate rule breaks/duplicates)
+- Simplified logic by removing 40 lines of removal reason checking code
+
+## [0.1.35] - 2025-10-29
+
+### Fixed
+- Modified ModAction handler to create tracking records for manual mod approvals
+- 24-hour TTL on tracking records allows undo of any approval (bot or mod) if later removed
+- Retroactive trust score adjustments now work for all approval types
+
+## [0.1.29] - 2025-10-29
+
+### Fixed
+- Infinite loop prevention via comment ID tracking system
+- Bot comments now tracked in Redis with 1-minute expiration
+- CommentSubmit handler checks Redis for comment ID and skips if found
+- Self-cleaning system (automatic expiration)
+- Works regardless of account structure (no hardcoded usernames)
+
+## [0.1.25] - 2025-10-29
+
+### Fixed
+- Redis API compatibility for reset menu functionality
+- Implemented user tracking system using Redis sorted sets (`zAdd`, `zRange`)
+- Reset menu now uses `zRange()` to iterate tracked users instead of unsupported `keys()` method
+- Individual key deletion via `del()` instead of bulk operations
+
+## [0.1.24] - 2025-10-29
+
+### Changed
+- Moved community trust reset from settings toggle to menu item
+- "Reset Community Trust Scores" menu item added to subreddit menu (moderator-only)
+- Provides immediate action with success toast showing deletion count
+- Removed two-flag reset logic from event handlers (70 lines removed)
+
+## [0.1.18] - 2025-10-29
+
+### Added
+- "Reset Community Trust Scores" menu item in subreddit menu
+- Deletes all `trust:community:*` and `approved:tracking:*` keys
+- Shows success toast with deletion count
+
+## [0.1.17] - 2025-10-29
+
+### Removed
+- Community trust feature flag removed - community trust is now the ONLY behavior
+- Removed feature flag setting from UI
+- Removed all feature flag conditional logic from PostSubmit and CommentSubmit handlers
+- Total: ~243 lines of legacy code removed
+
+## [0.1.15] - 2025-10-28
+
+### Changed
+- Removed ALL hardcoded username checks for bot detection
+- Now uses only `getCurrentUser()` API for dynamic bot detection
+- Fully portable - works with any bot account name
+- Cleaner, more maintainable code
+
+## [0.1.13] - 2025-10-28
+
+### Added
+- User whitelist for moderation bypass
+- `whitelistedUsernames` setting (comma-separated, case-insensitive)
+- Whitelisted users skip ALL moderation layers (1, 2, 3)
+- Use cases: moderators testing, trusted community members, bot accounts
+- Bot account automatically whitelisted by default
+
+## [0.1.12] - 2025-10-28
+
+### Fixed
+- Infinite loop fix with two-tier bot self-detection
+- Primary: Hardcoded username checks (fast)
+- Backup: `getCurrentUser()` API check
+- Bot no longer processes its own comments
+
+## [0.1.10] - 2025-10-28
+
+### Fixed
+- Pipeline action field mapping for COMMENT and REMOVE actions
+- COMMENT actions now correctly map `pipelineResult.reason` to `comment` field
+- REMOVE actions now correctly map `pipelineResult.reason` to `removalReason` field
+- Resolved "COMMENT action missing comment text" errors
+
+## [0.1.9] - 2025-10-28
+
+### Removed
+- All default Layer 3 custom rules removed for clean slate installation
+- Emptied all 4 default rule sets (FriendsOver40, FriendsOver50, bitcointaxes, global)
+- File reduced from 576 lines to 65 lines (88% reduction)
+- Fresh installs now have no Layer 3 rules active by default
+- Clear separation: Built-in rules (Layer 1) vs Custom rules (Layer 3)
+
+## [0.1.7] - 2025-10-28
+
+### Added
+- Unified notification recipient configuration
+- Single `notificationRecipient` setting replaces 4 separate recipient fields
+- Budget alert notifications now sent to moderators (modmail or PM)
+- `sendBudgetAlert()` function with full notification support
+- Consolidated settings: 6 notification fields → 2 fields
+
+### Changed
+- Budget alerts now actually notify moderators instead of just console logging
+- All notification types (daily digest, real-time, budget alerts) use same recipient configuration
+
+## [0.1.6] - 2025-10-28
+
+### Fixed
+- Blank field handling in New Account Checks settings
+- Supports zero, negative, and blank values (blank = ignore check)
+- Changed field types from `number` to `string` for proper blank detection
+
+## [0.1.5] - 2025-10-28
+
+### Changed
+- Simplified "Built-in Rules" to "New Account Checks"
+- Replaced JSON configuration with 5 simple form fields
+- Focus on age + karma checks only (removed external links complexity)
+
+## [0.1.3] - 2025-10-28
+
+### Changed
+- Settings page reorganization with emoji prefixes for visual grouping (🔧🛡️🤖📧⚡)
+- Logical execution sequence: Global → Layer 1 → Layer 2 → Layer 3 → Notifications
+- Enhanced helpText with execution context and cost transparency
+
+## [0.1.2] - 2025-10-28
+
+### Added
+- Three-layer moderation pipeline architecture
+- **Layer 1**: Built-in rules (account age, karma checks) - instant, free
+- **Layer 2**: OpenAI Moderation API - fast, free, catches violence/hate/sexual content
+- **Layer 3**: Custom Rules with AI questions - flexible, paid
+- Short-circuit evaluation for cost optimization (67-85% AI cost reduction)
+- `src/moderation/openaiMod.ts` - OpenAI Moderation API client
+- `src/moderation/builtInRules.ts` - Built-in rule evaluator
+- `src/moderation/pipeline.ts` - Main pipeline orchestrator
+
+### Changed
+- Pipeline settings added: Built-in Rules, OpenAI Moderation categories/threshold/action
+- Enhanced audit logging with pipeline metadata
+
+## [0.1.1] - 2025-10-28
+
+### Added
+- MIT License added to project
+
+### Changed
+- README.md slimmed down for Reddit app directory (570 → 272 lines, 52% reduction)
+- Removed developer-focused content (architecture, system flow, dev setup, roadmap)
+- Moderator-focused language throughout
+- Preserved all three rule examples (copy-ready)
+
+### Fixed
+- Real-time digest now correctly uses separate settings from daily digest
+- Multi-username support: comma-separated lists (e.g., "user1, user2")
+- Per-username error handling (continues on failure)
+
+## [0.1.0] - 2025-10-28
+
+### Added
+- Complete Devvit Settings UI (13 fields, 4 sections)
+- AI Provider Configuration: API key fields for Claude, OpenAI, DeepSeek
+- Provider Selection: primaryProvider and fallbackProvider dropdowns
+- Budget & Cost Controls: daily/monthly limits + alert thresholds
+- Dry-Run Mode: safe testing toggle
+- Rule Management: JSON editor for custom Layer 3 rules with schema validation
+- Cost Dashboard: "View AI Costs" menu item with daily/monthly spending breakdown
+- Default rules initialization on app install (subreddit-specific)
+- Atomic lock system for initialization using Redis SET with NX option
+- SettingsService with 60-second cache
+- ConfigurationManager merges settings with hardcoded defaults
+- RuleSchemaValidator with comprehensive validation and migration framework
+- Cost dashboard cache with 5-minute TTL
+
+### Changed
+- Settings integration: RulesEngine now uses `loadRulesFromSettings()`
+- AISelector now uses ConfigurationManager for provider configuration
+- API keys from settings take precedence over defaults
+
+### Security
+- API keys use `scope: 'installation'` (per-subreddit billing)
+- Settings never expose sensitive data in logs
+
+## [0.0.2] - 2025-10-26
+
+### Added
+- Phase 2: Complete AI Integration (156 tests passing, 90%+ coverage)
+- ContentSanitizer: PII removal (emails, phones, SSNs, credit cards, URLs) - 93 tests
+- AIResponseValidator: Zod runtime schema validation - 42 tests
+- RequestCoalescer: Redis-based request deduplication - 35 tests
+- CircuitBreaker: Prevents cascading failures with self-healing
+- CostTracker: Daily/monthly budget enforcement with alerts at 50%, 75%, 90%
+- PromptManager: A/B testing support for prompt versions
+- AI Provider Interface: Clean abstraction for interchangeable providers
+- Claude Provider: Claude 3.5 Haiku with tool calling ($1/$5 per MTok)
+- OpenAI Provider: GPT-4o Mini with JSON mode ($0.15/$0.60 per MTok)
+- DeepSeek Provider: DeepSeek V3 via OpenAI-compatible API ($0.27/$1.10 per MTok)
+- ProviderSelector: Intelligent multi-provider failover with circuit breaker integration
+- AIAnalyzer: Main orchestrator with differential caching (12-48h TTL)
+
+### Added
+- Phase 1.2: User Profile Analysis
+- Rate limiter with exponential backoff
+- User profile fetcher with caching
+- Post history analyzer (fetches full Reddit history across all subreddits)
+- Trust score calculator (0-100 based on account age, karma, email verification)
+- Split karma tracking (commentKarma, postKarma, totalKarma)
+- User attributes: hasUserFlair, hasPremium, isVerified
+- Post history metrics: totalPosts, totalComments, subreddits array
+
+### Changed
+- Updated PostSubmit handler to integrate user profiling system
+- PostSubmit now fetches profile, analyzes history, calculates trust score
+
+## [0.0.1] - 2025-10-25
+
+### Added
+- Initial Devvit project structure
+- Node.js v20.19.5 and Devvit CLI v0.12.1 installed
+- TypeScript configuration
+- Redis storage layer implementation (`src/storage/redis.ts`, `src/storage/audit.ts`)
+- PostSubmit and CommentSubmit event handlers
+- Type definitions: `events.ts`, `storage.ts`, `config.ts`
+- Deployed to playtest subreddit r/ai_automod_app_dev
+- Test subreddit r/AiAutomod created
+- Bot account u/aiautomodapp with mod permissions
+
+### Fixed
+- API compatibility issues with Devvit platform
+- Tested with real Reddit events
+
+## [0.0.0] - 2025-10-25
+
+### Added
+- Project initialization and planning (Phase 0)
+- CLAUDE.md with comprehensive development workflow guide
+- Complete architecture documentation
+- 6-phase implementation plan
+- Git repository initialization with main + develop branches
+- README.md with project overview
+- Configured .gitignore for security (excludes dev meta files)
+
+### Changed
+- Project architecture pivot from generic rule engine to user profiling system
+- Target subreddits identified: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
+- Focus on detecting: romance scammers, dating seekers, underage users, spammers
+
+## Project Architecture Evolution
+
+### 2025-10-25 - Major Architecture Pivot
+**Original Plan**: Generic rule engine with 20 predetermined rules + custom rule builder
+
+**New Direction**: User profiling & analysis system focused on specific moderation needs
+- **Why**: Actual use case requires analyzing new posters for specific problematic behaviors
+- **What**: Detect romance scammers, dating seekers, underage users in friendship communities
+- **How**: User profiling → AI analysis → Trust scoring → Moderation actions
+
+### 2025-10-27 - Rules Engine Architecture
+**Decision**: Custom AI questions instead of hardcoded detection types
+- **Why**: Maximum flexibility - moderators define their own detection criteria
+- **What**: JSON-configurable rules with natural language AI questions
+- **How**: Three-layer system (Built-in → OpenAI Mod → Custom+AI)
+- **Impact**: Fully flexible, no hardcoded assumptions about moderation needs
+
+### 2025-10-28 - Three-Layer Pipeline
+**Decision**: Multi-layer moderation pipeline for cost optimization
+- **Layer 1**: Built-in rules (instant, free) - account age, karma
+- **Layer 2**: OpenAI Moderation API (fast, free) - violence, hate, sexual content
+- **Layer 3**: Custom rules with AI questions (flexible, paid)
+- **Impact**: 67-85% reduction in AI costs through short-circuit evaluation
+
+### 2025-10-29 - Community Trust System
+**Decision**: Community-specific trust scores instead of global trust
+- **Why**: Global trust allowed high-karma veterans to bypass community-specific rules
+- **What**: Separate trust tracking per subreddit based on approval/removal ratio
+- **How**: Ratio-based scoring (70% approval minimum), decay system, ModAction tracking
+- **Impact**: 29% monthly cost savings, better detection of problematic accounts with history
+
+## Phases Summary
+
+### Phase 0: Planning (2025-10-25)
+Complete project setup, research, and architecture planning.
+
+### Phase 1: Foundation & Setup (2025-10-25 to 2025-10-26)
+Devvit project structure, Redis storage, event handlers, user profiling system.
+
+### Phase 2: AI Integration (2025-10-26)
+Complete AI pipeline with sanitization, validation, deduplication, circuit breaker, cost tracking, multi-provider support. Production-ready with 156 tests passing.
+
+### Phase 3: Rules Engine (2025-10-27)
+Custom AI questions system, condition evaluator, variable substitution, Redis storage, action executors (FLAG, REMOVE, COMMENT). 169 tests passing.
+
+### Phase 4: Settings UI (2025-10-28)
+Complete Devvit settings forms, cost dashboard, rule management with schema validation, default rules initialization.
+
+### Phase 5: Refinement & Optimization (2025-10-28 to 2025-10-29)
+Three-layer pipeline, community trust system, infinite loop fixes, notification improvements, schema simplification, debug logging, post history expansion.
+
+[Unreleased]: https://github.com/cdmackie/redditmod/compare/v0.1.47...HEAD
+[0.1.47]: https://github.com/cdmackie/redditmod/compare/v0.1.46...v0.1.47
+[0.1.46]: https://github.com/cdmackie/redditmod/compare/v0.1.45...v0.1.46
+[0.1.45]: https://github.com/cdmackie/redditmod/compare/v0.1.44...v0.1.45
+[0.1.44]: https://github.com/cdmackie/redditmod/compare/v0.1.43...v0.1.44
+[0.1.43]: https://github.com/cdmackie/redditmod/compare/v0.1.42...v0.1.43
+[0.1.42]: https://github.com/cdmackie/redditmod/compare/v0.1.41...v0.1.42
+[0.1.41]: https://github.com/cdmackie/redditmod/compare/v0.1.40...v0.1.41
+[0.1.40]: https://github.com/cdmackie/redditmod/compare/v0.1.39...v0.1.40
+[0.1.39]: https://github.com/cdmackie/redditmod/compare/v0.1.38...v0.1.39
+[0.1.38]: https://github.com/cdmackie/redditmod/compare/v0.1.37...v0.1.38
+[0.1.37]: https://github.com/cdmackie/redditmod/compare/v0.1.36...v0.1.37
+[0.1.36]: https://github.com/cdmackie/redditmod/compare/v0.1.35...v0.1.36
+[0.1.35]: https://github.com/cdmackie/redditmod/compare/v0.1.34...v0.1.35
+[0.1.34]: https://github.com/cdmackie/redditmod/compare/v0.1.29...v0.1.34
+[0.1.29]: https://github.com/cdmackie/redditmod/compare/v0.1.25...v0.1.29
+[0.1.25]: https://github.com/cdmackie/redditmod/compare/v0.1.24...v0.1.25
+[0.1.24]: https://github.com/cdmackie/redditmod/compare/v0.1.18...v0.1.24
+[0.1.18]: https://github.com/cdmackie/redditmod/compare/v0.1.17...v0.1.18
+[0.1.17]: https://github.com/cdmackie/redditmod/compare/v0.1.15...v0.1.17
+[0.1.15]: https://github.com/cdmackie/redditmod/compare/v0.1.13...v0.1.15
+[0.1.13]: https://github.com/cdmackie/redditmod/compare/v0.1.12...v0.1.13
+[0.1.12]: https://github.com/cdmackie/redditmod/compare/v0.1.10...v0.1.12
+[0.1.10]: https://github.com/cdmackie/redditmod/compare/v0.1.9...v0.1.10
+[0.1.9]: https://github.com/cdmackie/redditmod/compare/v0.1.7...v0.1.9
+[0.1.7]: https://github.com/cdmackie/redditmod/compare/v0.1.6...v0.1.7
+[0.1.6]: https://github.com/cdmackie/redditmod/compare/v0.1.5...v0.1.6
+[0.1.5]: https://github.com/cdmackie/redditmod/compare/v0.1.3...v0.1.5
+[0.1.3]: https://github.com/cdmackie/redditmod/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/cdmackie/redditmod/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/cdmackie/redditmod/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/cdmackie/redditmod/compare/v0.0.2...v0.1.0
+[0.0.2]: https://github.com/cdmackie/redditmod/compare/v0.0.1...v0.0.2
+[0.0.1]: https://github.com/cdmackie/redditmod/compare/v0.0.0...v0.0.1
+[0.0.0]: https://github.com/cdmackie/redditmod/releases/tag/v0.0.0

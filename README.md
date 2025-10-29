@@ -49,7 +49,6 @@ Based on configurable rules, the app can:
 
 **Cost Control**
 - Daily budget limits with real-time tracking
-- Estimated cost: $15-25/month for 3 subreddits (20 new users/day)
 - Trust score system reduces costs by ~50% (skips AI for trusted users)
 - Choose between premium (Claude) or budget (DeepSeek) AI providers
 
@@ -321,18 +320,6 @@ Ask AI to analyze the user and their content:
 - Complete audit logs for all actions
 - No data shared with third parties except for AI analysis
 - Compliance with Reddit API Terms of Service
-
----
-
-## Cost Estimate
-
-For 20 new users per day across 3 subreddits:
-- **With Claude AI**: ~$20-25/month
-- **With DeepSeek (budget option)**: ~$5-7/month
-- **Devvit hosting**: Free
-- **Redis storage**: Free (included)
-
-Trust scores and caching can reduce costs by 50%. Daily budget limits prevent overspending.
 
 ---
 
