@@ -50,47 +50,31 @@ export async function getPostAnalysis(
 }
 
 /**
- * Format audit log into human-readable analysis text
+ * Format audit log into ultra-concise single-line analysis text
  *
- * Converts an AuditLog entry into a concise, readable format suitable
- * for display in a toast notification.
+ * Converts an AuditLog entry into a single-line format optimized
+ * for toast notifications (which only show ~2 lines).
+ *
+ * Format: {ACTION} {trustScore}/100. ${cost} {time}ms. {ruleId}. (DRY-RUN)
+ * Example: APPROVE 80/100. $0.0012 125ms. simple-rule.
  *
  * @param log - The audit log entry to format
- * @returns Formatted analysis string
+ * @returns Formatted single-line analysis string
  *
  * @internal
  */
 function formatAnalysis(log: AuditLog): string {
   const metadata = log.metadata as any || {};
 
-  // Extract metadata
+  // Extract metadata with defaults
   const trustScore = metadata.trustScore ?? 'N/A';
   const aiCost = metadata.aiCost ? `$${metadata.aiCost.toFixed(4)}` : '$0.00';
-  const dryRun = metadata.dryRun ? 'YES' : 'NO';
-  const executionTime = metadata.executionTime ? `${metadata.executionTime}ms` : 'N/A';
+  const dryRun = metadata.dryRun ? true : false;
+  const executionTime = metadata.executionTime ?? 'N/A';
+  const ruleId = log.ruleId || 'default';
 
-  // Format timestamp
-  const timestamp = new Date(log.timestamp).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  // Build analysis text
-  let analysis = `
-AI Automod Analysis
-──────────────────────
-Action: ${log.action}${dryRun === 'YES' ? ' (DRY-RUN)' : ''}
-User: u/${metadata.username || log.userId}
-Trust Score: ${trustScore}/100
-${log.ruleId ? `Rule: ${log.ruleId}` : 'Rule: Default (no match)'}
-${log.confidence ? `Confidence: ${log.confidence}%` : ''}
-AI Cost: ${aiCost}
-Time: ${executionTime}
-Reason: ${log.reason}
-Processed: ${timestamp}
-  `.trim();
+  // Build single-line format: {ACTION} {trustScore}/100. ${cost} {time}ms. {ruleId}.
+  const analysis = `${log.action} ${trustScore}/100. ${aiCost} ${executionTime}ms. ${ruleId}.${dryRun ? ' (DRY-RUN)' : ''}`;
 
   return analysis;
 }
