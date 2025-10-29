@@ -4,7 +4,7 @@
 
 A Reddit Devvit app that uses AI to analyze new posters and detect problematic users before they cause harm. Built for moderators who want to protect their communities from undesirable users or scammers.
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)]()
+[![Version](https://img.shields.io/badge/version-0.1.41-blue)]()
 [![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen)]()
 
 ---
@@ -14,7 +14,7 @@ A Reddit Devvit app that uses AI to analyze new posters and detect problematic u
 Instead of waiting for bad actors to post harmful content, this app **proactively analyzes new users** when they make their first post or comment. It examines:
 
 - **User Profile**: Account age, karma, email verification status
-- **Post History**: Last 20 posts/comments from ALL subreddits
+- **Post History**: Up to 200 posts/comments (100 posts + 100 comments) from ALL subreddits
 - **AI Analysis**: Custom questions you define (e.g., "Does this user appear to be promoting a service?")
 
 Based on configurable rules, the app can:
@@ -29,7 +29,8 @@ Based on configurable rules, the app can:
 
 **User Profiling & Trust Scoring**
 - Analyzes account age, karma, email verification status
-- Fetches last 20 posts/comments from ALL subreddits (not just yours)
+- Fetches up to 200 posts/comments (100 posts + 100 comments) from ALL subreddits (not just yours)
+- Content sanitization reduces AI token usage by 40-60% (removes URLs, markdown, excessive whitespace)
 - Calculates trust score (0-100) to bypass expensive AI analysis for returning good users
 - Caching system reduces API calls and costs (24-48h TTL)
 
@@ -306,7 +307,7 @@ Ask AI to analyze the user and their content:
 
 **What We Access**
 - User account age, karma, and email verification (public data only)
-- Last 20 posts/comments from all subreddits (public data only)
+- Up to 200 posts/comments (100 posts + 100 comments) from all subreddits (public data only)
 - Post/comment content text
 
 **What We Don't Access**
