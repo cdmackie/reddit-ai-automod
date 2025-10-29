@@ -22,8 +22,9 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - Phase 5.25: Post history expansion to 100+100 with sanitization - COMPLETE ✅ (version 0.1.41)
   - Phase 5.26: Provider selection and OpenAI question support fixes - COMPLETE ✅ (version 0.1.42)
   - Phase 5.27: Comprehensive AI debug logging - COMPLETE ✅ (version 0.1.43)
-**Current Version**: 0.1.43 (deployed to Reddit, committed to git)
-**Next**: Continue testing with Layer 3 Custom Rules or additional features as requested
+  - Phase 5.28: Dry-run mode fix (remove per-RuleSet field) - COMPLETE ✅ (version 0.1.44)
+**Current Version**: 0.1.44 (deployed to Reddit, committed to git)
+**Next**: Continue testing with Layer 3 Custom Rules to verify dry-run fix
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -1621,7 +1622,7 @@ After v0.1.36:
 ## Current State (2025-10-29)
 
 **What Exists**:
-- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.39)
+- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.44)
 - ✅ Three-layer moderation pipeline (Layer 1: Built-in, Layer 2: OpenAI Mod, Layer 3: Custom AI)
 - ✅ **Community trust system** (per-subreddit, ratio-based, decay, tracking records)
 - ✅ **ModAction handler fully working** (approvals increase trust, removals decrease trust)
@@ -1813,3 +1814,76 @@ After v0.1.36:
 **Status**: Phases 5.24, 5.25, 5.26, 5.27 COMPLETE ✅
 **Next**: Continue testing with Layer 3 Custom Rules using simplified schema
 
+
+---
+
+### Session 32 (2025-10-29): Phase 5.28 Complete - Dry-Run Mode Fix
+
+**Issue Reported**:
+- User tested Layer 3 Custom Rules and discovered a critical bug
+- Modmail notification showed "[DRY RUN]" even though global dry-run setting was OFF in Settings UI
+- Post "Test Post 30" was not flagged (action wasn't executed), only logged
+- User said: "ok, do that" after I explained the fix approach
+
+**Root Cause Analysis**:
+1. **Per-RuleSet dryRunMode field** was overriding global setting
+   - Schema validator auto-added `dryRunMode: true` when field missing (schemaValidator.ts:263-265)
+   - Default rule sets hardcoded `dryRunMode: true` (defaults.ts:18, 29, 40)
+   - Rules engine read from `ruleSet.dryRunMode` instead of global Settings UI (engine.ts)
+2. **Two conflicting dry-run controls**:
+   - Global "Enable Dry-Run Mode" in Settings UI (what user controls)
+   - Per-RuleSet `dryRunMode` field in rules JSON (what was actually being used)
+3. User had no way to disable dry-run for custom rules without modifying JSON
+
+**Fix Implemented (v0.1.44)**:
+1. ✅ Removed `dryRunMode: boolean` from RuleSet interface (types/rules.ts)
+2. ✅ Removed auto-defaulting logic from schema validator (schemaValidator.ts:263-265)
+3. ✅ Updated rules engine to use global setting:
+   ```typescript
+   const dryRunMode = (settings.dryRunMode as boolean) ?? true; // engine.ts:93
+   ```
+4. ✅ Removed `dryRunMode: true` from all default rule sets (defaults.ts)
+5. ✅ Removed all references from storage layer:
+   - Removed from `saveRuleSet()` logging
+   - Removed from `addRule()` method
+   - Deleted `setDryRunMode()` method entirely
+6. ✅ README verification: Only mentions dry-run as a feature, not a JSON field
+
+**Deployment**:
+- Delegated to javascript-pro agent for implementation
+- Built and deployed successfully as **v0.1.44**
+- Committed to git: commit e6e079e
+- Pushed to remote repository
+
+**Result**:
+- **Only global "Enable Dry-Run Mode" setting controls behavior now**
+- No need to modify rules JSON to enable/disable dry-run
+- Clearer separation: rules define WHAT to do, settings control HOW to do it
+- Backward compatible: existing rules with `dryRunMode` field will simply ignore it
+
+**User Impact**:
+- Moderators can toggle dry-run via Settings UI without modifying rules JSON
+- When dry-run is OFF, actions execute immediately (FLAG, REMOVE, COMMENT)
+- When dry-run is ON, actions are logged but not executed (show [DRY RUN])
+- No more confusion between two different dry-run controls
+
+**Files Modified**:
+- src/types/rules.ts (removed dryRunMode from RuleSet interface)
+- src/rules/schemaValidator.ts (removed auto-defaulting logic)
+- src/rules/engine.ts (read from global Settings instead)
+- src/rules/defaults.ts (removed dryRunMode from default rule sets)
+- src/rules/storage.ts (removed all references, deleted setDryRunMode method)
+
+**Production Code**: ~12,734 lines (net change minimal - refactoring)
+**Version**: 0.1.43 → 0.1.44
+
+**Documentation Updates**:
+- ✅ Updated project-status.md with Phase 5.28 entry
+- ✅ Updated resume-prompt.md (this file) with Phase 5.28
+- ✅ Git commit: e6e079e "fix: remove per-RuleSet dryRunMode field, use only global setting"
+
+**Status**: Phase 5.28 COMPLETE ✅
+**Next**: User should test Layer 3 Custom Rules again to verify:
+1. With global dry-run OFF → Actions execute (posts get flagged/removed)
+2. With global dry-run ON → Actions logged only ([DRY RUN] in notifications)
+3. No need to modify rules JSON to control dry-run behavior

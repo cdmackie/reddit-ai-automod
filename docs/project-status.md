@@ -1619,3 +1619,24 @@ _None currently_
 - **Target Subs**: FriendsOver40/50 (dating/scammer detection) + bitcointaxes (spam detection)
 - **Documentation**: All planning docs need updating to reflect Phase 2 completion
 - **Git**: 10 commits on main branch, pushed to GitHub (https://github.com/cdmackie/reddit-ai-automod)
+
+### 2025-10-29 - Session 12 (Phase 5.28 - Dry-Run Mode Fix)
+- User reported bug: Layer 3 rules showing "[DRY RUN]" despite global dry-run disabled
+- Investigation revealed root cause: per-RuleSet `dryRunMode` field overriding global setting
+  - Schema validator auto-added `dryRunMode: true` when field missing (lines 263-265)
+  - Default rule sets hardcoded `dryRunMode: true` (defaults.ts:18, 29, 40)
+  - Rules engine read from `ruleSet.dryRunMode` instead of global Settings UI
+- **Fixed by removing per-RuleSet dry-run control** (v0.1.44):
+  - ✅ Removed `dryRunMode: boolean` from RuleSet interface (types/rules.ts)
+  - ✅ Removed auto-defaulting logic from schema validator (schemaValidator.ts:263-265)
+  - ✅ Updated rules engine to use global setting: `const dryRunMode = (settings.dryRunMode as boolean) ?? true;` (engine.ts:93)
+  - ✅ Removed `dryRunMode: true` from all default rule sets (defaults.ts)
+  - ✅ Removed all references from storage layer (storage.ts)
+  - ✅ Deleted `setDryRunMode()` method (no longer needed)
+- Deployed javascript-pro agent for implementation
+- Built and deployed successfully as **v0.1.44**
+- Committed to git: commit e6e079e
+- **Result**: Only global "Enable Dry-Run Mode" setting controls behavior now
+- **User Impact**: Moderators can toggle dry-run via Settings UI without modifying rules JSON
+- **Phase 5.28 COMPLETE** ✅
+- User can now test Layer 3 Custom Rules with proper action execution
