@@ -283,20 +283,13 @@ async function executeRemoveAction(
     // Execute: Add removal comment FIRST (before removing post)
     let commentAdded = false;
     try {
-      const comment = await context.reddit.submitComment({
+      await context.reddit.submitComment({
         id: post.id,
         text: commentText,
       });
       commentAdded = true;
 
-      // Track this comment to prevent processing it in CommentSubmit handler
-      if (comment && comment.id) {
-        const redis = context.redis;
-        await redis.set(`recent_comment:${comment.id}`, '1', {
-          expiration: new Date(Date.now() + 60 * 1000), // 1 minute
-        });
-        console.log(`[ActionExecutor:${correlationId}] Tracked comment ${comment.id} to prevent reprocessing`);
-      }
+      // Phase 5.33: Comment tracking removed - now using getAppUser() in commentSubmit handler
     } catch (commentError) {
       // Log comment failure but don't fail the entire action
       const commentErrorMsg = commentError instanceof Error ? commentError.message : String(commentError);
@@ -408,19 +401,12 @@ async function executeCommentAction(
     }
 
     // Execute: Post comment
-    const comment = await context.reddit.submitComment({
+    await context.reddit.submitComment({
       id: post.id,
       text: commentText,
     });
 
-    // Track this comment to prevent processing it in CommentSubmit handler
-    if (comment && comment.id) {
-      const redis = context.redis;
-      await redis.set(`recent_comment:${comment.id}`, '1', {
-        expiration: new Date(Date.now() + 60 * 1000), // 1 minute
-      });
-      console.log(`[ActionExecutor:${correlationId}] Tracked comment ${comment.id} to prevent reprocessing`);
-    }
+    // Phase 5.33: Comment tracking removed - now using getAppUser() in commentSubmit handler
 
     console.log(`[ActionExecutor:${correlationId}] Successfully posted comment:`, {
       postId: post.id,

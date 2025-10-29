@@ -21,6 +21,7 @@ import { sendRealtimeDigest } from '../notifications/modmailDigest.js';
 import { CurrentPost } from '../types/profile.js';
 import { executeModerationPipeline } from '../moderation/pipeline.js';
 import { CommunityTrustManager } from '../trust/communityTrustManager';
+import { getApprovedUsers, getModerators } from '../utils/userCache.js';
 
 // Singleton rate limiter shared across all handler invocations
 const rateLimiter = new RateLimiter();
@@ -71,14 +72,24 @@ export async function handleCommentSubmit(
     return;
   }
 
-  // Skip comments posted by this app to prevent infinite loops
-  // Check if this comment was posted by us within the last minute
-  const recentCommentKey = `recent_comment:${commentId}`;
-  const wasPostedByUs = await redis.get(recentCommentKey);
+  // Phase 5.33: Get app user to prevent processing our own comments
+  const appUser = await reddit.getAppUser();
+  if (author.toLowerCase() === appUser.username.toLowerCase()) {
+    console.log(`[CommentSubmit] Skipping bot's own comment`);
+    return;
+  }
 
-  if (wasPostedByUs) {
-    console.log(`[CommentSubmit] Skipping our own comment ${commentId}`);
-    await redis.del(recentCommentKey); // Clean up
+  // Phase 5.34: Skip approved users (they have explicit subreddit approval)
+  const approvedUsers = await getApprovedUsers(reddit, subredditName);
+  if (approvedUsers.has(author.toLowerCase())) {
+    console.log(`[CommentSubmit] Skipping approved user: ${author}`);
+    return;
+  }
+
+  // Phase 5.34: Skip moderators (they don't need moderation)
+  const moderators = await getModerators(reddit, subredditName);
+  if (moderators.has(author.toLowerCase())) {
+    console.log(`[CommentSubmit] Skipping moderator: ${author}`);
     return;
   }
 

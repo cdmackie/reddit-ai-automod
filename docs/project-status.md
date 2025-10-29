@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.47 (deployed to Reddit)
+**Current Version**: 0.1.48 (ready to deploy)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.31 Complete ✅ | Layer 3 REMOVE action comment posting fixed
+**Status**: Phases 5.32-5.34 Complete ✅ | Skip processing for approved users, moderators, and bot comments
 
 ---
 
@@ -32,6 +32,15 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phases 5.32-5.34 (2025-10-29)
+- [x] Created userCache.ts helper with approved users and moderators caching
+- [x] Skip processing for approved users (explicit subreddit approval)
+- [x] Skip processing for moderators (don't moderate the moderators)
+- [x] Use getAppUser() for bot detection instead of Redis comment tracking
+- [x] Remove comment ID tracking code from executor.ts and commentSubmit.ts
+- [x] 5-minute cache TTL for user lists to reduce API calls
+- [x] Graceful degradation on API failures
 
 ### Phase 5.31 (2025-10-29)
 - [x] Fixed Layer 3 REMOVE action order - now posts comment before removing
@@ -88,24 +97,9 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 
 ## Next Steps
 
-### Immediate (Phase 5.32-5.35)
+### Immediate (Phase 5.35)
 
-1. **Phase 5.32**: Skip approved users with caching
-   - Check user's approved status before profiling
-   - Cache approved user list in Redis
-   - Reduce unnecessary AI API calls
-
-2. **Phase 5.33**: Use getAppUser() for bot detection
-   - Replace comment ID tracking approach
-   - Use Devvit's built-in bot detection
-   - Cleaner implementation
-
-3. **Phase 5.34**: Skip moderators with caching
-   - Check user's mod status before profiling
-   - Cache moderator list in Redis
-   - Avoid profiling subreddit moderators
-
-4. **Phase 5.35**: Add OpenAI Compatible provider
+1. **Phase 5.35**: Add OpenAI Compatible provider
    - Support custom API endpoints (LocalAI, Ollama, etc.)
    - User-configurable base URL and model name
    - Enable local AI deployment option
@@ -135,6 +129,15 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 ---
 
 ## Recent Decisions
+
+**2025-10-29**: Skip processing for approved users and moderators with caching
+- **Rationale**: Approved users and moderators don't need moderation, reduces API calls and processing overhead
+- **Impact**: Improved performance, reduced costs, better user experience for trusted users
+- **Implementation**: 5-minute in-memory cache for user lists, graceful degradation on API failures
+
+**2025-10-29**: Replace Redis comment tracking with getAppUser() check
+- **Rationale**: Simpler, more reliable bot detection using Devvit's built-in API
+- **Impact**: Cleaner code, less Redis overhead, more maintainable
 
 **2025-10-29**: Swap Layer 3 REMOVE action order to post comment first, then remove
 - **Rationale**: Ensures users can see explanation before content disappears

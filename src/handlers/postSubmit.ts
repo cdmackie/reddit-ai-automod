@@ -22,6 +22,7 @@ import { SettingsService } from '../config/settingsService.js';
 import { sendRealtimeDigest } from '../notifications/modmailDigest.js';
 import { executeModerationPipeline } from '../moderation/pipeline.js';
 import { CommunityTrustManager } from '../trust/communityTrustManager';
+import { getApprovedUsers, getModerators } from '../utils/userCache.js';
 
 // Singleton rate limiter shared across all handler invocations
 const rateLimiter = new RateLimiter();
@@ -76,6 +77,20 @@ export async function handlePostSubmit(
   const currentUser = await reddit.getCurrentUser();
   if (currentUser && author.toLowerCase() === currentUser.username.toLowerCase()) {
     console.log(`[PostSubmit] Skipping bot's own post by u/${author}`);
+    return;
+  }
+
+  // Phase 5.34: Skip approved users (they have explicit subreddit approval)
+  const approvedUsers = await getApprovedUsers(reddit, subredditName);
+  if (approvedUsers.has(author.toLowerCase())) {
+    console.log(`[PostSubmit] Skipping approved user: ${author}`);
+    return;
+  }
+
+  // Phase 5.34: Skip moderators (they don't need moderation)
+  const moderators = await getModerators(reddit, subredditName);
+  if (moderators.has(author.toLowerCase())) {
+    console.log(`[PostSubmit] Skipping moderator: ${author}`);
     return;
   }
 

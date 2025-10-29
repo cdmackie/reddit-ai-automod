@@ -6,7 +6,7 @@ Reddit AI Automod is a Devvit-based user profiling & analysis system that uses A
 
 **Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI/DeepSeek)
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.47 (deployed to Reddit)
+**Current Version**: 0.1.48 (ready to deploy)
 **Target Subreddits**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -25,31 +25,20 @@ Reddit AI Automod is a Devvit-based user profiling & analysis system that uses A
 - **Whitelist**: Skip analysis for trusted users
 - **Community Trust**: Automatically whitelist users with good trust scores
 
-### Last Completed (Phase 5.31 - 2025-10-29)
-- Fixed Layer 3 REMOVE action to post comment before removing post/comment
-- This ensures users see the explanation before content disappears
+### Last Completed (Phases 5.32-5.34 - 2025-10-29)
+- Created userCache.ts helper with approved users and moderators caching
+- Skip processing for approved users (they have explicit subreddit approval)
+- Skip processing for moderators (don't moderate the moderators)
+- Use getAppUser() for bot detection instead of Redis comment tracking
+- Removed comment ID tracking code from executor.ts
+- 5-minute in-memory cache for user lists to reduce API calls
+- Graceful degradation on API failures
 
 ---
 
 ## What's Next
 
-### Immediate Priorities (Phase 5.32-5.35)
-
-**Phase 5.32**: Skip Approved Users
-- Call `getApprovedUsers()` at start of processing
-- Cache list for 5 minutes
-- Skip all layers if user is approved
-- Reduces API costs for trusted contributors
-
-**Phase 5.33**: Use getAppUser() for Bot Detection
-- Replace comment ID tracking with `getAppUser()` check
-- Simpler, more reliable bot detection
-- Clean up Redis comment ID storage
-
-**Phase 5.34**: Skip Moderators
-- Call `getModerators()` at start of processing
-- Cache list for 5 minutes (reuse cache from 5.32)
-- Skip all layers if user is moderator
+### Immediate Priority (Phase 5.35)
 
 **Phase 5.35**: OpenAI Compatible Provider
 - Add new provider type supporting custom endpoints
@@ -84,6 +73,7 @@ Reddit AI Automod is a Devvit-based user profiling & analysis system that uses A
 - `src/main.ts` - Entry point, event handler registration
 - `src/handlers/postSubmit.ts` - Post processing pipeline
 - `src/handlers/commentSubmit.ts` - Comment processing pipeline
+- `src/utils/userCache.ts` - Approved users and moderators caching
 
 ### Pipeline Layers
 - `src/pipeline/layer1.ts` - Trust score filtering
@@ -129,7 +119,7 @@ devvit logs r/AiAutomod
 
 ## Architecture Summary
 
-**Flow**: Post/Comment Event → Bot Check → Whitelist Check → Layer 1 (Trust) → Layer 2 (Moderation) → Layer 3 (Custom Rules) → Action (APPROVE/FLAG/REMOVE/COMMENT)
+**Flow**: Post/Comment Event → Bot Check → Approved User Check → Moderator Check → Whitelist Check → Layer 1 (Trust) → Layer 2 (Moderation) → Layer 3 (Custom Rules) → Action (APPROVE/FLAG/REMOVE/COMMENT)
 
 **Data Sources**:
 - Reddit API: User profile, post history
