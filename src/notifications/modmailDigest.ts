@@ -164,6 +164,10 @@ function formatRealtimeMessage(log: AuditLog, settings: any): string {
     message += `**Confidence:** ${log.confidence}%\n`;
   }
 
+  if (metadata.trustScore !== undefined) {
+    message += `**Trust Score:** ${metadata.trustScore}%\n`;
+  }
+
   if (metadata.aiCost) {
     message += `**AI Cost:** $${metadata.aiCost.toFixed(4)}\n`;
   }
@@ -172,8 +176,8 @@ function formatRealtimeMessage(log: AuditLog, settings: any): string {
     message += `**Matched Rule:** ${log.ruleId}\n`;
   }
 
-  if (metadata.dryRun !== undefined) {
-    message += `**Rule Dry-Run:** ${metadata.dryRun ? 'Yes' : 'No'}\n`;
+  if (metadata.dryRun === true) {
+    message += `**Dry-Run:** Yes\n`;
   }
 
   if (metadata.executionTime !== undefined) {
