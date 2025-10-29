@@ -1,8 +1,10 @@
 # Project Status
 
 **Last Updated**: 2025-10-28
-**Current Phase**: Phase 5 - Production Deployment & Testing (Playtest COMPLETE ✅)
-**Overall Progress**: 98% (Phases 1, 2, 3, 4 Complete + Phase 5 Playtest Complete - Ready for Production Upload)
+**Current Phase**: Phase 5 - Refinement & Optimization (Phase 5.14 Planning)
+**Current Version**: 0.1.15 (deployed to Reddit)
+**Overall Progress**: 98% (Core features complete, architectural refinement in progress)
+**Status**: Phase 5.13 COMPLETE ✅ | Phase 5.14 PLANNING (awaiting approval)
 
 ---
 
@@ -718,6 +720,40 @@
   - ✅ Both commits to git
 - [x] Documentation updated - 2025-10-28
   - ✅ Updated project-status.md (this file)
+
+**Phase 5.14: Community Trust System (PLANNING - 2025-10-28)**
+- [x] Problem identification - 2025-10-28
+  - ✅ User reported: Global trust score bypasses community-specific rules
+  - ✅ Root cause: High-karma veterans skip Layer 3 AI rules on first post
+  - ✅ Impact: Romance scammers with old accounts bypass dating intent detection
+  - ✅ Example: 10-year account, 50k karma posts "looking for romance" → skips all checks
+- [x] Architecture design - 2025-10-28
+  - ✅ Decided: Community-specific trust (separate per subreddit)
+  - ✅ Decided: Ratio-based scoring (70% approval rate minimum)
+  - ✅ Decided: Separate tracking for posts vs comments (prevents gaming)
+  - ✅ Decided: Decay system (-5% per month of inactivity)
+  - ✅ Decided: Always run Layer 1 (trivial cost)
+  - ✅ Decided: ModAction event listener for real-time removal tracking
+- [x] Implementation planning - 2025-10-28
+  - ✅ Created comprehensive implementation plan (docs/phase-5.14-community-trust-plan.md)
+  - ✅ Created type definitions (src/types/communityTrust.ts)
+  - ✅ Designed CommunityTrustManager service (~400 lines)
+  - ✅ Designed ModAction event handler (~150 lines)
+  - ✅ Planned handler integration (postSubmit, commentSubmit)
+  - ✅ Planned feature flag for safe rollout
+  - ✅ Documented cost impact ($35 → $25/month per sub, 29% savings)
+  - ✅ Created testing checklist and rollback plan
+- [ ] User approval - PENDING
+  - ⏳ Awaiting user review of implementation plan
+  - ⏳ Open questions: ModAction handling, decay rate, thresholds
+- [ ] Implementation - NOT STARTED
+  - ⏸️ Blocked on user approval
+  - ⏸️ Estimated: 4-6 hours implementation + 2-3 hours testing
+  - ⏸️ Timeline: 2-3 days to production after approval
+
+**Status**: Phase 5.14 is in planning stage. Comprehensive implementation plan created and awaiting user approval. Once approved, will implement with feature flag for safe testing before making mandatory.
+
+---
 
 **Phase 3.1: AI System Refactor for Custom Questions (COMPLETE ✅ - 2025-10-27)**
 - [x] Design Phase 3 architecture - 2025-10-27

@@ -5,27 +5,14 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 
 **Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI/DeepSeek)
 **AI Providers**: Claude 3.5 Haiku (primary), OpenAI gpt-4o-mini (fallback), DeepSeek V3 (testing)
-**Current Phase**: Phase 5 - Production Deployment & Testing
-**Phase 1 Status**: COMPLETE ✅
-**Phase 2 Status**: COMPLETE ✅
-**Phase 3 Status**: COMPLETE ✅ (Rules Engine & Actions)
-  - Phase 3.1: AI System Refactor - COMPLETE ✅
-  - Phase 3.2: Rules Engine Implementation - COMPLETE ✅
-  - Phase 3.3: Rules Engine Integration - COMPLETE ✅
-  - Phase 3.4: Action Executors - COMPLETE ✅
-**Phase 4 Status**: COMPLETE ✅ (Settings Service + UI + Rule Management + Cost Dashboard + Default Rules Init + Integration Fixes)
-  - Phase 4.1: Settings Service Foundation - COMPLETE ✅
-  - Phase 4.2: Devvit Settings UI - COMPLETE ✅
-  - Phase 4.3: Rule Management with Schema Validation - COMPLETE ✅
-  - Phase 4.4: Cost Dashboard UI - COMPLETE ✅
-  - Phase 4.5: Default Rules Initialization with Atomic Locks - COMPLETE ✅
-  - Phase 4.6: Settings Integration Fixes - COMPLETE ✅
-**Phase 5 Status**: Playtest COMPLETE ✅ - Ready for Production Upload
-  - Phase 5.1-5.7: Notifications, 3-layer pipeline, settings UX - COMPLETE ✅
-  - Phase 5.8: Fixed blank field handling in New Account Checks - COMPLETE ✅
-  - Phase 5.9: Removed all default Layer 3 rules - COMPLETE ✅ (version 0.1.9)
-**Next**: Production deployment to target subreddits (r/FriendsOver40, r/FriendsOver50, r/bitcointaxes)
-**Current Version**: 0.1.9
+**Current Phase**: Phase 5 - Refinement & Optimization
+**Phase 1-4 Status**: COMPLETE ✅ (Foundation, AI, Rules Engine, Settings UI)
+**Phase 5 Status**: In Progress - Architectural Refinement
+  - Phase 5.1-5.12: Notifications, 3-layer pipeline, settings UX, whitelist - COMPLETE ✅
+  - Phase 5.13: Dynamic Bot Username Detection - COMPLETE ✅ (version 0.1.15)
+  - Phase 5.14: Community Trust System - PLANNING ⏳ (awaiting approval)
+**Current Version**: 0.1.15 (deployed to Reddit)
+**Next**: Phase 5.14 implementation (community-specific trust scores) OR production deployment
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -1359,4 +1346,120 @@ Moderators configure at: `reddit.com/r/SUBREDDIT/about/apps/AI-Automod-App`
 
 **Status**: Phase 5.7 complete ✅
 **Next**: Production deployment to target subreddits or additional features as requested
+
+---
+
+### Session 26 (2025-10-28): Phase 5.13 Complete - Dynamic Bot Username Detection
+
+**Achievements**:
+1. ✅ **Issue identified by user**: Hardcoded bot username check didn't match actual bot
+   - Hardcoded check: 'aiautomodapp' (no hyphens)
+   - Actual bot: 'ai-automod-app' (with hyphens)
+   - Impact: Bot processing its own posts/comments
+2. ✅ **Initial fix** (version 0.1.14):
+   - Added correct username to hardcoded checks
+   - Checked all three variations: 'ai-automod-app', 'aiautomodapp', 'AI-Automod-App'
+   - Deployed and tested
+3. ✅ **User feedback**: "We cannot hard code this, can we look it up?"
+4. ✅ **Refactored to dynamic lookup** (version 0.1.15):
+   - Removed ALL hardcoded username checks
+   - Now uses getCurrentUser() API for dynamic detection
+   - Works with any bot account name (fully portable)
+   - Cleaner, more maintainable code
+5. ✅ Testing and deployment:
+   - Version 0.1.14 deployed (hardcoded fix)
+   - Version 0.1.15 deployed (dynamic lookup)
+   - Both commits to git with clear messages
+6. ✅ Documentation updated
+
+**Files Modified**:
+- src/handlers/postSubmit.ts (removed hardcoded checks, ~10 lines cleaner)
+- src/handlers/commentSubmit.ts (same change)
+- docs/project-status.md (added Phase 5.13 section)
+
+**Key Learning**: Don't hardcode what can be looked up dynamically, especially account-specific values
+
+**Status**: Phase 5.13 complete ✅
+**Next**: User raised architectural concern about trust scores
+
+---
+
+### Session 27 (2025-10-28): Phase 5.14 Planning - Community Trust System
+
+**Critical Issue Discovered**:
+User tested with cdm9002 account and noticed:
+- User had high global trust score (old account, good karma)
+- Posted content that should trigger Layer 1 "New Account Checks"
+- Content bypassed ALL checks due to trust score
+- **Root cause**: Global trust measures "legitimate account" not "follows community rules"
+
+**Problem Analysis**:
+```
+Current flaw:
+- 10-year account, 50k karma = high global trust
+- First post in r/FriendsOver40: "Looking for romance"
+- System: Skips ALL checks (including dating intent detection)
+- Should: Run Layer 3 AI to catch community rule violations
+```
+
+**User Insight**: "A trust score for a user who has never posted in a sub is meaningless."
+
+**Architecture Discussion**:
+1. ✅ Identified two distinct validation concerns:
+   - User validation: "Is this a legitimate Reddit account?"
+   - Content validation: "Does THIS post/comment violate rules?"
+2. ✅ Discussed 5 potential solutions (separate trust, tiered trust, settings, etc.)
+3. ✅ User proposed: Community-specific trust (not global)
+4. ✅ Agreed on design:
+   - Separate post/comment scores (prevents gaming)
+   - Ratio-based (70% approval rate minimum)
+   - Always run Layer 1 (trivial cost)
+   - Decay system (-5% per month of inactivity)
+   - Real-time ModAction listener for mod removals
+
+**Implementation Planning**:
+1. ✅ Created comprehensive implementation plan (docs/phase-5.14-community-trust-plan.md)
+2. ✅ Created type definitions (src/types/communityTrust.ts)
+3. ✅ Designed CommunityTrustManager service (~400 lines)
+4. ✅ Designed ModAction event handler (~150 lines)
+5. ✅ Planned handler integration with feature flag
+6. ✅ Documented cost impact ($35 → $25/month, 29% savings)
+7. ✅ Created testing checklist and rollback plan
+
+**Open Questions (for user approval)**:
+1. ModAction doesn't include removal reason - count all removals?
+2. Is -5% decay per month appropriate?
+3. Should comments require lower threshold than posts?
+4. Is 70% approval + 10 minimum submissions right?
+
+**Files Created**:
+- docs/phase-5.14-community-trust-plan.md (comprehensive plan, 586 lines)
+- src/types/communityTrust.ts (type definitions)
+
+**Status**: Phase 5.14 in PLANNING stage, awaiting user approval
+**Next**: User review → Approval → Implementation (4-6 hours) → Testing
+**Blocked**: Implementation blocked on user approval of plan
+
+---
+
+## Current State (2025-10-28)
+
+**What Exists**:
+- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.15)
+- ✅ Three-layer moderation pipeline (Layer 1: Built-in, Layer 2: OpenAI Mod, Layer 3: Custom AI)
+- ✅ User whitelist for bypass
+- ✅ Bot self-detection (dynamic username lookup)
+- ✅ Notification system (daily digest, real-time, budget alerts)
+- ✅ Settings UI with all configuration options
+- ✅ Cost tracking and budget enforcement
+- ✅ No default Layer 3 rules (clean slate for moderators)
+
+**Known Issues**:
+- ⚠️ Global trust score bypasses community-specific rules (Phase 5.14 will fix)
+- ⚠️ Trust score applies globally, not per-subreddit (Phase 5.14 will fix)
+
+**What's Next**:
+1. **Immediate**: User reviews Phase 5.14 implementation plan
+2. **If approved**: Implement community trust system (2-3 days)
+3. **Alternative**: Deploy to production as-is (works, but trust score flaw remains)
 
