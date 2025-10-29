@@ -254,23 +254,74 @@ export function getProviderConfig(providerType: AIProviderType) {
 }
 
 /**
- * Get all enabled providers sorted by priority
+ * Get all enabled providers sorted by priority from settings
  *
- * Returns only providers where enabled=true, sorted by priority ascending
- * (lower priority number = higher priority).
+ * Returns enabled providers based on Devvit settings (primary/fallback)
+ * instead of hardcoded priority. This allows users to control provider
+ * selection via the Settings UI.
  *
- * @returns Array of provider types in priority order
+ * Priority order:
+ * 1. Primary provider from settings (if has API key)
+ * 2. Fallback provider from settings (if has API key and not 'none')
+ * 3. Any other enabled providers with API keys
+ *
+ * @param context - Devvit context for accessing settings
+ * @returns Promise resolving to array of provider types in priority order
  *
  * @example
- * const providers = getEnabledProviders();
- * // Returns: ['claude', 'openai', 'deepseek']
- * // Will try claude first, then openai, then deepseek
+ * const providers = await getEnabledProviders(context);
+ * // If settings: primary=openai, fallback=claude
+ * // Returns: ['openai', 'claude', 'deepseek']
+ * // Will try openai first, then claude, then deepseek
  */
-export function getEnabledProviders(): AIProviderType[] {
-  return Object.entries(AI_CONFIG.providers)
-    .filter(([_, config]) => config.enabled)
+export async function getEnabledProviders(context: any): Promise<AIProviderType[]> {
+  // Import ConfigurationManager dynamically to avoid circular dependency
+  const { ConfigurationManager } = await import('./configManager.js');
+  const { SettingsService } = await import('./settingsService.js');
+
+  // Get effective config (includes API keys from settings)
+  const effectiveConfig = await ConfigurationManager.getEffectiveAIConfig(context);
+
+  // Get provider priority from settings
+  const aiSettings = await SettingsService.getAIConfig(context);
+
+  const providers: AIProviderType[] = [];
+
+  // Add primary provider first (if enabled and has API key)
+  if (aiSettings.primaryProvider) {
+    const primaryConfig = effectiveConfig.providers[aiSettings.primaryProvider];
+    if (primaryConfig.enabled && 'apiKey' in primaryConfig && primaryConfig.apiKey) {
+      providers.push(aiSettings.primaryProvider);
+    }
+  }
+
+  // Add fallback provider second (if enabled, has API key, not 'none', and not already added)
+  if (aiSettings.fallbackProvider && aiSettings.fallbackProvider !== 'none') {
+    if (!providers.includes(aiSettings.fallbackProvider)) {
+      const fallbackConfig = effectiveConfig.providers[aiSettings.fallbackProvider];
+      if (fallbackConfig.enabled && 'apiKey' in fallbackConfig && fallbackConfig.apiKey) {
+        providers.push(aiSettings.fallbackProvider);
+      }
+    }
+  }
+
+  // Add any other enabled providers with API keys (in priority order from AI_CONFIG)
+  const otherProviders = Object.entries(effectiveConfig.providers)
+    .filter(([type, config]) => {
+      const providerType = type as AIProviderType;
+      return (
+        config.enabled &&
+        'apiKey' in config &&
+        config.apiKey &&
+        !providers.includes(providerType)
+      );
+    })
     .sort((a, b) => a[1].priority - b[1].priority)
     .map(([type, _]) => type as AIProviderType);
+
+  providers.push(...otherProviders);
+
+  return providers;
 }
 
 /**

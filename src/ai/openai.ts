@@ -32,6 +32,8 @@ import {
   AIErrorType,
   AIError,
   AIProviderType,
+  AIQuestionRequest,
+  AIQuestionBatchResult,
 } from '../types/ai.js';
 import { aiResponseValidator } from './validator.js';
 import { AI_CONFIG } from '../config/ai.js';
@@ -207,6 +209,156 @@ export class OpenAIProvider implements IAIProvider {
     throw new AIError(
       AIErrorType.PROVIDER_ERROR,
       `OpenAI analysis failed after ${this.retryConfig.maxAttempts} attempts: ${lastError?.message}`,
+      this.type,
+      correlationId
+    );
+  }
+
+  /**
+   * Analyze user with custom questions
+   *
+   * New flexible analysis method that allows moderators to define custom
+   * questions in natural language. Answers each question with YES/NO,
+   * confidence score, and reasoning.
+   *
+   * @param request - User profile data and array of custom questions
+   * @returns Batch result with answers to all questions
+   * @throws {AIError} On provider errors, validation failures, or timeouts
+   */
+  async analyzeWithQuestions(request: AIQuestionRequest): Promise<AIQuestionBatchResult> {
+    const startTime = Date.now();
+    const correlationId = request.context.correlationId;
+
+    // Build question prompt using prompt manager
+    const promptData = await promptManager.buildQuestionPrompt({
+      profile: request.profile,
+      postHistory: request.postHistory,
+      currentPost: request.currentPost,
+      questions: request.questions,
+    });
+
+    // Add JSON format instruction to prompt
+    const systemPrompt = `You are a content moderation AI. Respond ONLY with valid JSON matching the specified schema. Do not include any text outside the JSON object.`;
+
+    // Retry with exponential backoff
+    let lastError: Error | null = null;
+    for (let attempt = 1; attempt <= this.retryConfig.maxAttempts; attempt++) {
+      try {
+        console.log('OpenAI question analysis attempt', {
+          correlationId,
+          attempt,
+          userId: request.userId,
+          questionCount: request.questions.length,
+        });
+
+        // Call OpenAI API with JSON mode
+        const response = await this.client.chat.completions.create({
+          model: this.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: promptData.prompt },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.3,
+          max_tokens: 1500,
+        });
+
+        // Extract JSON response
+        const content = response.choices[0]?.message?.content;
+        if (!content) {
+          throw new AIError(
+            AIErrorType.INVALID_RESPONSE,
+            'OpenAI response is empty',
+            this.type,
+            correlationId
+          );
+        }
+
+        // Parse JSON
+        let parsedResponse: unknown;
+        try {
+          parsedResponse = JSON.parse(content);
+        } catch (parseError) {
+          throw new AIError(
+            AIErrorType.INVALID_RESPONSE,
+            `Failed to parse OpenAI JSON response: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+            this.type,
+            correlationId
+          );
+        }
+
+        // Validate response structure
+        const validatedResult = aiResponseValidator.validateQuestionBatchResponse(parsedResponse);
+
+        // Calculate actual token usage and cost
+        const inputTokens = response.usage?.prompt_tokens || 0;
+        const outputTokens = response.usage?.completion_tokens || 0;
+        const costUSD = this.calculateCost(inputTokens, outputTokens);
+        const latencyMs = Date.now() - startTime;
+
+        // Determine cache TTL based on trust score
+        // TODO: Get trust score from ProfileAnalysisResult when integrated
+        const trustScore = 50; // Default medium trust
+        const cacheTTL = getCacheTTLForTrustScore(trustScore, false);
+
+        // Return complete result
+        const result: AIQuestionBatchResult = {
+          userId: request.userId,
+          timestamp: Date.now(),
+          provider: this.type,
+          correlationId,
+          cacheTTL,
+          tokensUsed: inputTokens + outputTokens,
+          costUSD,
+          latencyMs,
+          answers: validatedResult.answers,
+        };
+
+        console.log('OpenAI question analysis success', {
+          correlationId,
+          attempt,
+          questionCount: result.answers.length,
+          tokensUsed: result.tokensUsed,
+          costUSD: result.costUSD,
+          latencyMs,
+        });
+
+        return result;
+      } catch (error) {
+        lastError = error as Error;
+
+        // Classify error type
+        const errorType = this.classifyError(error);
+
+        console.error('OpenAI question analysis error', {
+          correlationId,
+          attempt,
+          errorType,
+          message: lastError.message,
+        });
+
+        // Don't retry on validation errors or non-retryable errors
+        if (errorType === AIErrorType.VALIDATION_ERROR) {
+          throw error;
+        }
+
+        // If not last attempt, wait and retry
+        if (attempt < this.retryConfig.maxAttempts) {
+          const delay = this.calculateBackoff(attempt);
+          console.log('Retrying OpenAI question request', {
+            correlationId,
+            attempt: attempt + 1,
+            delayMs: delay,
+          });
+          await this.sleep(delay);
+        }
+      }
+    }
+
+    // All retries exhausted
+    throw new AIError(
+      AIErrorType.PROVIDER_ERROR,
+      `OpenAI question analysis failed after ${this.retryConfig.maxAttempts} attempts: ${lastError?.message}`,
       this.type,
       correlationId
     );

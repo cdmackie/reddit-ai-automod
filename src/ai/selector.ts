@@ -151,8 +151,8 @@ export class ProviderSelector {
    * ```
    */
   async selectProvider(): Promise<IAIProvider | null> {
-    // Get enabled providers sorted by priority
-    const enabledProviders = getEnabledProviders();
+    // Get enabled providers sorted by priority (now respects settings)
+    const enabledProviders = await getEnabledProviders(this.context);
 
     if (enabledProviders.length === 0) {
       console.error('[ProviderSelector] No enabled providers configured');
@@ -240,7 +240,7 @@ export class ProviderSelector {
   async checkAllProviders(): Promise<
     Record<AIProviderType, ProviderHealthStatus>
   > {
-    const enabledProviders = getEnabledProviders();
+    const enabledProviders = await getEnabledProviders(this.context);
     const circuitBreaker = CircuitBreaker.getInstance(this.context);
     const healthStatus: Partial<Record<AIProviderType, ProviderHealthStatus>> =
       {};
