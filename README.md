@@ -62,94 +62,187 @@ Based on configurable rules, the app can:
 
 ## How to Write Rules
 
-Rules use JSON format. The app provides examples and validation to help you get started.
+Rules use JSON format with a specific schema structure. Copy and paste the examples below, then customize them for your needs.
 
-### Example 1: HardRule - New Account with Links
+### Complete Schema Structure
+
+Your rules JSON must have this structure:
 
 ```json
 {
-  "id": "new-account-spam",
-  "type": "hard",
-  "priority": 100,
-  "contentType": "submission",
-  "conditions": {
-    "operator": "AND",
-    "conditions": [
-      {
-        "field": "profile.accountAgeDays",
-        "operator": "<",
-        "value": 7
-      },
-      {
-        "field": "profile.totalKarma",
-        "operator": "<",
-        "value": 50
-      },
-      {
-        "field": "currentPost.urls",
-        "operator": "in",
-        "value": [".*"]
-      }
-    ]
-  },
-  "action": "FLAG",
-  "message": "New account ({profile.accountAgeDays} days old) posting links. Please review.",
-  "notifyMods": true
+  "version": "1.0",
+  "subreddit": "YourSubredditName",
+  "dryRunMode": false,
+  "updatedAt": 1234567890,
+  "rules": [
+    // Array of rule objects goes here
+  ]
 }
 ```
 
-### Example 2: AIRule - Promotion Intent Detection
+### Rule Object Schema
+
+Each rule in the `rules` array must have these fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Unique identifier for this rule (e.g., "new-account-spam") |
+| `name` | string | Yes | Human-readable name |
+| `type` | string | Yes | `"HARD"` (no AI) or `"AI"` (requires AI analysis) |
+| `enabled` | boolean | Yes | `true` to enable, `false` to disable |
+| `priority` | number | Yes | Higher values run first (1-1000) |
+| `contentType` | string | No | `"submission"`, `"post"`, `"comment"`, or `"any"` (defaults to `"submission"`) |
+| `subreddit` | string/null | No | Specific subreddit or `null` for global |
+| `conditions` | object | Yes | Condition tree (see examples below) |
+| `action` | string | Yes | `"APPROVE"`, `"FLAG"`, `"REMOVE"`, or `"COMMENT"` |
+| `actionConfig` | object | Yes | Contains `reason` (required) and optional `comment` |
+| `aiQuestion` | object | AI only | Contains `id`, `question`, and optional `context` |
+| `createdAt` | number | Yes | Unix timestamp in milliseconds |
+| `updatedAt` | number | Yes | Unix timestamp in milliseconds |
+
+### Example 1: Simple HARD Rule (Short Post Detection)
+
+Detects posts that are too short and flags them for review.
 
 ```json
 {
-  "id": "promotion-seeker",
-  "type": "ai",
-  "priority": 90,
-  "contentType": "submission",
-  "aiQuestions": [
+  "version": "1.0",
+  "subreddit": "YourSubredditName",
+  "dryRunMode": false,
+  "updatedAt": 1704067200000,
+  "rules": [
     {
-      "id": "promotion-intent",
-      "question": "Based on this user's post history, are they selling or promoting a product or service? Answer YES if they mention a product, links, or selling. Answer NO if they're mentioning or reviewing a product or service."
+      "id": "short-post-check",
+      "name": "Flag very short posts",
+      "type": "HARD",
+      "enabled": true,
+      "priority": 100,
+      "contentType": "submission",
+      "subreddit": null,
+      "conditions": {
+        "field": "currentPost.wordCount",
+        "operator": "<",
+        "value": 10
+      },
+      "action": "FLAG",
+      "actionConfig": {
+        "reason": "Post is very short ({currentPost.wordCount} words). Please review for quality."
+      },
+      "createdAt": 1704067200000,
+      "updatedAt": 1704067200000
     }
-  ],
-  "conditions": {
-    "field": "aiAnalysis.answers.promotion-intent.answer",
-    "operator": "==",
-    "value": "YES"
-  },
-  "confidenceThreshold": 80,
-  "action": "REMOVE",
-  "message": "This subreddit is not for product promotions.",
-  "notifyMods": true
+  ]
 }
 ```
 
-### Example 3: HardRule - Spam Links in Comments
+### Example 2: AI Rule with Questions
+
+Uses AI to detect if a user is promoting a service.
 
 ```json
 {
-  "id": "comment-spam-links",
-  "type": "hard",
-  "priority": 95,
-  "contentType": "comment",
-  "conditions": {
-    "operator": "AND",
-    "conditions": [
-      {
-        "field": "profile.accountAgeDays",
-        "operator": "<",
-        "value": 3
+  "version": "1.0",
+  "subreddit": "YourSubredditName",
+  "dryRunMode": false,
+  "updatedAt": 1704067200000,
+  "rules": [
+    {
+      "id": "promotion-detector",
+      "name": "Detect service promotion",
+      "type": "AI",
+      "enabled": true,
+      "priority": 90,
+      "contentType": "submission",
+      "subreddit": null,
+      "aiQuestion": {
+        "id": "is-promotion",
+        "question": "Based on this user's post history, are they promoting or selling a product or service? Answer YES if they mention selling, links to products, or promotional content. Answer NO if they're just discussing or reviewing products.",
+        "context": "Be strict - even subtle promotion should be flagged."
       },
-      {
-        "field": "currentPost.urls",
-        "operator": "in",
-        "value": [".*"]
-      }
-    ]
-  },
-  "action": "REMOVE",
-  "message": "New accounts cannot post links in comments. Please build karma first.",
-  "notifyMods": false
+      "conditions": {
+        "logicalOperator": "AND",
+        "rules": [
+          {
+            "field": "aiAnalysis.answers.is-promotion.answer",
+            "operator": "==",
+            "value": "YES"
+          },
+          {
+            "field": "aiAnalysis.answers.is-promotion.confidence",
+            "operator": ">=",
+            "value": 80
+          }
+        ]
+      },
+      "action": "REMOVE",
+      "actionConfig": {
+        "reason": "AI detected promotion (confidence: {aiAnalysis.answers.is-promotion.confidence}%)",
+        "comment": "This subreddit is not for product or service promotions. Please review our rules."
+      },
+      "createdAt": 1704067200000,
+      "updatedAt": 1704067200000
+    }
+  ]
+}
+```
+
+### Example 3: Combined HARD + AI Rule
+
+New accounts with links get AI analysis to determine intent.
+
+```json
+{
+  "version": "1.0",
+  "subreddit": "YourSubredditName",
+  "dryRunMode": false,
+  "updatedAt": 1704067200000,
+  "rules": [
+    {
+      "id": "new-account-link-check",
+      "name": "New accounts with links - AI check",
+      "type": "AI",
+      "enabled": true,
+      "priority": 100,
+      "contentType": "submission",
+      "subreddit": null,
+      "aiQuestion": {
+        "id": "link-intent",
+        "question": "Is this user posting spam or promotional links? Answer YES if links appear to be spam, self-promotion, or commercial. Answer NO if links are legitimate references or helpful resources."
+      },
+      "conditions": {
+        "logicalOperator": "AND",
+        "rules": [
+          {
+            "field": "profile.accountAgeInDays",
+            "operator": "<",
+            "value": 7
+          },
+          {
+            "field": "profile.totalKarma",
+            "operator": "<",
+            "value": 50
+          },
+          {
+            "field": "currentPost.urls",
+            "operator": "in",
+            "value": [".*"]
+          },
+          {
+            "field": "aiAnalysis.answers.link-intent.answer",
+            "operator": "==",
+            "value": "YES"
+          }
+        ]
+      },
+      "action": "REMOVE",
+      "actionConfig": {
+        "reason": "New account ({profile.accountAgeInDays} days old, {profile.totalKarma} karma) posting spam links",
+        "comment": "New accounts cannot post promotional links. Please build karma first by participating in discussions."
+      },
+      "createdAt": 1704067200000,
+      "updatedAt": 1704067200000
+    }
+  ]
 }
 ```
 
