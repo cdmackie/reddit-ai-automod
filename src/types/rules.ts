@@ -185,9 +185,7 @@ export interface RuleSet {
   /** Schema version */
   version?: string;
   /** Subreddit name ('global' for global rules) */
-  subreddit: string;
-  /** Whether dry-run mode is enabled (log actions but don't execute) */
-  dryRunMode: boolean;
+  subreddit?: string;
   /** Array of rules sorted by priority */
   rules: Rule[];
   /** Last update timestamp (milliseconds since epoch) */

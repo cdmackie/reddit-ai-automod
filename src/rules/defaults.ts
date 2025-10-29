@@ -15,7 +15,6 @@ import { RuleSet } from '../types/rules.js';
  */
 export const FRIENDSOVER40_RULES: RuleSet = {
   subreddit: 'FriendsOver40',
-  dryRunMode: true,
   updatedAt: Date.now(),
   rules: [],
 };
@@ -26,7 +25,6 @@ export const FRIENDSOVER40_RULES: RuleSet = {
  */
 export const FRIENDSOVER50_RULES: RuleSet = {
   subreddit: 'FriendsOver50',
-  dryRunMode: true,
   updatedAt: Date.now(),
   rules: [],
 };
@@ -37,7 +35,6 @@ export const FRIENDSOVER50_RULES: RuleSet = {
  */
 export const BITCOINTAXES_RULES: RuleSet = {
   subreddit: 'bitcointaxes',
-  dryRunMode: true,
   updatedAt: Date.now(),
   rules: [],
 };

@@ -89,7 +89,7 @@ export class RuleStorage {
   /**
    * Get rule set configuration
    *
-   * Returns the full rule set including metadata and dry-run mode setting.
+   * Returns the full rule set including metadata.
    *
    * @param subreddit - The subreddit name
    * @returns RuleSet or null if not found
@@ -124,7 +124,7 @@ export class RuleStorage {
    */
   async saveRuleSet(ruleSet: RuleSet): Promise<void> {
     try {
-      const sanitizedSub = this.sanitizeRedisKey(ruleSet.subreddit);
+      const sanitizedSub = this.sanitizeRedisKey(ruleSet.subreddit ?? 'unknown');
       const key = `rules:${sanitizedSub}:set`;
       ruleSet.updatedAt = Date.now();
       await this.redis.set(key, JSON.stringify(ruleSet));
@@ -132,7 +132,6 @@ export class RuleStorage {
       console.log('[RuleStorage] Saved rule set:', {
         subreddit: ruleSet.subreddit,
         ruleCount: ruleSet.rules.length,
-        dryRunMode: ruleSet.dryRunMode,
       });
     } catch (error) {
       console.error('[RuleStorage] Error saving rule set:', {
@@ -157,7 +156,6 @@ export class RuleStorage {
       if (!ruleSet) {
         ruleSet = {
           subreddit,
-          dryRunMode: true, // Default to safe mode
           rules: [],
           updatedAt: Date.now(),
         };
@@ -305,7 +303,6 @@ export class RuleStorage {
       if (defaultRules && defaultRules.length > 0) {
         const ruleSet: RuleSet = {
           subreddit,
-          dryRunMode: true, // Start in safe mode
           rules: defaultRules.sort((a, b) => b.priority - a.priority),
           updatedAt: Date.now(),
         };
@@ -320,38 +317,6 @@ export class RuleStorage {
     } catch (error) {
       console.error('[RuleStorage] Error initializing defaults:', {
         subreddit,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Set dry-run mode for a subreddit
-   *
-   * @param subreddit - The subreddit name
-   * @param dryRunMode - Whether to enable dry-run mode
-   */
-  async setDryRunMode(subreddit: string, dryRunMode: boolean): Promise<void> {
-    try {
-      // Get existing rule set (getRuleSet sanitizes internally)
-      const ruleSet = await this.getRuleSet(subreddit);
-
-      if (!ruleSet) {
-        throw new Error(`Rule set not found for subreddit: ${subreddit}`);
-      }
-
-      ruleSet.dryRunMode = dryRunMode;
-      await this.saveRuleSet(ruleSet);
-
-      console.log('[RuleStorage] Updated dry-run mode:', {
-        subreddit,
-        dryRunMode,
-      });
-    } catch (error) {
-      console.error('[RuleStorage] Error setting dry-run mode:', {
-        subreddit,
-        dryRunMode,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;

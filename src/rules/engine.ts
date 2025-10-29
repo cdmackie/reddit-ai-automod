@@ -88,8 +88,9 @@ export class RulesEngine {
       // 4. Sort by priority (highest first)
       applicableRules.sort((a, b) => b.priority - a.priority);
 
-      // 5. Check if in dry-run mode from ruleset
-      const dryRunMode = ruleSet.dryRunMode ?? true; // Default to safe mode
+      // 5. Get global dry-run mode from Settings UI
+      const settings = await this.context.settings.getAll();
+      const dryRunMode = (settings.dryRunMode as boolean) ?? true; // Default to safe mode
 
       // 6. Evaluate each rule
       let rulesEvaluated = 0;

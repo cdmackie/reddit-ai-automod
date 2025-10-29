@@ -260,9 +260,6 @@ export class RuleSchemaValidator {
     if (!data.subreddit) {
       data.subreddit = 'unknown';
     }
-    if (data.dryRunMode === undefined) {
-      data.dryRunMode = true; // Safe default
-    }
     if (!data.updatedAt) {
       data.updatedAt = Date.now();
     }
@@ -479,7 +476,6 @@ function getDefaultRuleSet(subredditName: string): RuleSet {
     default:
       return {
         subreddit: subredditName,
-        dryRunMode: true,
         updatedAt: Date.now(),
         rules: [],
       };
