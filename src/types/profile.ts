@@ -184,7 +184,7 @@ export interface ProfileAnalysisResult {
  * Controls cache TTLs, thresholds, and target subreddits
  */
 export interface ProfileConfig {
-  /** Number of posts/comments to fetch for history analysis */
+  /** Number of posts/comments to fetch for history analysis (fetches up to 100 posts + 100 comments) */
   historyLimit: number;
   /** Cache TTL for user profiles in milliseconds */
   profileCacheTTL: number;
@@ -205,7 +205,7 @@ export interface ProfileConfig {
  * Can be overridden via Redis config storage
  */
 export const DEFAULT_PROFILE_CONFIG: ProfileConfig = {
-  historyLimit: 20,
+  historyLimit: 200, // Fetch 200 items to ensure we get ~100 posts + ~100 comments (sanitized and compacted)
   profileCacheTTL: 86400000, // 24 hours
   historyCacheTTL: 86400000, // 24 hours
   trustScoreCacheTTL: 604800000, // 7 days

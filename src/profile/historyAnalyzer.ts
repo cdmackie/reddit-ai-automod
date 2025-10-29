@@ -11,9 +11,18 @@
  * - Check cache first, fetch from API on miss
  *
  * **Data Fetched**:
- * - Last 20 posts and comments (configurable via DEFAULT_PROFILE_CONFIG.historyLimit)
+ * - Up to 100 posts and 100 comments (200 total max, configurable via DEFAULT_PROFILE_CONFIG.historyLimit)
  * - Sorted by creation date (newest first)
- * - Includes content, subreddit, score, and timestamp
+ * - Content is sanitized and compacted to optimize token usage for AI analysis
+ * - Includes subreddit, score, and timestamp
+ *
+ * **Content Sanitization**:
+ * - Post titles: kept as-is (already short)
+ * - Post bodies: truncated to 500 characters
+ * - Comment bodies: truncated to 300 characters
+ * - URLs replaced with [URL]
+ * - Markdown formatting removed
+ * - Excessive whitespace collapsed
  *
  * **Metrics Calculated**:
  * - Total items fetched
@@ -166,24 +175,67 @@ export class PostHistoryAnalyzer {
   }
 
   /**
+   * Sanitize and compact text content
+   *
+   * This method reduces token usage for AI analysis by:
+   * - Removing excessive whitespace (multiple spaces, newlines)
+   * - Removing markdown formatting (**, __, ~~, etc.)
+   * - Replacing URLs with [URL]
+   * - Truncating to maxLength if longer
+   *
+   * @param text - Text to sanitize
+   * @param maxLength - Maximum length before truncation (default: 300)
+   * @returns Sanitized and compacted text
+   * @private
+   */
+  private sanitizeAndCompactText(text: string, maxLength: number = 300): string {
+    if (!text || text.trim() === '') return '';
+
+    // Remove excessive whitespace (collapse multiple spaces/newlines to single space)
+    let sanitized = text.replace(/\s+/g, ' ').trim();
+
+    // Remove markdown bold/italic/strikethrough/code formatting
+    sanitized = sanitized.replace(/[*_~`]/g, '');
+
+    // Replace URLs with [URL] placeholder
+    sanitized = sanitized.replace(/https?:\/\/[^\s]+/gi, '[URL]');
+
+    // Truncate if too long
+    if (sanitized.length > maxLength) {
+      sanitized = sanitized.substring(0, maxLength) + '...';
+    }
+
+    return sanitized;
+  }
+
+  /**
    * Fetch user post history from Reddit API
    *
    * This method:
    * 1. Uses rate limiter to prevent hitting API limits
-   * 2. Fetches up to historyLimit posts/comments via Reddit API
-   * 3. Processes each item to extract relevant data
-   * 4. Returns array of PostHistoryItem objects
+   * 2. Fetches up to historyLimit items (200) via Reddit API
+   * 3. Separates posts and comments, taking up to 100 of each
+   * 4. Applies sanitization to reduce token usage for AI analysis
+   * 5. Returns combined array of sanitized PostHistoryItem objects
    *
    * The Reddit API returns an async iterator, so we need to iterate it
-   * and collect items until we reach the limit or run out of items.
+   * and collect items until we reach the limits or run out of items.
+   *
+   * Sanitization strategy:
+   * - Post titles: kept as-is (already short)
+   * - Post bodies: truncated to 500 characters
+   * - Comment bodies: truncated to 300 characters
+   * - URLs replaced with [URL]
+   * - Markdown formatting removed
    *
    * @param username - Reddit username
-   * @returns Array of post history items (empty on error)
+   * @returns Array of sanitized post history items (empty on error)
    * @private
    */
   private async fetchFromReddit(username: string): Promise<PostHistoryItem[]> {
     try {
-      const items: PostHistoryItem[] = [];
+      const posts: PostHistoryItem[] = [];
+      const comments: PostHistoryItem[] = [];
 
       // Fetch user posts and comments with rate limiting
       const iterator = await this.rateLimiter.withRetry(async () => {
@@ -194,45 +246,51 @@ export class PostHistoryAnalyzer {
         });
       });
 
-      // Iterate the async iterator and collect items
+      // Iterate the async iterator and separate posts/comments
       for await (const item of iterator) {
-        // Stop if we've reached the limit
-        if (items.length >= this.historyLimit) {
+        // Stop if we have 100 posts AND 100 comments
+        if (posts.length >= 100 && comments.length >= 100) {
           break;
         }
 
-        // Determine if this is a Post or Comment
-        let type: 'post' | 'comment';
-        let content: string;
-        let subreddit: string;
-
         // Type guard: Posts have 'title' property, Comments don't
-        if ('title' in item) {
-          // It's a Post
-          type = 'post';
-          const post = item as Post;
-          content = post.body || post.url || '';
-          subreddit = post.subredditName;
-        } else {
+        const isComment = 'body' in item && !('title' in item);
+
+        if (isComment && comments.length < 100) {
           // It's a Comment
-          type = 'comment';
           const comment = item as Comment;
-          content = comment.body || '';
-          subreddit = comment.subredditName;
+          const sanitizedBody = this.sanitizeAndCompactText(comment.body || '', 300);
+
+          comments.push({
+            id: comment.id,
+            type: 'comment',
+            subreddit: comment.subredditName,
+            content: sanitizedBody,
+            score: comment.score,
+            createdAt: comment.createdAt,
+          });
+        } else if (!isComment && posts.length < 100) {
+          // It's a Post
+          const post = item as Post;
+          const sanitizedBody = this.sanitizeAndCompactText(post.body || '', 500);
+          // Combine title (kept as-is) with sanitized body
+          const content = post.title + (sanitizedBody ? ' | ' + sanitizedBody : '');
+
+          posts.push({
+            id: post.id,
+            type: 'post',
+            subreddit: post.subredditName,
+            content: content,
+            score: post.score,
+            createdAt: post.createdAt,
+          });
         }
-
-        // Extract common properties
-        const historyItem: PostHistoryItem = {
-          id: item.id,
-          type,
-          subreddit,
-          content,
-          score: item.score,
-          createdAt: item.createdAt,
-        };
-
-        items.push(historyItem);
       }
+
+      // Combine posts and comments, then sort by date (newest first)
+      const items = [...posts, ...comments].sort((a, b) =>
+        b.createdAt.getTime() - a.createdAt.getTime()
+      );
 
       return items;
     } catch (error) {
