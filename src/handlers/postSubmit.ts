@@ -74,7 +74,7 @@ export async function handlePostSubmit(
 
   // Skip the bot's own posts to prevent infinite loops
   const currentUser = await reddit.getCurrentUser();
-  if (currentUser && author === currentUser.username) {
+  if (currentUser && author.toLowerCase() === currentUser.username.toLowerCase()) {
     console.log(`[PostSubmit] Skipping bot's own post by u/${author}`);
     return;
   }

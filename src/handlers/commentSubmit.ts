@@ -73,7 +73,7 @@ export async function handleCommentSubmit(
 
   // Skip the bot's own comments to prevent infinite loops
   const currentUser = await reddit.getCurrentUser();
-  if (currentUser && author === currentUser.username) {
+  if (currentUser && author.toLowerCase() === currentUser.username.toLowerCase()) {
     console.log(`[CommentSubmit] Skipping bot's own comment by u/${author}`);
     return;
   }
