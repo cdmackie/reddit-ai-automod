@@ -23,7 +23,9 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - Phase 5.26: Provider selection and OpenAI question support fixes - COMPLETE ✅ (version 0.1.42)
   - Phase 5.27: Comprehensive AI debug logging - COMPLETE ✅ (version 0.1.43)
   - Phase 5.28: Dry-run mode fix (remove per-RuleSet field) - COMPLETE ✅ (version 0.1.44)
-**Current Version**: 0.1.44 (deployed to Reddit, committed to git)
+  - Phase 5.29: Notification format improvements (trust score, cleaner dry-run) - COMPLETE ✅ (version 0.1.45)
+  - Phase 5.30: Trust score delta logging in ModAction handler - COMPLETE ✅ (version 0.1.46)
+**Current Version**: 0.1.46 (deployed to Reddit, committed to git)
 **Next**: Continue testing with Layer 3 Custom Rules to verify dry-run fix
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
@@ -1622,7 +1624,7 @@ After v0.1.36:
 ## Current State (2025-10-29)
 
 **What Exists**:
-- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.44)
+- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.46)
 - ✅ Three-layer moderation pipeline (Layer 1: Built-in, Layer 2: OpenAI Mod, Layer 3: Custom AI)
 - ✅ **Community trust system** (per-subreddit, ratio-based, decay, tracking records)
 - ✅ **ModAction handler fully working** (approvals increase trust, removals decrease trust)

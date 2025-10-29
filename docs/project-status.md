@@ -1640,3 +1640,58 @@ _None currently_
 - **User Impact**: Moderators can toggle dry-run via Settings UI without modifying rules JSON
 - **Phase 5.28 COMPLETE** ✅
 - User can now test Layer 3 Custom Rules with proper action execution
+
+### 2025-10-29 - Session 12 (Phase 5.29 - Notification Format Improvements)
+- User requested notification improvements:
+  - Question: "is that the old rule dry run flag or the global flag?"
+  - Request: Add user trust score to notifications
+  - Request: Change "Rule Dry-Run" label to "Dry-Run"
+  - Follow-up: Only show "Dry-Run: Yes" when enabled (hide when off)
+- **Implemented notification improvements** (v0.1.45):
+  - ✅ Added **Trust Score** display to notifications (shows user's current trust score %)
+  - ✅ Renamed "Rule Dry-Run" to "Dry-Run" (clearer labeling)
+  - ✅ Changed logic to only show "Dry-Run: Yes" when enabled (omit line when off)
+  - ✅ Trust score appears after Confidence line in notification format
+- Modified src/notifications/modmailDigest.ts (formatRealtimeMessage function)
+- **New notification format**:
+  ```
+  Action: FLAG
+  Target: Post t3_xxx
+  User: u/username
+  Reason: User is not single
+  Confidence: 90%
+  Trust Score: 45%    ← NEW (only if trustScore in metadata)
+  AI Cost: $0.0003
+  Matched Rule: xxx
+  Dry-Run: Yes        ← Only shown when dry-run is ON
+  Execution Time: 5ms
+  ```
+- Deployed javascript-pro agent for initial implementation
+- Manual adjustment to change dry-run display logic (only show when true)
+- Deployed successfully as **v0.1.45**
+- Committed to git: commit 4d4fe91
+- **Result**: Cleaner notifications with user trust score context
+- **User Impact**: 
+  - Moderators can see user's trust score directly in notifications
+  - Less clutter when dry-run is off (normal operation)
+  - "Dry-Run: Yes" warning is more prominent when testing
+- **Phase 5.29 COMPLETE** ✅
+
+### 2025-10-29 - Session 12 (Phase 5.30 - Trust Score Delta Logging)
+- User requested trust score changes include delta in logs
+  - Example format: "50% (+5%)" or "45% (-10%)"
+- **Implemented trust score delta logging** (v0.1.46):
+  - ✅ Updated `CommunityTrustManager.updateTrust()` to return `{ oldScore, newScore, delta }`
+  - ✅ Updated `CommunityTrustManager.retroactiveRemoval()` to return score changes (or null)
+  - ✅ Modified ModAction handler to capture and log score changes
+  - ✅ Approval logs now show: "Trust score increased for user t2_xxx: 50.0% (+5.0%) after mod approval..."
+  - ✅ Removal logs now show: "Trust score updated for user t2_xxx: 40.0% (-10.0%) after mod removal..."
+- Modified files:
+  - src/trust/communityTrustManager.ts (updated return types and calculations)
+  - src/handlers/modAction.ts (capture return values and format logs)
+- Deployed javascript-pro agent for implementation
+- Deployed successfully as **v0.1.46**
+- Committed to git: commit 7aa10df
+- **Result**: Trust score changes are now clearly visible with before/after values and delta
+- **User Impact**: Moderators can see exactly how their actions affect user trust scores
+- **Phase 5.30 COMPLETE** ✅
