@@ -75,7 +75,7 @@ Devvit.addSettings([
       { label: 'REMOVE - Remove post/comment', value: 'REMOVE' },
       { label: 'COMMENT - Warn user', value: 'COMMENT' },
     ],
-    defaultValue: ['FLAG'],
+    defaultValue: 'FLAG',
     scope: 'installation',
   },
   {
@@ -136,7 +136,7 @@ Devvit.addSettings([
       { label: 'REMOVE - Remove post/comment', value: 'REMOVE' },
       { label: 'COMMENT - Warn user', value: 'COMMENT' },
     ],
-    defaultValue: ['FLAG'],
+    defaultValue: 'FLAG',
     scope: 'installation',
   },
   {
@@ -175,7 +175,7 @@ Devvit.addSettings([
       { label: 'GPT-4o Mini (OpenAI)', value: 'openai' },
       { label: 'DeepSeek V3', value: 'deepseek' },
     ],
-    defaultValue: ['claude'],
+    defaultValue: 'claude',
     scope: 'installation',
   },
   {
@@ -189,7 +189,7 @@ Devvit.addSettings([
       { label: 'DeepSeek V3', value: 'deepseek' },
       { label: 'None (no fallback)', value: 'none' },
     ],
-    defaultValue: ['openai'],
+    defaultValue: 'openai',
     scope: 'installation',
   },
   {
@@ -248,7 +248,7 @@ Devvit.addSettings([
       { label: 'Mod Notifications (all moderators)', value: 'all' },
       { label: 'Specific moderator(s)', value: 'specific' },
     ],
-    defaultValue: ['all'],
+    defaultValue: 'all',
     scope: 'installation',
   },
   {
