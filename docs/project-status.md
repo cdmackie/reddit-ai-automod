@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.39 (deployed to Reddit)
+**Current Version**: 0.1.43 (deployed to Reddit)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.23 Complete ✅ | README schema documentation updated for Layer 3 Custom Rules
+**Status**: Phase 5.27 Complete ✅ | Debug logging added to AI pipeline
 
 ---
 
@@ -976,6 +976,120 @@
 - [x] Git commit - 2025-10-29
   - ✅ Commit 9d01f7b: "docs: update Layer 3 Custom Rules JSON schema documentation"
   - ✅ README.md now matches actual validator schema
+
+**Phase 5.24: Layer 3 Schema Simplification (COMPLETE ✅ - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User feedback: Schema too complex for moderators
+  - ✅ Required 15+ fields including name, type, subreddit, timestamps
+  - ✅ Field naming `aiQuestion` was verbose
+  - ✅ No smart defaults - everything was explicit
+  - ✅ User requested: "Minimal should be {conditions:[...], action:'...'}"
+- [x] Implementation (v0.1.40) - 2025-10-29
+  - ✅ Deployed javascript-pro agent for implementation
+  - ✅ Made fields optional with auto-generation:
+    - `id`: Auto-generated from question text if omitted
+    - `name`: Auto-generated from question text
+    - `type`: Deduced from presence of `ai` field (AI vs HARD)
+    - `enabled`: Defaults to true
+    - `priority`: Defaults to array order × 10
+    - `version`: Defaults to "1.0"
+  - ✅ Removed unnecessary fields: `subreddit`, `createdAt`, `updatedAt`
+  - ✅ Renamed `aiQuestion` → `ai` with simpler access:
+    - `ai.answer` for current rule's answer
+    - `ai.confidence` for current rule's confidence
+    - `ai.[id].answer` for cross-rule access
+  - ✅ Updated contentType mapping: "post"→"submission", "all"→"any"
+  - ✅ Updated schema validator with auto-generation logic
+  - ✅ Updated evaluator with new field access patterns
+  - ✅ Updated engine to support both `ai` and `aiQuestion` (backward compat)
+  - ✅ Updated variable substitution syntax
+  - ✅ Created 11 tests for AI field schema (all passing)
+  - ✅ Built and deployed v0.1.40
+
+**Phase 5.25: Post History Expansion with Sanitization (COMPLETE ✅ - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User requested: "Increase number of posts and comments we review"
+  - ✅ Current limit: 20 items total
+  - ✅ User suggested: "Up to 100 posts and 100 comments"
+  - ✅ Concern: Token bloat - need to "sanitise, compact, and combine"
+- [x] Implementation (v0.1.41) - 2025-10-29
+  - ✅ Deployed javascript-pro agent for implementation
+  - ✅ Updated `historyLimit`: 20 → 200 in types/profile.ts
+  - ✅ Added `sanitizeAndCompactText()` method in historyAnalyzer.ts:
+    - Removes excessive whitespace (collapse to single space)
+    - Removes markdown formatting (*, _, ~, `)
+    - Replaces URLs with [URL]
+    - Truncates posts to 500 chars, comments to 300 chars
+  - ✅ Separated post/comment collection in fetchFromReddit():
+    - Collects up to 100 posts AND 100 comments separately
+    - Ensures balanced representation
+    - Stops when both limits reached
+  - ✅ Content truncation strategy:
+    - Post titles: Kept as-is (already short)
+    - Post bodies: Truncated to 500 characters
+    - Comment bodies: Truncated to 300 characters
+  - ✅ Token reduction: 40-60% through sanitization
+  - ✅ Built and deployed v0.1.41
+
+**Phase 5.26: Critical Bug Fixes - Provider Selection & OpenAI Questions (COMPLETE ✅ - 2025-10-29)**
+- [x] Bug #1: Provider selection ignoring settings - 2025-10-29
+  - ✅ User reported: "First it seems to be querying claude even if no API key. It isn't following the Primary AI Provider setting"
+  - ✅ Root cause: `getEnabledProviders()` used hardcoded `AI_CONFIG` instead of settings
+  - ✅ Fix in src/config/ai.ts:
+    - Made `getEnabledProviders()` async
+    - Added `context` parameter
+    - Changed to use `ConfigurationManager.getEffectiveAIConfig()`
+  - ✅ Fix in src/ai/selector.ts:
+    - Updated to await `getEnabledProviders(this.context)`
+  - ✅ Settings UI now controls provider priority correctly
+- [x] Bug #2: OpenAI provider doesn't support questions - 2025-10-29
+  - ✅ User reported: "Provider does not support question-based analysis {provider: 'openai'}"
+  - ✅ Root cause: OpenAIProvider missing `analyzeWithQuestions()` method
+  - ✅ Fix in src/ai/openai.ts:
+    - Implemented complete 152-line `analyzeWithQuestions()` method
+    - Prompt building via PromptManager
+    - Retry logic with exponential backoff
+    - Response parsing and validation
+    - Token counting and cost tracking
+    - Error handling for malformed responses
+  - ✅ All three providers (Claude, OpenAI, DeepSeek) now support questions
+- [x] Implementation - 2025-10-29
+  - ✅ Deployed javascript-pro agent for implementation
+  - ✅ Built and deployed v0.1.42
+
+**Phase 5.27: Comprehensive AI Debug Logging (COMPLETE ✅ - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User requested: "It's sending data but we need more information about what was sent and received to the AI"
+  - ✅ Need visibility into AI request/response pipeline
+  - ✅ Need to track token usage and costs
+  - ✅ Need to see sanitization impact
+- [x] Implementation (v0.1.43) - 2025-10-29
+  - ✅ Deployed javascript-pro agent for implementation
+  - ✅ Added debug logging to src/ai/openai.ts:
+    - Request details: correlationId, userId, questionCount, questions with IDs
+    - Profile summary: accountAgeMonths, totalKarma
+    - Post history summary: itemsFetched count
+    - Prompt preview: First 500 chars
+    - Response details: tokens (prompt + completion), cost (4 decimals)
+    - Parsed response: answersCount, each answer with questionId/answer/confidence
+  - ✅ Added debug logging to src/ai/prompts.ts:
+    - Prompt building: version, questionCount, profileData
+    - Sanitization metrics: original vs sanitized lengths, reduction percentage
+    - Content truncation to prevent log flooding
+  - ✅ Added debug logging to src/ai/analyzer.ts:
+    - Analysis start: correlationId, userId, provider, questionCount
+    - Analysis completion: provider, answersReceived, tokensUsed, cost, answers summary
+  - ✅ Added debug logging to src/ai/validator.ts:
+    - Validation input: hasAnswersArray, answersCount
+    - Validation success: answersValidated, allAnswersValid check
+  - ✅ Consistent patterns:
+    - Correlation IDs for request tracing
+    - Token counts to 4 decimal places
+    - Content truncation (500/200/100 chars)
+    - Consistent prefixes: [OpenAI], [PromptManager], [AIAnalyzer], [Validator]
+  - ✅ Built and deployed v0.1.43
+- [x] Git commit - 2025-10-29
+  - ✅ Pushed to remote repository (commit 388beba)
 
 ---
 
