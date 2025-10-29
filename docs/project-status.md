@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.37 (deployed to Reddit)
+**Current Version**: 0.1.39 (deployed to Reddit)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.20 Complete ✅ | Ultra-concise toast format for "View AI Analysis"
+**Status**: Phase 5.23 Complete ✅ | README schema documentation updated for Layer 3 Custom Rules
 
 ---
 
@@ -918,6 +918,64 @@
   - ✅ Normal: `APPROVE 80/100. $0.0012 125ms. simple-rule.`
   - ✅ Dry-run: `REMOVE 45/100. $0.0023 235ms. spam-detection. (DRY-RUN)`
   - ✅ Missing values: `FLAG N/A/100. $0.00 N/A. default.`
+
+**Phase 5.21: Separate OpenAI API Key for Layer 2 (COMPLETE ✅ - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User discovered Layer 2 (OpenAI Moderation) required API key but showed error
+  - ✅ OpenAI Moderation API is free but requires authentication
+  - ✅ User requested separate API key field for Layer 2 vs Layer 3
+  - ✅ Use case: Different billing/quota tracking per layer
+- [x] Implementation (v0.1.38) - 2025-10-29
+  - ✅ Added `openaiModApiKey` field to settings in src/main.tsx (lines 98-104)
+  - ✅ Updated src/moderation/pipeline.ts to check Layer 2 key first, fall back to Layer 3 key
+  - ✅ Enhanced error messaging when no API key configured
+  - ✅ TypeScript compilation successful
+  - ✅ Built and deployed v0.1.38
+- [x] Testing - 2025-10-29
+  - ✅ User tested with violent content
+  - ✅ Layer 2 successfully flagged content
+  - ✅ Confirmed separate API key field works correctly
+
+**Phase 5.22: Enhanced Logging for OpenAI Moderation Scores (COMPLETE ✅ - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User saw flagged categories but wanted to see actual scores
+  - ✅ Helpful for understanding severity of violations
+  - ✅ OpenAI returns scores 0.0-1.0 for each category
+- [x] Implementation (v0.1.39) - 2025-10-29
+  - ✅ Modified src/moderation/openaiMod.ts (lines 174-183)
+  - ✅ Enhanced logging to show individual category scores
+  - ✅ Includes threshold value for context
+  - ✅ Example output: `{ harassment: 0.87, violence: 0.91, threshold: 0.5 }`
+- [x] Testing - 2025-10-29
+  - ✅ TypeScript compilation successful
+  - ✅ Built and deployed v0.1.39
+  - ✅ Logs now show scores for all flagged categories
+
+**Phase 5.23: README Schema Documentation for Layer 3 Custom Rules (COMPLETE ✅ - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User reported: Rule format I provided didn't match README
+  - ✅ README showed individual rules without wrapper structure
+  - ✅ User emphasized: "We need to provide a schema in the readme with some explanations and possible values"
+  - ✅ README was outdated and lacked proper schema documentation
+- [x] Implementation (commit 9d01f7b) - 2025-10-29
+  - ✅ Used Task tool to delegate README update to javascript-pro agent
+  - ✅ Added complete wrapper structure showing required format:
+    ```json
+    {
+      "version": "1.0",
+      "subreddit": "YourSubredditName",
+      "dryRunMode": false,
+      "updatedAt": 1234567890,
+      "rules": [ /* array of rules */ ]
+    }
+    ```
+  - ✅ Created comprehensive field reference table
+  - ✅ Documented all required/optional fields with types and descriptions
+  - ✅ Updated all three examples with correct wrapper structure
+  - ✅ Made examples copy-paste ready and schema-compliant
+- [x] Git commit - 2025-10-29
+  - ✅ Commit 9d01f7b: "docs: update Layer 3 Custom Rules JSON schema documentation"
+  - ✅ README.md now matches actual validator schema
 
 ---
 

@@ -15,8 +15,11 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
   - Phase 5.18: ModAction event structure debug - COMPLETE ✅ (version 0.1.34)
   - Phase 5.19: Tracking records & removal logic - COMPLETE ✅ (versions 0.1.35-0.1.36)
   - Phase 5.20: Ultra-concise toast format for "View AI Analysis" - COMPLETE ✅ (version 0.1.37)
-**Current Version**: 0.1.37 (deployed to Reddit)
-**Next**: Test ultra-concise toast format, continue Phase 5 refinements as needed
+  - Phase 5.21: Separate OpenAI API key for Layer 2 - COMPLETE ✅ (version 0.1.38)
+  - Phase 5.22: Enhanced OpenAI Moderation logging with scores - COMPLETE ✅ (version 0.1.39)
+  - Phase 5.23: README schema documentation for Layer 3 Custom Rules - COMPLETE ✅ (commit 9d01f7b)
+**Current Version**: 0.1.39 (deployed to Reddit)
+**Next**: Continue Layer 3 testing with custom rules or additional features as requested
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -1614,7 +1617,7 @@ After v0.1.36:
 ## Current State (2025-10-29)
 
 **What Exists**:
-- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.36)
+- ✅ Working Devvit app deployed to r/AiAutomod (version 0.1.39)
 - ✅ Three-layer moderation pipeline (Layer 1: Built-in, Layer 2: OpenAI Mod, Layer 3: Custom AI)
 - ✅ **Community trust system** (per-subreddit, ratio-based, decay, tracking records)
 - ✅ **ModAction handler fully working** (approvals increase trust, removals decrease trust)
@@ -1642,4 +1645,61 @@ After v0.1.36:
 2. **Test with actual content** - Run through full moderation scenarios
 3. **Deploy to production** (r/FriendsOver40, r/FriendsOver50, r/bitcointaxes)
 4. **Monitor and collect feedback** from moderators
+
+---
+
+### Session 30 (2025-10-29): Phases 5.21-5.23 Complete - Layer 2/3 Testing & README Schema Fix
+
+**Achievements**:
+1. ✅ **Phase 5.21**: Separate OpenAI API Key for Layer 2 (v0.1.38)
+   - User discovered Layer 2 (OpenAI Moderation) required API key but showed error
+   - User requested separate key field for different billing/quota tracking
+   - Added `openaiModApiKey` field to settings (src/main.tsx)
+   - Updated pipeline to check Layer 2 key first, fall back to Layer 3 OpenAI key
+   - Successfully tested: Layer 2 flagged violent content
+
+2. ✅ **Phase 5.22**: Enhanced OpenAI Moderation Logging (v0.1.39)
+   - User requested: "Can we see the score/threshold from OpenAI?"
+   - Modified src/moderation/openaiMod.ts to show individual category scores
+   - Now logs: `{ harassment: 0.87, violence: 0.91, threshold: 0.5 }`
+   - Helps moderators understand severity of violations
+
+3. ✅ **Phase 5.23**: README Schema Documentation Fix (commit 9d01f7b)
+   - **Critical issue**: User reported "that rule you gave doesn't match the README at all!"
+   - User emphasized: "We need to provide a schema in the readme with explanations"
+   - README showed individual rules without required wrapper structure
+   - **Fix**: Deployed javascript-pro agent to completely rewrite schema documentation
+   - Added complete wrapper structure with all required fields
+   - Created comprehensive field reference table
+   - Updated all three examples to show correct format
+   - Made examples copy-paste ready and schema-compliant
+
+4. ✅ **Documentation updated**:
+   - Updated project-status.md with Phases 5.21-5.23
+   - Updated resume-prompt.md with current version (0.1.39)
+   - Git commit verified: 9d01f7b "docs: update Layer 3 Custom Rules JSON schema documentation"
+
+**Files Modified**:
+- src/main.tsx (added openaiModApiKey field)
+- src/moderation/pipeline.ts (API key fallback logic)
+- src/moderation/openaiMod.ts (enhanced logging with scores)
+- README.md (complete schema rewrite - 63 to 247 lines for rules section)
+- docs/project-status.md (added 3 new phases)
+- docs/resume-prompt.md (this file)
+
+**Production Code**: ~12,734 lines (no net change - documentation only)
+**Versions**: 0.1.37 → 0.1.38 → 0.1.39
+
+**Key User Feedback**:
+- "In fact that rule you gave doesn't match the README at all!" → README now matches validator schema exactly
+- "We need to provide a schema with explanations and possible values" → Comprehensive field reference table added
+- Layer 2 API key separation → Enables separate billing/quota tracking per layer
+
+**Testing Results**:
+- ✅ Layer 2 successfully flagged violent content with separate API key
+- ✅ Logs show individual category scores (harassment: 0.87, violence: 0.91)
+- ✅ README schema now matches src/rules/schemaValidator.ts exactly
+
+**Status**: Phases 5.21, 5.22, 5.23 COMPLETE ✅
+**Next**: User can now test Layer 3 Custom Rules with correct schema from README
 
