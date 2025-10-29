@@ -424,9 +424,42 @@ Devvit.addSchedulerJob({
   },
 });
 
+// Community Trust Reset Checker (runs every minute)
+Devvit.addSchedulerJob({
+  name: 'checkResetTrust',
+  cron: '* * * * *', // Run every minute
+  onRun: async (_event, context) => {
+    try {
+      const settings = await context.settings.getAll();
+      const resetRequested = settings.resetCommunityTrust === true || settings.resetCommunityTrust === 'true';
+
+      if (resetRequested) {
+        console.log('[ResetTrust] Reset requested via settings, performing reset...');
+        const { redis } = context;
+
+        const trustKeys = await redis.keys('trust:community:*');
+        const trackingKeys = await redis.keys('approved:tracking:*');
+
+        for (const key of [...trustKeys, ...trackingKeys]) {
+          await redis.del(key);
+        }
+
+        const totalDeleted = trustKeys.length + trackingKeys.length;
+        console.log(`[ResetTrust] Deleted ${totalDeleted} records (${trustKeys.length} trust, ${trackingKeys.length} tracking)`);
+
+        // Turn toggle back off
+        await context.settings.set('resetCommunityTrust', false);
+        console.log('[ResetTrust] Toggle reset to OFF');
+      }
+    } catch (error) {
+      console.error('[ResetTrust] Error in scheduler:', error);
+    }
+  },
+});
+
 console.log('[AI Automod] Event handlers registered successfully');
 console.log('[AI Automod] Phase 1: Foundation & Setup');
-console.log('[AI Automod] Monitoring: PostSubmit, CommentSubmit, ModAction, AppInstall, DailyDigest');
+console.log('[AI Automod] Monitoring: PostSubmit, CommentSubmit, ModAction, AppInstall, DailyDigest, CheckResetTrust');
 
 // Export the app
 export default Devvit;
