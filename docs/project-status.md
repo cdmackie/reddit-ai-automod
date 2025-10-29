@@ -1716,7 +1716,8 @@ _None currently_
   - devvit.yaml (bumped version to 0.1.47)
   - README.md (updated version badge)
 - Deployed successfully as **v0.1.47**
-- Committed to git: [pending]
+- Committed to git: commit 79dfdd7
+- Pushed to remote: https://github.com/cdmackie/reddit-ai-automod
 - **Result**: Layer 3 REMOVE actions now correctly post removal comments before removing content
 - **User Impact**: Users will see the removal comment explaining why their post was removed
 - **Phase 5.31 COMPLETE** ✅

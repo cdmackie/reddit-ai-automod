@@ -1954,7 +1954,8 @@ After v0.1.36:
 **Deployment**:
 - Built and uploaded to Reddit successfully
 - Installed to r/AiAutomod (upgraded from 0.1.46 to 0.1.47)
-- Not yet committed to git (pending)
+- Committed to git: commit 79dfdd7
+- Pushed to remote: https://github.com/cdmackie/reddit-ai-automod
 
 **Result**:
 - Layer 3 REMOVE actions now correctly post removal comments before removing content
@@ -1965,5 +1966,5 @@ After v0.1.36:
 - Removal comments appear on posts before they are removed
 
 **Status**: Phase 5.31 COMPLETE ✅
-**Next**: Commit changes to git and continue testing Layer 3 Custom Rules
+**Next**: Continue testing Layer 3 Custom Rules to verify REMOVE action fix
 
