@@ -60,230 +60,245 @@ Based on configurable rules, the app can:
 
 ---
 
-## How to Write Rules
+## Layer 3: Custom Rules + AI
 
-Rules use JSON format with a specific schema structure. Copy and paste the examples below, then customize them for your needs.
+Write custom moderation rules in JSON. Configure via Settings → Layer 3 - Custom Rules.
 
-### Complete Schema Structure
+### Minimal Rule Format
 
-Your rules JSON must have this structure:
+Every rule needs just two things:
+- `conditions` - What to check
+- `action` - What to do (APPROVE, FLAG, REMOVE, COMMENT)
 
 ```json
 {
-  "version": "1.0",
-  "subreddit": "YourSubredditName",
-  "dryRunMode": false,
-  "updatedAt": 1234567890,
   "rules": [
-    // Array of rule objects goes here
+    {
+      "conditions": { "field": "profile.totalKarma", "operator": "<", "value": 100 },
+      "action": "FLAG"
+    }
   ]
 }
 ```
 
-### Rule Object Schema
+### Complete Schema Reference
 
-Each rule in the `rules` array must have these fields:
+#### Top-Level Structure
+```json
+{
+  "version": "1.0",           // Optional, defaults to "1.0"
+  "rules": [ ... ]            // Required, array of rules
+}
+```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | Yes | Unique identifier for this rule (e.g., "new-account-spam") |
-| `name` | string | Yes | Human-readable name |
-| `type` | string | Yes | `"HARD"` (no AI) or `"AI"` (requires AI analysis) |
-| `enabled` | boolean | Yes | `true` to enable, `false` to disable |
-| `priority` | number | Yes | Higher values run first (1-1000) |
-| `contentType` | string | No | `"submission"`, `"post"`, `"comment"`, or `"any"` (defaults to `"submission"`) |
-| `subreddit` | string/null | No | Specific subreddit or `null` for global |
-| `conditions` | object | Yes | Condition tree (see examples below) |
-| `action` | string | Yes | `"APPROVE"`, `"FLAG"`, `"REMOVE"`, or `"COMMENT"` |
-| `actionConfig` | object | Yes | Contains `reason` (required) and optional `comment` |
-| `aiQuestion` | object | AI only | Contains `id`, `question`, and optional `context` |
-| `createdAt` | number | Yes | Unix timestamp in milliseconds |
-| `updatedAt` | number | Yes | Unix timestamp in milliseconds |
+#### Rule Fields
+| Field | Required? | Default | Description |
+|-------|-----------|---------|-------------|
+| `conditions` | ✅ Yes | - | What to check (see Conditions below) |
+| `action` | ✅ Yes | - | What to do: APPROVE, FLAG, REMOVE, COMMENT |
+| `id` | Optional | Auto-generated | Unique identifier (auto-generated from question if omitted) |
+| `enabled` | Optional | `true` | Enable/disable this rule |
+| `priority` | Optional | Array order × 10 | Lower number = higher priority |
+| `contentType` | Optional | `"all"` | Apply to: "post", "comment", or "all" |
+| `actionConfig` | Optional | - | Customize action behavior (see ActionConfig below) |
+| `ai` | Optional | - | Ask AI a question (see AI Questions below) |
 
-### Example 1: Simple HARD Rule (Short Post Detection)
+#### Conditions
 
-Detects posts that are too short and flags them for review.
+**Simple Condition:**
+```json
+{
+  "field": "profile.totalKarma",
+  "operator": "<",
+  "value": 100
+}
+```
+
+**Nested Conditions (AND/OR):**
+```json
+{
+  "logicalOperator": "AND",
+  "rules": [
+    { "field": "profile.accountAgeMonths", "operator": "<", "value": 6 },
+    { "field": "profile.totalKarma", "operator": "<", "value": 100 }
+  ]
+}
+```
+
+**Available Operators:**
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `<`, `>`, `<=`, `>=` | Numeric comparison | `"operator": "<", "value": 100` |
+| `==`, `!=` | Equality | `"operator": "==", "value": "YES"` |
+| `contains`, `contains_i` | Text contains (case-sensitive/insensitive) | `"operator": "contains", "value": "dating"` |
+| `regex`, `regex_i` | Regex match (case-sensitive/insensitive) | `"operator": "regex", "value": "\\bspam\\b"` |
+| `in` | Value in array | `"operator": "in", "value": ["NSFW", "Trading"]` |
+
+**Available Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `profile.accountAgeMonths` | number | Account age in months |
+| `profile.totalKarma` | number | Total karma (post + comment) |
+| `profile.commentKarma` | number | Comment karma only |
+| `profile.postKarma` | number | Post karma only |
+| `profile.isVerified` | boolean | Email verified? |
+| `postHistory.totalPosts` | number | Total posts across Reddit |
+| `postHistory.totalComments` | number | Total comments across Reddit |
+| `postHistory.subreddits` | array | List of subreddits posted in |
+| `currentPost.title` | string | Post title |
+| `currentPost.body` | string | Post body text |
+| `currentPost.type` | string | "text", "link", "image", "video" |
+| `currentPost.wordCount` | number | Word count in post |
+| `currentPost.domains` | array | Domains linked in post |
+| `ai.answer` | string | Current rule's AI answer (YES/NO/UNKNOWN) |
+| `ai.confidence` | number | Current rule's AI confidence (0-100) |
+| `ai.reasoning` | string | Current rule's AI reasoning |
+| `ai.[question_id].answer` | string | Another rule's AI answer |
+| `ai.[question_id].confidence` | number | Another rule's AI confidence |
+
+#### ActionConfig
+
+Customize the action's behavior:
 
 ```json
 {
-  "version": "1.0",
-  "subreddit": "YourSubredditName",
-  "dryRunMode": false,
-  "updatedAt": 1704067200000,
+  "actionConfig": {
+    "reason": "Account too new (karma: {profile.totalKarma})",
+    "comment": "Your post was removed because: {reason}"
+  }
+}
+```
+
+| Field | Used By | Description |
+|-------|---------|-------------|
+| `reason` | FLAG, REMOVE, COMMENT | Reason shown to moderators and/or users |
+| `comment` | REMOVE, COMMENT | Comment posted on the post/comment |
+
+**Variable Substitution:** Use `{field.path}` to insert values:
+- `{profile.totalKarma}` → User's karma
+- `{ai.confidence}` → AI confidence score
+- `{ai.reasoning}` → AI reasoning text
+- `{currentPost.title}` → Post title
+
+#### AI Questions
+
+Ask AI to analyze the user and their content:
+
+```json
+{
+  "ai": {
+    "question": "Is this user posting dating/romance content?",
+    "id": "dating_check",        // Optional, auto-generated from question
+    "context": "This is FriendsOver40, platonic friendships only"  // Optional
+  },
+  "conditions": {
+    "field": "ai.answer",
+    "operator": "==",
+    "value": "YES"
+  },
+  "action": "REMOVE"
+}
+```
+
+**AI Field Access:**
+- `ai.answer` → Current rule's AI answer (YES/NO/UNKNOWN)
+- `ai.confidence` → Current rule's confidence (0-100)
+- `ai.reasoning` → Current rule's reasoning text
+- `ai.[other_id].answer` → Reference another rule's answer
+- `ai.[other_id].confidence` → Reference another rule's confidence
+
+**Combining Multiple AI Checks:**
+```json
+{
   "rules": [
     {
-      "id": "short-post-check",
-      "name": "Flag very short posts",
-      "type": "HARD",
-      "enabled": true,
-      "priority": 100,
-      "contentType": "submission",
-      "subreddit": null,
+      "ai": { "question": "Is this dating content?" },
+      "conditions": { "field": "ai.answer", "operator": "==", "value": "YES" },
+      "action": "FLAG"
+    },
+    {
+      "ai": { "question": "Does the user appear underage?" },
       "conditions": {
-        "field": "currentPost.wordCount",
-        "operator": "<",
-        "value": 10
+        "logicalOperator": "AND",
+        "rules": [
+          { "field": "ai.dating_content.answer", "operator": "==", "value": "YES" },
+          { "field": "ai.answer", "operator": "==", "value": "YES" }
+        ]
+      },
+      "action": "REMOVE"
+    }
+  ]
+}
+```
+
+### Example Rules
+
+**Example 1: Flag Low-Karma New Accounts**
+```json
+{
+  "rules": [
+    {
+      "conditions": {
+        "logicalOperator": "AND",
+        "rules": [
+          { "field": "profile.accountAgeMonths", "operator": "<", "value": 3 },
+          { "field": "profile.totalKarma", "operator": "<", "value": 50 }
+        ]
       },
       "action": "FLAG",
       "actionConfig": {
-        "reason": "Post is very short ({currentPost.wordCount} words). Please review for quality."
-      },
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067200000
+        "reason": "New account with low karma"
+      }
     }
   ]
 }
 ```
 
-### Example 2: AI Rule with Questions
-
-Uses AI to detect if a user is promoting a service.
-
+**Example 2: Remove Dating Posts with AI**
 ```json
 {
-  "version": "1.0",
-  "subreddit": "YourSubredditName",
-  "dryRunMode": false,
-  "updatedAt": 1704067200000,
   "rules": [
     {
-      "id": "promotion-detector",
-      "name": "Detect service promotion",
-      "type": "AI",
-      "enabled": true,
-      "priority": 90,
-      "contentType": "submission",
-      "subreddit": null,
-      "aiQuestion": {
-        "id": "is-promotion",
-        "question": "Based on this user's post history, are they promoting or selling a product or service? Answer YES if they mention selling, links to products, or promotional content. Answer NO if they're just discussing or reviewing products.",
-        "context": "Be strict - even subtle promotion should be flagged."
+      "ai": {
+        "question": "Is this user seeking dating or romance?",
+        "context": "This is a platonic friendship subreddit for people over 40"
       },
       "conditions": {
         "logicalOperator": "AND",
         "rules": [
-          {
-            "field": "aiAnalysis.answers.is-promotion.answer",
-            "operator": "==",
-            "value": "YES"
-          },
-          {
-            "field": "aiAnalysis.answers.is-promotion.confidence",
-            "operator": ">=",
-            "value": 80
-          }
+          { "field": "ai.answer", "operator": "==", "value": "YES" },
+          { "field": "ai.confidence", "operator": ">", "value": 75 }
         ]
       },
       "action": "REMOVE",
       "actionConfig": {
-        "reason": "AI detected promotion (confidence: {aiAnalysis.answers.is-promotion.confidence}%)",
-        "comment": "This subreddit is not for product or service promotions. Please review our rules."
-      },
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067200000
+        "reason": "Dating/romance content detected with {ai.confidence}% confidence",
+        "comment": "This subreddit is for platonic friendships only. Please review our rules."
+      }
     }
   ]
 }
 ```
 
-### Example 3: Combined HARD + AI Rule
-
-New accounts with links get AI analysis to determine intent.
-
+**Example 3: Comment-Only Spam Detection**
 ```json
 {
-  "version": "1.0",
-  "subreddit": "YourSubredditName",
-  "dryRunMode": false,
-  "updatedAt": 1704067200000,
   "rules": [
     {
-      "id": "new-account-link-check",
-      "name": "New accounts with links - AI check",
-      "type": "AI",
-      "enabled": true,
-      "priority": 100,
-      "contentType": "submission",
-      "subreddit": null,
-      "aiQuestion": {
-        "id": "link-intent",
-        "question": "Is this user posting spam or promotional links? Answer YES if links appear to be spam, self-promotion, or commercial. Answer NO if links are legitimate references or helpful resources."
-      },
+      "contentType": "comment",
       "conditions": {
-        "logicalOperator": "AND",
-        "rules": [
-          {
-            "field": "profile.accountAgeInDays",
-            "operator": "<",
-            "value": 7
-          },
-          {
-            "field": "profile.totalKarma",
-            "operator": "<",
-            "value": 50
-          },
-          {
-            "field": "currentPost.urls",
-            "operator": "in",
-            "value": [".*"]
-          },
-          {
-            "field": "aiAnalysis.answers.link-intent.answer",
-            "operator": "==",
-            "value": "YES"
-          }
-        ]
+        "field": "currentPost.body",
+        "operator": "regex_i",
+        "value": "\\b(buy now|click here|limited offer)\\b"
       },
       "action": "REMOVE",
       "actionConfig": {
-        "reason": "New account ({profile.accountAgeInDays} days old, {profile.totalKarma} karma) posting spam links",
-        "comment": "New accounts cannot post promotional links. Please build karma first by participating in discussions."
-      },
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067200000
+        "reason": "Spam detected in comment"
+      }
     }
   ]
 }
 ```
-
----
-
-## Available Fields & Operators
-
-### Profile Fields
-- `profile.accountAgeDays` - Account age in days
-- `profile.totalKarma` - Total karma (comment + post)
-- `profile.commentKarma` - Comment karma only
-- `profile.postKarma` - Post karma only
-- `profile.isEmailVerified` - Email verification status
-- `profile.hasPremium` - Reddit Premium status
-- `profile.subreddits` - Array of subreddits user has posted in
-
-### Post/Comment Fields
-- `currentPost.title` - Post title
-- `currentPost.body` - Post body text
-- `currentPost.type` - Post type (text, link, image, video, gallery)
-- `currentPost.urls` - Array of URLs in post
-- `currentPost.domains` - Array of domains
-- `currentPost.wordCount` - Word count
-
-### Other Fields
-- `trustScore.score` - User's trust score (0-100)
-- `trustScore.isTrusted` - Whether user is trusted
-- `aiAnalysis.answers.{questionId}.answer` - AI's answer (YES/NO/MAYBE)
-- `aiAnalysis.answers.{questionId}.confidence` - Confidence (0-100)
-
-### Operators
-- **Comparison**: `<`, `>`, `<=`, `>=`, `==`, `!=`
-- **Text**: `contains`, `contains_i` (case-insensitive), `regex`, `regex_i`
-- **Array**: `in` (checks if value matches any array element)
-- **Logical**: `AND`, `OR` (for nested conditions)
-
-### Content Type
-The `contentType` field determines where a rule applies:
-- `"submission"` or `"post"` - Only on posts
-- `"comment"` - Only on comments
-- `"any"` - Both posts and comments
 
 ---
 
