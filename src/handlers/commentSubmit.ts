@@ -34,13 +34,25 @@ export async function handleCommentSubmit(
 ): Promise<void> {
   const { reddit, redis } = context;
 
-  // Check if community trust reset is requested (for immediate reset on activity)
+  // Two-flag reset system for better UX
+  // Flag A: resetCommunityTrust (UI toggle) - user-facing, doesn't persist
+  // Flag B: pending-trust-reset (Redis) - internal flag that triggers actual reset
   try {
     const settings = await context.settings.getAll();
-    const resetRequested = settings.resetCommunityTrust === true || settings.resetCommunityTrust === 'true';
+    const uiToggle = settings.resetCommunityTrust === true || settings.resetCommunityTrust === 'true';
 
-    if (resetRequested) {
-      console.log('[ResetTrust] Reset requested, performing immediate reset...');
+    // If UI toggle is ON, transfer to internal flag and turn UI toggle OFF
+    if (uiToggle) {
+      console.log('[ResetTrust] UI toggle ON, setting internal reset flag...');
+      await redis.set('pending-trust-reset', 'true', { expiration: new Date(Date.now() + 3600000) }); // 1 hour TTL
+      await context.settings.set('resetCommunityTrust', false);
+      console.log('[ResetTrust] UI toggle reset to OFF, internal flag set');
+    }
+
+    // Check internal flag and perform reset if needed
+    const pendingReset = await redis.get('pending-trust-reset');
+    if (pendingReset === 'true') {
+      console.log('[ResetTrust] Internal flag detected, performing reset...');
       const trustKeys = await redis.keys('trust:community:*');
       const trackingKeys = await redis.keys('approved:tracking:*');
 
@@ -51,8 +63,8 @@ export async function handleCommentSubmit(
       const totalDeleted = trustKeys.length + trackingKeys.length;
       console.log(`[ResetTrust] Deleted ${totalDeleted} records (${trustKeys.length} trust, ${trackingKeys.length} tracking)`);
 
-      await context.settings.set('resetCommunityTrust', false);
-      console.log('[ResetTrust] Toggle reset to OFF');
+      await redis.del('pending-trust-reset');
+      console.log('[ResetTrust] Internal flag cleared, reset complete');
     }
   } catch (error) {
     console.error('[ResetTrust] Error during reset:', error);
