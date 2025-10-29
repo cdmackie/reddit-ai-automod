@@ -244,6 +244,37 @@ export class OpenAIProvider implements IAIProvider {
     let lastError: Error | null = null;
     for (let attempt = 1; attempt <= this.retryConfig.maxAttempts; attempt++) {
       try {
+        // Log request details before API call
+        console.log('[OpenAI] Sending question analysis request:', {
+          correlationId,
+          userId: request.userId,
+          username: request.username,
+          questionCount: request.questions.length,
+          questions: request.questions.map(q => ({
+            id: q.id,
+            question: q.question,
+            hasContext: !!q.context
+          })),
+          profileSummary: {
+            accountAgeMonths: Math.floor(request.profile.accountAgeInDays / 30),
+            totalKarma: request.profile.totalKarma,
+            isVerified: request.profile.emailVerified
+          },
+          postHistorySummary: {
+            totalPosts: request.postHistory.totalPosts,
+            totalComments: request.postHistory.totalComments,
+            itemsFetched: request.postHistory.items.length
+          },
+          currentPostSummary: {
+            title: request.currentPost.title.substring(0, 100),
+            bodyLength: request.currentPost.body.length,
+            type: request.currentPost.body.length > 0 ? 'post' : 'title-only'
+          }
+        });
+
+        // Log the actual prompt being sent (first 500 chars)
+        console.log('[OpenAI] Prompt preview:', promptData.prompt.substring(0, 500) + '...');
+
         console.log('OpenAI question analysis attempt', {
           correlationId,
           attempt,
@@ -287,8 +318,35 @@ export class OpenAIProvider implements IAIProvider {
           );
         }
 
+        // Log raw response from API
+        const usage = response.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+        const cost = this.calculateCost(usage.prompt_tokens, usage.completion_tokens);
+
+        console.log('[OpenAI] Received response:', {
+          correlationId,
+          model: this.model,
+          promptTokens: usage.prompt_tokens,
+          completionTokens: usage.completion_tokens,
+          totalTokens: usage.total_tokens,
+          cost: cost.toFixed(4),
+          finishReason: response.choices[0].finish_reason,
+          responsePreview: content.substring(0, 200)
+        });
+
         // Validate response structure
         const validatedResult = aiResponseValidator.validateQuestionBatchResponse(parsedResponse);
+
+        // Log parsed response
+        console.log('[OpenAI] Parsed response:', {
+          correlationId,
+          answersCount: validatedResult.answers?.length || 0,
+          answers: validatedResult.answers?.map(a => ({
+            questionId: a.questionId,
+            answer: a.answer,
+            confidence: a.confidence,
+            reasoningLength: a.reasoning?.length || 0
+          }))
+        });
 
         // Calculate actual token usage and cost
         const inputTokens = response.usage?.prompt_tokens || 0;

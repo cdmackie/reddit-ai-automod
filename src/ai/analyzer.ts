@@ -535,8 +535,33 @@ export class AIAnalyzer {
         },
       };
 
+      console.log('[AIAnalyzer] Starting question analysis:', {
+        correlationId,
+        userId: request.userId,
+        provider: 'auto-select',
+        questionCount: request.questions.length,
+        cacheChecked: true,
+        budgetAvailable: true
+      });
+
       // 5. Perform analysis
       const result = await this.performQuestionAnalysis(request, trustScore || 50);
+
+      console.log('[AIAnalyzer] Question analysis complete:', {
+        correlationId,
+        userId: result.userId,
+        provider: result.provider,
+        answersReceived: result.answers.length,
+        tokensUsed: result.tokensUsed,
+        cost: result.costUSD.toFixed(4),
+        cacheTTL: result.cacheTTL,
+        answers: result.answers.map(a => ({
+          id: a.questionId,
+          answer: a.answer,
+          confidence: a.confidence,
+          reasoning: a.reasoning?.substring(0, 100) + (a.reasoning && a.reasoning.length > 100 ? '...' : '')
+        }))
+      });
 
       // 6. Cache result with differential TTL
       const cacheTTL = getCacheTTLForTrustScore(trustScore || 50, false);

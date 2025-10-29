@@ -541,6 +541,22 @@ export class PromptManager {
    * ```
    */
   async buildQuestionPrompt(params: QuestionPromptBuildParams): Promise<BuiltPrompt> {
+    console.log('[PromptManager] Building question prompt:', {
+      version: 'custom-questions',
+      userId: params.profile.userId,
+      questionCount: params.questions.length,
+      profileData: {
+        accountAge: params.profile.accountAgeInDays,
+        karma: params.profile.totalKarma,
+        verified: params.profile.emailVerified
+      },
+      historyData: {
+        posts: params.postHistory.totalPosts,
+        comments: params.postHistory.totalComments,
+        itemsIncluded: params.postHistory.items.length
+      }
+    });
+
     // Sanitize current post content
     const titleResult = contentSanitizer.sanitize(params.currentPost.title);
     const bodyResult = contentSanitizer.sanitize(params.currentPost.body);
@@ -548,6 +564,19 @@ export class PromptManager {
     // Format and sanitize post history
     const postHistoryText = this.formatPostHistory(params.postHistory);
     const historyResult = contentSanitizer.sanitize(postHistoryText);
+
+    // Log the sanitized content lengths
+    const sanitizedTitle = titleResult.sanitizedContent;
+    const sanitizedBody = bodyResult.sanitizedContent;
+    console.log('[PromptManager] Content sanitization:', {
+      titleOriginal: params.currentPost.title.length,
+      titleSanitized: sanitizedTitle.length,
+      bodyOriginal: params.currentPost.body.length,
+      bodySanitized: sanitizedBody.length,
+      reductionPercent: params.currentPost.body.length > 0
+        ? ((1 - sanitizedBody.length / params.currentPost.body.length) * 100).toFixed(1)
+        : '0.0'
+    });
 
     // Build user context section
     const userContext = `USER PROFILE:

@@ -396,9 +396,25 @@ export class AIResponseValidator {
     confidence: number;
     reasoning: string;
   }> } {
+    console.log('[Validator] Validating question batch response:', {
+      hasAnswersArray: typeof rawResponse === 'object' && rawResponse !== null && 'answers' in rawResponse && Array.isArray((rawResponse as any).answers),
+      answersCount: typeof rawResponse === 'object' && rawResponse !== null && 'answers' in rawResponse && Array.isArray((rawResponse as any).answers) ? (rawResponse as any).answers.length : 0
+    });
+
     try {
       // Parse response using Zod schema
       const parsed = AIQuestionBatchResultSchema.parse(rawResponse);
+
+      // After validation
+      console.log('[Validator] Validation passed:', {
+        answersValidated: parsed.answers.length,
+        allAnswersValid: parsed.answers.every(a =>
+          ['YES', 'NO'].includes(a.answer) &&
+          a.confidence >= 0 &&
+          a.confidence <= 100
+        )
+      });
+
       return parsed;
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -414,6 +430,11 @@ export class AIResponseValidator {
         const errorMessage = this.formatZodError(error);
 
         // Log detailed validation failure for debugging
+        console.error('[Validator] Validation failed:', {
+          error: errorMessage,
+          responsePreview: JSON.stringify(rawResponse).substring(0, 200)
+        });
+
         console.error('AI question batch response validation failed', {
           errors: error.issues,
           rawResponse: JSON.stringify(rawResponse, null, 2),
