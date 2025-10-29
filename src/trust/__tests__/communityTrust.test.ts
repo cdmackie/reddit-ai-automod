@@ -6,157 +6,9 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { MockRedis, MockContext, createMockPost } from '../../__mocks__/devvit';
-
-// Import types (will implement manager next)
-import type { CommunityTrust, TrustEvaluation } from '../../types/communityTrust';
-
-// Mock implementation of CommunityTrustManager for testing
-class CommunityTrustManager {
-  private redis: MockRedis;
-  private config = {
-    minApprovalRate: 70,
-    minSubmissionsPost: 3,
-    minSubmissionsComment: 2,  // Lower threshold for comments
-    decayRatePerMonth: 5,
-  };
-
-  constructor(private context: MockContext) {
-    this.redis = context.redis as MockRedis;
-  }
-
-  async getTrust(userId: string, subreddit: string, contentType: 'post' | 'comment'): Promise<TrustEvaluation> {
-    const key = `trust:community:${userId}:${subreddit}`;
-    const trust = await this.redis.get(key) as CommunityTrust | null;
-
-    if (!trust) {
-      return {
-        isTrusted: false,
-        approvalRate: 0,
-        submissions: 0,
-        reason: 'No history in this community',
-        monthsInactive: 0,
-        decayApplied: 0,
-      };
-    }
-
-    const stats = contentType === 'post' ? trust.posts : trust.comments;
-
-    // Calculate months inactive
-    const now = new Date();
-    const monthsInactive = this.getMonthsSince(trust.lastActivity);
-
-    // Apply decay
-    const rawApprovalRate = stats.submitted > 0
-      ? (stats.approved / stats.submitted) * 100
-      : 0;
-    const decayAmount = monthsInactive * this.config.decayRatePerMonth;
-    const approvalRate = Math.max(0, rawApprovalRate - decayAmount);
-
-    // Check if trusted (different thresholds for posts vs comments)
-    const minSubmissions = contentType === 'post'
-      ? this.config.minSubmissionsPost
-      : this.config.minSubmissionsComment;
-    const isTrusted =
-      stats.submitted >= minSubmissions &&
-      approvalRate >= this.config.minApprovalRate;
-
-    return {
-      isTrusted,
-      approvalRate,
-      submissions: stats.submitted,
-      reason: isTrusted ? 'Trusted contributor' : this.getReason(stats, approvalRate, contentType),
-      monthsInactive,
-      decayApplied: decayAmount,
-    };
-  }
-
-  async updateTrust(
-    userId: string,
-    subreddit: string,
-    action: 'APPROVE' | 'FLAG' | 'REMOVE',
-    contentType: 'post' | 'comment'
-  ): Promise<void> {
-    const key = `trust:community:${userId}:${subreddit}`;
-    let trust = await this.redis.get(key) as CommunityTrust | null;
-
-    if (!trust) {
-      trust = this.initializeTrust(userId, subreddit);
-    }
-
-    const stats = contentType === 'post' ? trust.posts : trust.comments;
-
-    // Update counts
-    stats.submitted++;
-    if (action === 'APPROVE') {
-      stats.approved++;
-    } else if (action === 'FLAG') {
-      stats.flagged++;
-    } else if (action === 'REMOVE') {
-      stats.removed++;
-    }
-
-    // Update timestamps
-    trust.lastActivity = new Date();
-    trust.lastCalculated = new Date();
-
-    await this.redis.set(key, trust);
-  }
-
-  async retroactiveRemoval(contentId: string): Promise<void> {
-    const record = await this.redis.get(`approved:tracking:${contentId}`);
-    if (!record) return;
-
-    const { userId, subreddit, contentType } = record as any;
-    const key = `trust:community:${userId}:${subreddit}`;
-    const trust = await this.redis.get(key) as CommunityTrust | null;
-
-    if (!trust) return;
-
-    const stats = contentType === 'post' ? trust.posts : trust.comments;
-
-    // Undo the approval, add to removed
-    stats.approved = Math.max(0, stats.approved - 1);
-    stats.removed++;
-
-    trust.lastCalculated = new Date();
-
-    await this.redis.set(key, trust);
-    await this.redis.del(`approved:tracking:${contentId}`);
-  }
-
-  private initializeTrust(userId: string, subreddit: string): CommunityTrust {
-    return {
-      userId,
-      subreddit,
-      posts: { submitted: 0, approved: 0, flagged: 0, removed: 0, approvalRate: 0 },
-      comments: { submitted: 0, approved: 0, flagged: 0, removed: 0, approvalRate: 0 },
-      lastActivity: new Date(),
-      lastCalculated: new Date(),
-    };
-  }
-
-  private getMonthsSince(date: Date): number {
-    const now = new Date();
-    const months = (now.getFullYear() - date.getFullYear()) * 12 +
-      (now.getMonth() - date.getMonth());
-    return Math.max(0, months);
-  }
-
-  private getReason(stats: any, approvalRate: number, contentType: 'post' | 'comment'): string {
-    const minSubmissions = contentType === 'post'
-      ? this.config.minSubmissionsPost
-      : this.config.minSubmissionsComment;
-
-    if (stats.submitted < minSubmissions) {
-      return `Need ${minSubmissions - stats.submitted} more submissions`;
-    }
-    if (approvalRate < this.config.minApprovalRate) {
-      return `Approval rate ${approvalRate.toFixed(1)}% below ${this.config.minApprovalRate}%`;
-    }
-    return 'Not trusted';
-  }
-}
+import { MockContext } from '../../__mocks__/devvit';
+import type { CommunityTrust } from '../../types/communityTrust';
+import { CommunityTrustManager } from '../communityTrustManager';
 
 describe('CommunityTrustManager', () => {
   let manager: CommunityTrustManager;
@@ -164,7 +16,7 @@ describe('CommunityTrustManager', () => {
 
   beforeEach(() => {
     context = new MockContext();
-    manager = new CommunityTrustManager(context);
+    manager = new CommunityTrustManager(context as any);
   });
 
   describe('Initial State', () => {
@@ -299,11 +151,11 @@ describe('CommunityTrustManager', () => {
       await manager.updateTrust('user1', 'test', 'APPROVE', 'post');
 
       // Track the third post for removal
-      await context.redis.set('approved:tracking:post3', {
+      await context.redis.set('approved:tracking:post3', JSON.stringify({
         userId: 'user1',
         subreddit: 'test',
         contentType: 'post',
-      });
+      }));
 
       // Initial trust: 100%
       let trust = await manager.getTrust('user1', 'test', 'post');
@@ -329,9 +181,10 @@ describe('CommunityTrustManager', () => {
 
       // Manually set lastActivity to 3 months ago
       const key = 'trust:community:user1:test';
-      const trust = await context.redis.get(key) as CommunityTrust;
+      const trustData = await context.redis.get(key);
+      const trust = JSON.parse(trustData) as CommunityTrust;
       trust.lastActivity = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days
-      await context.redis.set(key, trust);
+      await context.redis.set(key, JSON.stringify(trust));
 
       const result = await manager.getTrust('user1', 'test', 'post');
 
@@ -348,11 +201,14 @@ describe('CommunityTrustManager', () => {
       await manager.updateTrust('user1', 'test', 'APPROVE', 'post');
       await manager.updateTrust('user1', 'test', 'APPROVE', 'post');
 
-      // 7 months inactive
+      // 7 months inactive (set to exactly 7 calendar months ago)
       const key = 'trust:community:user1:test';
-      const trust = await context.redis.get(key) as CommunityTrust;
-      trust.lastActivity = new Date(Date.now() - 210 * 24 * 60 * 60 * 1000);
-      await context.redis.set(key, trust);
+      const trustData = await context.redis.get(key);
+      const trust = JSON.parse(trustData) as CommunityTrust;
+      const sevenMonthsAgo = new Date();
+      sevenMonthsAgo.setMonth(sevenMonthsAgo.getMonth() - 7);
+      trust.lastActivity = sevenMonthsAgo;
+      await context.redis.set(key, JSON.stringify(trust));
 
       const result = await manager.getTrust('user1', 'test', 'post');
 

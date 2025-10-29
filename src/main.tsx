@@ -1,6 +1,7 @@
 import { Devvit } from '@devvit/public-api';
 import { handlePostSubmit } from './handlers/postSubmit';
 import { handleCommentSubmit } from './handlers/commentSubmit';
+import { handleModAction } from './handlers/modAction';
 import { renderCostDashboard } from './dashboard/costDashboardUI';
 import { initializeDefaultRules } from './handlers/appInstall';
 import { getPostAnalysis } from './ui/postAnalysis';
@@ -303,6 +304,16 @@ Devvit.addSettings([
     defaultValue: true,
     scope: 'installation',
   },
+
+  // ===== Community Trust System (Phase 5.14) =====
+  {
+    type: 'boolean',
+    name: 'useCommunityTrust',
+    label: '🎯 Use Community Trust System (BETA)',
+    helpText: 'Enable community-specific trust tracking (Phase 5.14). When enabled, trust is tracked per-subreddit instead of globally. Posts: 3 minimum @ 70% approval. Comments: 2 minimum @ 70% approval. Defaults to OFF for gradual rollout.',
+    defaultValue: false,
+    scope: 'installation',
+  },
 ]);
 
 // Register menu items
@@ -377,6 +388,12 @@ Devvit.addTrigger({
   onEvent: handleCommentSubmit,
 });
 
+// Handle moderator actions (Phase 5.14 - Community Trust System)
+Devvit.addTrigger({
+  event: 'ModAction',
+  onEvent: handleModAction,
+});
+
 // Handle app installation (initialize default rules)
 Devvit.addTrigger({
   event: 'AppInstall',
@@ -409,7 +426,7 @@ Devvit.addSchedulerJob({
 
 console.log('[AI Automod] Event handlers registered successfully');
 console.log('[AI Automod] Phase 1: Foundation & Setup');
-console.log('[AI Automod] Monitoring: PostSubmit, CommentSubmit, AppInstall, DailyDigest');
+console.log('[AI Automod] Monitoring: PostSubmit, CommentSubmit, ModAction, AppInstall, DailyDigest');
 
 // Export the app
 export default Devvit;

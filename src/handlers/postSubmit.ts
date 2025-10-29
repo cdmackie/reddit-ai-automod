@@ -21,6 +21,7 @@ import { initializeDefaultRules, isInitialized } from './appInstall.js';
 import { SettingsService } from '../config/settingsService.js';
 import { sendRealtimeDigest } from '../notifications/modmailDigest.js';
 import { executeModerationPipeline } from '../moderation/pipeline.js';
+import { CommunityTrustManager } from '../trust/communityTrustManager';
 
 // Singleton rate limiter shared across all handler invocations
 const rateLimiter = new RateLimiter();
@@ -108,69 +109,120 @@ export async function handlePostSubmit(
   const historyAnalyzer = new PostHistoryAnalyzer(redis, reddit, rateLimiter);
   const trustScoreCalc = new TrustScoreCalculator(redis);
 
-  // Fast path: Check if user is already trusted (Redis lookup)
-  const isTrusted = await trustScoreCalc.isTrustedUser(userId, subredditName);
-  if (isTrusted) {
-    console.log(`[PostSubmit] User ${author} is trusted, auto-approving`);
-    const auditLog = await auditLogger.log({
-      action: ModAction.APPROVE,
-      userId: author,
-      contentId: postId,
-      reason: 'Trusted user (score >= 70)',
-    });
-    await sendRealtimeDigest(context as Devvit.Context, auditLog);
-    console.log(`[PostSubmit] Post ${postId} processed successfully`);
-    return;
-  }
+  // Feature flag: Use community trust or old global trust
+  const settingsService = new SettingsService(context.settings);
+  const useCommunityTrust = await settingsService.getSetting('useCommunityTrust', false);
 
-  console.log(`[PostSubmit] User ${author} not in trusted cache, fetching profile...`);
+  // Fetch profile and history (needed by both trust systems)
+  let profile;
+  let history;
+  let trustScore;
 
-  // Fetch profile and history in parallel (with cache)
-  const [profile, history] = await Promise.all([
-    profileFetcher.getUserProfile(userId),
-    historyAnalyzer.getPostHistory(userId, author)
-  ]);
+  if (useCommunityTrust) {
+    console.log('[PostSubmit] Using community trust system');
 
-  if (!profile) {
-    console.log(`[PostSubmit] Could not fetch profile for ${author}`);
-    // Fallback: FLAG for manual review (fail safe)
-    const auditLog = await auditLogger.log({
-      action: ModAction.FLAG,
-      userId: author,
-      contentId: postId,
-      reason: 'Profile fetch failed, flagged for manual review',
-    });
-    await sendRealtimeDigest(context as Devvit.Context, auditLog);
-    console.log(`[PostSubmit] Post ${postId} flagged for manual review`);
-    return;
-  }
+    // ALWAYS fetch profile for pipeline (Layer 1/2)
+    console.log(`[PostSubmit] Fetching profile for ${author}...`);
+    const [fetchedProfile, fetchedHistory] = await Promise.all([
+      profileFetcher.getUserProfile(userId),
+      historyAnalyzer.getPostHistory(userId, author)
+    ]);
 
-  console.log(`[PostSubmit] Profile fetched for ${author}: Age=${profile.accountAgeInDays}d, Karma=${profile.totalKarma}`);
+    if (!fetchedProfile) {
+      console.log(`[PostSubmit] Could not fetch profile for ${author}`);
+      const auditLog = await auditLogger.log({
+        action: ModAction.FLAG,
+        userId: author,
+        contentId: postId,
+        reason: 'Profile fetch failed, flagged for manual review',
+      });
+      await sendRealtimeDigest(context as Devvit.Context, auditLog);
+      console.log(`[PostSubmit] Post ${postId} flagged for manual review`);
+      return;
+    }
 
-  // Calculate trust score
-  const trustScore = await trustScoreCalc.calculateTrustScore(
-    profile,
-    history,
-    subredditName
-  );
+    profile = fetchedProfile;
+    history = fetchedHistory;
 
-  console.log(`[PostSubmit] Trust score for ${author}: ${trustScore.totalScore}/100`);
-  console.log(`[PostSubmit] Score breakdown: AccountAge=${trustScore.breakdown.accountAgeScore}, Karma=${trustScore.breakdown.karmaScore}, Email=${trustScore.breakdown.emailVerifiedScore}, Approved=${trustScore.breakdown.approvedHistoryScore}`);
+    // Calculate trust score for metadata (used in audit logs)
+    trustScore = await trustScoreCalc.calculateTrustScore(
+      profile,
+      history,
+      subredditName
+    );
 
-  // If trusted now, mark as trusted and approve
-  if (trustScore.isTrusted) {
-    console.log(`[PostSubmit] User ${author} achieved trusted status`);
-    const auditLog = await auditLogger.log({
-      action: ModAction.APPROVE,
-      userId: author,
-      contentId: postId,
-      reason: `Trusted user (score: ${trustScore.totalScore}/100)`,
-    });
-    await sendRealtimeDigest(context as Devvit.Context, auditLog);
-    // Increment approved count for next time
-    await trustScoreCalc.incrementApprovedCount(userId, subredditName);
-    console.log(`[PostSubmit] Post ${postId} processed successfully`);
-    return;
+    console.log(`[PostSubmit] Profile fetched for ${author}: Age=${profile.accountAgeInDays}d, Karma=${profile.totalKarma}`);
+
+    // Will execute pipeline below
+
+  } else {
+    // OLD LOGIC: Global trust score bypass (keep for rollback)
+    console.log('[PostSubmit] Using legacy global trust system');
+
+    const isTrusted = await trustScoreCalc.isTrustedUser(userId, subredditName);
+    if (isTrusted) {
+      console.log(`[PostSubmit] User ${author} is trusted, auto-approving`);
+      const auditLog = await auditLogger.log({
+        action: ModAction.APPROVE,
+        userId: author,
+        contentId: postId,
+        reason: 'Trusted user (score >= 70)',
+      });
+      await sendRealtimeDigest(context as Devvit.Context, auditLog);
+      console.log(`[PostSubmit] Post ${postId} processed successfully`);
+      return;
+    }
+
+    console.log(`[PostSubmit] User ${author} not in trusted cache, fetching profile...`);
+
+    // Fetch profile and history in parallel (with cache)
+    const [fetchedProfile, fetchedHistory] = await Promise.all([
+      profileFetcher.getUserProfile(userId),
+      historyAnalyzer.getPostHistory(userId, author)
+    ]);
+
+    if (!fetchedProfile) {
+      console.log(`[PostSubmit] Could not fetch profile for ${author}`);
+      const auditLog = await auditLogger.log({
+        action: ModAction.FLAG,
+        userId: author,
+        contentId: postId,
+        reason: 'Profile fetch failed, flagged for manual review',
+      });
+      await sendRealtimeDigest(context as Devvit.Context, auditLog);
+      console.log(`[PostSubmit] Post ${postId} flagged for manual review`);
+      return;
+    }
+
+    profile = fetchedProfile;
+    history = fetchedHistory;
+
+    console.log(`[PostSubmit] Profile fetched for ${author}: Age=${profile.accountAgeInDays}d, Karma=${profile.totalKarma}`);
+
+    const calculatedTrustScore = await trustScoreCalc.calculateTrustScore(
+      profile,
+      history,
+      subredditName
+    );
+
+    trustScore = calculatedTrustScore;
+
+    console.log(`[PostSubmit] Trust score for ${author}: ${trustScore.totalScore}/100`);
+    console.log(`[PostSubmit] Score breakdown: AccountAge=${trustScore.breakdown.accountAgeScore}, Karma=${trustScore.breakdown.karmaScore}, Email=${trustScore.breakdown.emailVerifiedScore}, Approved=${trustScore.breakdown.approvedHistoryScore}`);
+
+    if (trustScore.isTrusted) {
+      console.log(`[PostSubmit] User ${author} achieved trusted status`);
+      const auditLog = await auditLogger.log({
+        action: ModAction.APPROVE,
+        userId: author,
+        contentId: postId,
+        reason: `Trusted user (score: ${trustScore.totalScore}/100)`,
+      });
+      await sendRealtimeDigest(context as Devvit.Context, auditLog);
+      await trustScoreCalc.incrementApprovedCount(userId, subredditName);
+      console.log(`[PostSubmit] Post ${postId} processed successfully`);
+      return;
+    }
   }
 
   // 1. Build CurrentPost object (needed for both pipeline and rules)
@@ -269,8 +321,62 @@ export async function handlePostSubmit(
       });
     }
 
+    // Update community trust for pipeline actions
+    if (useCommunityTrust && executionResult.success) {
+      const trustManager = new CommunityTrustManager(context as Devvit.Context);
+
+      // Map action to trust action
+      let trustAction: 'APPROVE' | 'FLAG' | 'REMOVE';
+      if (pipelineResult.action === 'APPROVE') {
+        trustAction = 'APPROVE';
+      } else if (pipelineResult.action === 'FLAG') {
+        trustAction = 'FLAG';
+      } else {
+        trustAction = 'REMOVE';
+      }
+
+      await trustManager.updateTrust(userId, subredditName, trustAction, 'post');
+      console.log(`[PostSubmit] Updated community trust (pipeline): ${trustAction}`);
+
+      // If approved, track for ModAction
+      if (pipelineResult.action === 'APPROVE') {
+        await trustManager.trackApproved(postId, userId, subredditName, 'post');
+      }
+    }
+
     console.log(`[PostSubmit] Post ${postId} processed by pipeline`);
     return; // Short-circuit, don't continue to custom rules
+  }
+
+  // === Community Trust Check (NEW) ===
+  if (useCommunityTrust && pipelineResult.action === 'APPROVE') {
+    // Layer 1 passed, check community trust
+    const trustManager = new CommunityTrustManager(context as Devvit.Context);
+    const trustEval = await trustManager.getTrust(userId, subredditName, 'post');
+
+    if (trustEval.isTrusted) {
+      console.log(`[PostSubmit] User ${author} trusted in r/${subredditName} (${trustEval.approvalRate.toFixed(1)}% approval, ${trustEval.submissions} posts), skipping Layers 2 & 3`);
+
+      // Update trust (APPROVE)
+      await trustManager.updateTrust(userId, subredditName, 'APPROVE', 'post');
+
+      // Track for ModAction audit
+      await trustManager.trackApproved(postId, userId, subredditName, 'post');
+
+      // Log audit
+      const auditLog = await auditLogger.log({
+        action: ModAction.APPROVE,
+        userId: author,
+        contentId: postId,
+        reason: `Community trusted (${trustEval.approvalRate.toFixed(1)}% approval)`,
+      });
+      await sendRealtimeDigest(context as Devvit.Context, auditLog);
+
+      console.log(`[PostSubmit] Post ${postId} approved (community trusted)`);
+      return; // Skip Layer 3
+    }
+
+    console.log(`[PostSubmit] User ${author} not trusted in r/${subredditName} (${trustEval.reason}), continuing to Layer 3`);
   }
 
   // Continue to Layer 3 (custom rules + AI) if pipeline didn't trigger
@@ -426,6 +532,29 @@ export async function handlePostSubmit(
       action: ruleResult.action,
       error: executionResult.error,
     });
+  }
+
+  // Update community trust based on action
+  if (useCommunityTrust && executionResult.success) {
+    const trustManager = new CommunityTrustManager(context as Devvit.Context);
+
+    // Map action to trust action
+    let trustAction: 'APPROVE' | 'FLAG' | 'REMOVE';
+    if (ruleResult.action === 'APPROVE') {
+      trustAction = 'APPROVE';
+    } else if (ruleResult.action === 'FLAG') {
+      trustAction = 'FLAG';
+    } else {
+      trustAction = 'REMOVE';
+    }
+
+    await trustManager.updateTrust(userId, subredditName, trustAction, 'post');
+    console.log(`[PostSubmit] Updated community trust: ${trustAction}`);
+
+    // If approved, track for ModAction
+    if (ruleResult.action === 'APPROVE') {
+      await trustManager.trackApproved(postId, userId, subredditName, 'post');
+    }
   }
 
   console.log(`[PostSubmit] Post ${postId} processed successfully`);

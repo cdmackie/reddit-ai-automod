@@ -108,12 +108,12 @@ export class MockRedditAPI {
     };
   }
 
-  async report(post: any, options: { reason: string }) {
+  async report(_post: any, _options: { reason: string }) {
     // Mock report - just return success
     return { success: true };
   }
 
-  async remove(postId: string) {
+  async remove(_postId: string) {
     // Mock removal
     return { success: true };
   }
