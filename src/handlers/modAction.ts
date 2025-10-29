@@ -1,21 +1,23 @@
 /**
  * ModAction Event Handler
  *
- * Monitors moderator actions to:
- * 1. Increase trust scores when mods approve content (approvelink, approvecomment)
- * 2. Decrease trust scores when mods remove content we approved (removelink, etc.)
+ * Monitors moderator actions to maintain accurate community trust scores:
+ * 1. Increase trust when mods approve content (approvelink, approvecomment)
+ * 2. Decrease trust when mods remove previously-approved content (removelink, etc.)
+ *
+ * Any removal of tracked content (approved by bot OR mod) applies a trust penalty.
  *
  * Flow for Approvals:
  * 1. Detects approval actions (approvelink, approvecomment)
  * 2. Extracts author and subreddit from event
  * 3. Increases community trust score
+ * 4. Creates tracking record (24h TTL) to allow undoing if later removed
  *
  * Flow for Removals:
  * 1. Detects removal actions (removelink, spamlink, removecomment, spamcomment)
- * 2. Checks if we previously approved the content (via tracking record)
- * 3. Verifies moderator provided a removal reason (per user requirement)
- * 4. Applies retroactive trust penalty if reason exists
- * 5. Cleans up tracking records
+ * 2. Checks if content was previously approved (by bot OR by mod via tracking record)
+ * 3. Applies retroactive trust penalty (any removal of approved content = penalty)
+ * 4. Cleans up tracking records
  *
  * Event Structure (FLAT):
  * - event.action: 'approvelink' | 'removelink' | etc.
@@ -125,20 +127,36 @@ export async function handleModAction(
       const trustManager = new CommunityTrustManager(context as any);
       await trustManager.updateTrust(authorId, subreddit, 'APPROVE', contentType);
 
+      // Create tracking record so this approval can be undone if later removed
+      const trackingKey = `approved:tracking:${contentId}`;
+      const trackingRecord: ApprovedContentRecord = {
+        userId: authorId,
+        subreddit: subreddit,
+        contentId: contentId,
+        contentType: contentType,
+        approvedAt: Date.now(),
+      };
+      await redis.set(trackingKey, JSON.stringify(trackingRecord), {
+        expiration: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      });
+
       console.log(
         `[ModAction] ✅ Trust score increased for user ${authorId} after mod approval of ${contentType} ${contentId} by u/${moderatorName}`
+      );
+      console.log(
+        `[ModAction] Created tracking record for ${contentId} (24h expiry)`
       );
       return;
     }
 
     // Handle removal actions (existing logic)
-    // Check if WE approved this content
+    // Check if this content was approved (by bot OR by mod)
     const trackingKey = `approved:tracking:${contentId}`;
     const approvedRecord = await redis.get(trackingKey);
 
     if (!approvedRecord) {
       console.log(
-        `[ModAction] No tracking record for ${contentId} - we didn't approve it, skipping`
+        `[ModAction] No tracking record for ${contentId} - not previously approved (by bot or mod), skipping trust penalty`
       );
       return;
     }
@@ -148,48 +166,7 @@ export async function handleModAction(
     const { userId, subreddit } = record;
 
     console.log(
-      `[ModAction] Mod u/${moderatorName} removed ${contentType} ${contentId} that we approved for user ${userId} in r/${subreddit}`
-    );
-
-    // Check for removal reason (per user requirement)
-    // User: "If no comment then ignore it" - only penalize if mod gave reason
-    let hasRemovalReason = false;
-
-    try {
-      if (contentType === 'post') {
-        const post = await reddit.getPostById(contentId);
-        // Check for mod note or removal reason
-        hasRemovalReason = !!(
-          (post as any).modNote || (post as any).removalReason
-        );
-      } else {
-        const comment = await reddit.getCommentById(contentId);
-        // Check for mod note or removal reason
-        hasRemovalReason = !!(
-          ('modNote' in comment && (comment as any).modNote) ||
-          ('removalReason' in comment && (comment as any).removalReason)
-        );
-      }
-    } catch (error) {
-      console.error(
-        `[ModAction] Error fetching ${contentType} ${contentId} to check removal reason:`,
-        error
-      );
-      // If we can't fetch it, assume no reason and skip penalty (safe default)
-      hasRemovalReason = false;
-    }
-
-    if (!hasRemovalReason) {
-      console.log(
-        `[ModAction] Mod removed ${contentType} ${contentId} without providing removal reason - skipping trust penalty per user requirement`
-      );
-      // Clean up tracking record even though we're not penalizing
-      await redis.del(trackingKey);
-      return;
-    }
-
-    console.log(
-      `[ModAction] Mod provided removal reason for ${contentType} ${contentId} - applying retroactive trust penalty`
+      `[ModAction] Mod u/${moderatorName} removed ${contentType} ${contentId} that was previously approved for user ${userId} in r/${subreddit} - applying trust penalty`
     );
 
     // Apply retroactive penalty via CommunityTrustManager

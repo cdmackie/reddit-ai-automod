@@ -7,14 +7,16 @@ Reddit AI Automod is a Devvit-based **user profiling & analysis system** that us
 **AI Providers**: Claude 3.5 Haiku (primary), OpenAI gpt-4o-mini (fallback), DeepSeek V3 (testing)
 **Current Phase**: Phase 5 - Refinement & Optimization
 **Phase 1-4 Status**: COMPLETE ✅ (Foundation, AI, Rules Engine, Settings UI)
-**Phase 5 Status**: In Progress - Debugging ModAction events
+**Phase 5 Status**: In Progress - UI/UX refinements
   - Phase 5.1-5.14: Notifications, 3-layer pipeline, settings UX, whitelist, community trust - COMPLETE ✅
   - Phase 5.15: Redis API fix for reset menu - COMPLETE ✅ (version 0.1.25)
   - Phase 5.16: Infinite loop fix via comment ID tracking - COMPLETE ✅ (version 0.1.29)
   - Phase 5.17: Trust score update logic fix - COMPLETE ✅ (version 0.1.30)
-  - Phase 5.18: ModAction event structure debug - IN PROGRESS 🔄 (version 0.1.33)
-**Current Version**: 0.1.33 (deployed to Reddit with debug logging)
-**Next**: Fix ModAction event handler to capture mod approvals correctly
+  - Phase 5.18: ModAction event structure debug - COMPLETE ✅ (version 0.1.34)
+  - Phase 5.19: Tracking records & removal logic - COMPLETE ✅ (versions 0.1.35-0.1.36)
+  - Phase 5.20: Ultra-concise toast format for "View AI Analysis" - COMPLETE ✅ (version 0.1.37)
+**Current Version**: 0.1.37 (deployed to Reddit)
+**Next**: Test ultra-concise toast format, continue Phase 5 refinements as needed
 **Target Subs**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---

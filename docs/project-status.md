@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.36 (deployed to Reddit)
+**Current Version**: 0.1.37 (deployed to Reddit)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.19 Complete ✅ | ModAction handler fully working with simplified removal logic
+**Status**: Phase 5.20 Complete ✅ | Ultra-concise toast format for "View AI Analysis"
 
 ---
 
@@ -889,6 +889,35 @@
   - ✅ Version 0.1.36 deployed (removal reason check removed)
   - ✅ Both versions installed to r/AiAutomod
   - ✅ Phase 5.19 COMPLETE
+
+**Phase 5.20: Ultra-Concise Toast Format for "View AI Analysis" (COMPLETE ✅ - 2025-10-29)**
+- [x] Problem identification - 2025-10-29
+  - ✅ User reported: Toast display truncated to ~2 lines, can't show 10+ line formatted analysis
+  - ✅ Screenshot showed: Only "AI Automod Analysis" and "Action:..." visible
+  - ✅ Root cause: `formatAnalysis()` in src/ui/postAnalysis.ts created multi-line format unsuitable for toasts
+- [x] User requirements - 2025-10-29
+  - ✅ Format specification: "APPROVE 80/100. $0.0012 125ms. simple-rule."
+  - ✅ Single line, ultra-compact, shows only critical info
+  - ✅ Defer custom post UI (full-screen display) for later
+- [x] Initial implementation (v0.1.37) - 2025-10-29
+  - ✅ Deployed javascript-pro agent to refactor formatAnalysis()
+  - ✅ Replaced multi-line format with single-line template
+  - ✅ Format: `{ACTION} {trustScore}/100. ${cost} {time}ms. {ruleId}.`
+  - ✅ Dry-run indicator appended when applicable: " (DRY-RUN)"
+- [x] Code review and fixes - 2025-10-29
+  - ✅ Deployed code-reviewer agent → identified 3 critical issues
+  - ✅ Fixed execution time display: Handles "N/A" case properly (no "ms" suffix)
+  - ✅ Fixed trust score type safety: Validates numeric type before display
+  - ✅ Fixed redundant boolean conversion: Changed to `!!metadata.dryRun`
+  - ✅ Updated format documentation to match actual output
+- [x] Testing and deployment - 2025-10-29
+  - ✅ TypeScript compilation successful (no new errors)
+  - ✅ Version 0.1.37 deployed to r/AiAutomod
+  - ✅ Ready for user testing via "View AI Analysis" menu item
+- [x] Example outputs:
+  - ✅ Normal: `APPROVE 80/100. $0.0012 125ms. simple-rule.`
+  - ✅ Dry-run: `REMOVE 45/100. $0.0023 235ms. spam-detection. (DRY-RUN)`
+  - ✅ Missing values: `FLAG N/A/100. $0.00 N/A. default.`
 
 ---
 

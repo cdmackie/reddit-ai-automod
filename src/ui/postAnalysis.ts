@@ -55,7 +55,7 @@ export async function getPostAnalysis(
  * Converts an AuditLog entry into a single-line format optimized
  * for toast notifications (which only show ~2 lines).
  *
- * Format: {ACTION} {trustScore}/100. ${cost} {time}ms. {ruleId}. (DRY-RUN)
+ * Format: {ACTION} {trustScore}/100. ${cost} {time}. {ruleId}.
  * Example: APPROVE 80/100. $0.0012 125ms. simple-rule.
  *
  * @param log - The audit log entry to format
@@ -66,15 +66,26 @@ export async function getPostAnalysis(
 function formatAnalysis(log: AuditLog): string {
   const metadata = log.metadata as any || {};
 
-  // Extract metadata with defaults
-  const trustScore = metadata.trustScore ?? 'N/A';
-  const aiCost = metadata.aiCost ? `$${metadata.aiCost.toFixed(4)}` : '$0.00';
-  const dryRun = metadata.dryRun ? true : false;
-  const executionTime = metadata.executionTime ?? 'N/A';
+  // Extract and validate metadata with type-safe defaults
+  const trustScore = typeof metadata.trustScore === 'number'
+    ? metadata.trustScore
+    : 'N/A';
+
+  const aiCost = typeof metadata.aiCost === 'number'
+    ? `$${metadata.aiCost.toFixed(4)}`
+    : '$0.00';
+
+  const dryRun = !!metadata.dryRun;
+
+  const executionTime = metadata.executionTime;
+  const timeDisplay = typeof executionTime === 'number'
+    ? `${executionTime}ms`
+    : 'N/A';
+
   const ruleId = log.ruleId || 'default';
 
-  // Build single-line format: {ACTION} {trustScore}/100. ${cost} {time}ms. {ruleId}.
-  const analysis = `${log.action} ${trustScore}/100. ${aiCost} ${executionTime}ms. ${ruleId}.${dryRun ? ' (DRY-RUN)' : ''}`;
+  // Build single-line format: {ACTION} {trustScore}/100. ${cost} {time}. {ruleId}.
+  const analysis = `${log.action} ${trustScore}/100. ${aiCost} ${timeDisplay}. ${ruleId}.${dryRun ? ' (DRY-RUN)' : ''}`;
 
   return analysis;
 }
