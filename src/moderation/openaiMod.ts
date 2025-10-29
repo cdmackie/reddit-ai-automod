@@ -175,6 +175,10 @@ export async function checkContent(
       correlationId,
       flagged,
       flaggedCategories,
+      categoryScores: Object.fromEntries(
+        flaggedCategories.map(cat => [cat, categoryScores[cat]])
+      ),
+      threshold: config.threshold,
       latencyMs,
     });
 
