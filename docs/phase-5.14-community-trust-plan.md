@@ -82,7 +82,7 @@ approved:tracking:{contentId} → ApprovedContentRecord (24h TTL)
 
 **Thresholds:**
 - Minimum approval rate: **70%**
-- Minimum submissions: **10**
+- Minimum submissions: **3** (updated from 10 based on user feedback)
 - Decay rate: **-5% per month** of inactivity
 
 **Formula:**
@@ -96,16 +96,16 @@ decayAmount = monthsInactive * 5
 approvalRate = Math.max(0, approvalRate - decayAmount)
 
 // Step 3: Check if trusted
-isTrusted = (submitted >= 10) && (approvalRate >= 70)
+isTrusted = (submitted >= 3) && (approvalRate >= 70)
 ```
 
 **Examples:**
+- 3 posts, 3 approved = 100% ✅ TRUSTED
+- 3 posts, 2 approved, 1 flagged = 67% ❌ NOT TRUSTED
+- 4 posts, 3 approved, 1 flagged = 75% ✅ TRUSTED
 - 10 posts, 7 approved, 3 flagged = 70% ✅ TRUSTED
-- 10 posts, 6 approved, 4 flagged = 60% ❌ NOT TRUSTED
-- 20 posts, 18 approved, 2 flagged = 90% ✅ TRUSTED
-- 100 posts, 70 approved, 30 flagged = 70% ✅ TRUSTED
-- 5 posts, 5 approved = 100% but < 10 minimum ❌ NOT TRUSTED
-- 15 posts, 12 approved, 3 months inactive = 80% - 15% = 65% ❌ NOT TRUSTED
+- 2 posts, 2 approved = 100% but < 3 minimum ❌ NOT TRUSTED
+- 5 posts, 4 approved, 3 months inactive = 80% - 15% = 65% ❌ NOT TRUSTED
 
 ### 3. Flow Changes
 
@@ -122,7 +122,7 @@ isTrusted = (submitted >= 10) && (approvalRate >= 70)
 2. ALWAYS run Layer 1 (account age, karma) - FREE
    └─ If fails → Execute action
 3. Check community trust (separate for posts/comments)
-   └─ If trusted (≥70% approval, ≥10 submissions):
+   └─ If trusted (≥70% approval, ≥3 submissions):
       └─ Skip Layers 2 & 3 (COST SAVINGS)
    └─ Otherwise:
       └─ Run Layer 2 (OpenAI Moderation) - FREE
@@ -179,7 +179,7 @@ async getTrust(userId, subreddit, contentType) {
     (stats.approved / stats.submitted) * 100 - decayAmount
   );
 
-  const isTrusted = stats.submitted >= 10 && approvalRate >= 70;
+  const isTrusted = stats.submitted >= 3 && approvalRate >= 70;
 
   return { isTrusted, approvalRate, submissions: stats.submitted, ... };
 }
@@ -335,16 +335,23 @@ After successful testing:
 
 ## Testing Checklist
 
-### Unit Tests (Skip for MVP, validate manually)
-- [ ] CommunityTrustManager.getTrust() with decay
-- [ ] CommunityTrustManager.updateTrust() increments correctly
-- [ ] Retroactive removal updates scores
-- [ ] Approval rate calculation edge cases
+### Unit Tests (LOCAL TESTING FRAMEWORK CREATED ✅)
+- [x] Local testing framework created (src/__mocks__/devvit.ts)
+- [x] Comprehensive test suite created (src/trust/__tests__/communityTrust.test.ts)
+- [x] Tests cover:
+  - [x] Initial state (new users)
+  - [x] Building trust (3 posts minimum)
+  - [x] Separate post/comment tracking (prevents gaming)
+  - [x] Cross-subreddit isolation
+  - [x] Retroactive removal (ModAction simulation)
+  - [x] Decay system (5% per month)
+  - [x] Edge cases (removals, mixed actions, 0% floor)
+- [ ] Run tests locally: `npm test src/trust/__tests__/communityTrust.test.ts`
 
 ### Integration Tests (Manual)
 - [ ] New user (0 posts) → Runs all layers
-- [ ] User with 5 approved posts → Runs all layers (< 10 minimum)
-- [ ] User with 10 approved posts → Skips Layers 2 & 3
+- [ ] User with 2 approved posts → Runs all layers (< 3 minimum)
+- [ ] User with 3 approved posts → Skips Layers 2 & 3
 - [ ] User with 8/10 approved (80%) → Trusted
 - [ ] User with 6/10 approved (60%) → Not trusted
 - [ ] User with 10 approved, 3 months inactive → Decay applied
