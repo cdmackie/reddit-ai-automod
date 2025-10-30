@@ -1,4 +1,4 @@
-# Reddit AI Automod
+# AI Automod for Reddit
 
 > **Intelligent User Profiling & Moderation for Reddit Communities**
 
@@ -385,7 +385,17 @@ When you upload the app with `devvit upload`, domains listed in `devvit.json` ar
 
 ## License
 
-MIT License - See [LICENSE](./LICENSE) file for details.
+AI Automod is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+This means:
+- ✅ You can use, modify, and distribute this software
+- ✅ You must share your modifications under AGPL-3.0
+- ✅ If you run a modified version as a service (including as a Devvit app), you MUST make your source code available to users
+- ✅ You must preserve copyright and license notices
+
+**Why AGPL?** We chose AGPL to ensure that any improvements to AI Automod benefit the entire Reddit moderation community. If you build on our work, we ask that you share your improvements back.
+
+For commercial licensing inquiries, contact aiautomod at coins.tax
 
 ---
 
