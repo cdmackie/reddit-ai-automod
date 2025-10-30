@@ -577,6 +577,24 @@ const aiAnalysisForm = Devvit.createForm(
         });
       }
 
+      if (analysis.aiCostUSD !== undefined) {
+        layer3Fields.push({
+          type: 'string',
+          name: 'cost',
+          label: '💰 AI Cost',
+          defaultValue: `$${analysis.aiCostUSD.toFixed(4)} USD`,
+        });
+      }
+
+      if (analysis.aiTokensUsed) {
+        layer3Fields.push({
+          type: 'string',
+          name: 'tokens',
+          label: '🔢 Tokens Used',
+          defaultValue: analysis.aiTokensUsed.toLocaleString(),
+        });
+      }
+
       if (analysis.aiReasoning) {
         layer3Fields.push({
           type: 'paragraph',

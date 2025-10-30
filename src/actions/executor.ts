@@ -126,6 +126,8 @@ async function saveAnalysisHistory(
       confidence: ruleResult.confidence,
       aiReasoning,
       ruleReason: ruleResult.reason,
+      aiCostUSD: aiAnalysis?.costUSD,
+      aiTokensUsed: aiAnalysis?.tokensUsed,
     });
 
     console.log(`[ActionExecutor:${correlationId}] Analysis history saved successfully (layer: ${pipelineInfo?.layerTriggered || 'unknown'})`);

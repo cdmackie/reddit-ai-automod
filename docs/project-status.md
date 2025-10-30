@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-30
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.104
+**Current Version**: 0.1.105
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.51 Complete ✅ | Analysis history for approved posts
+**Status**: Phase 5.52 Complete ✅ | AI cost tracking in analysis history
 
 ---
 
@@ -32,6 +32,16 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.52 (2025-10-30)
+- [x] Added aiCostUSD and aiTokensUsed fields to AnalysisHistoryEntry
+- [x] Updated saveAnalysisHistory to capture AI cost from aiAnalysis
+- [x] Added cost and token display to AI analysis form (Layer 3)
+- [x] Verified all providers return accurate cost data
+- [x] Claude, OpenAI, and OpenAI Compatible all calculate costs correctly
+- [x] Cost calculated using provider-specific token pricing
+- [x] Provides full cost transparency per analysis
+- [x] Deployed version 0.1.105
 
 ### Phase 5.51 (2025-10-30)
 - [x] Updated saveAnalysisHistory to accept APPROVE actions

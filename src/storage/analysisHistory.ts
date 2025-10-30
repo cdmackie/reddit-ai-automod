@@ -79,6 +79,10 @@ export interface AnalysisHistoryEntry {
   aiReasoning?: string;
   /** Rule reason text (Layer 3) */
   ruleReason?: string;
+  /** AI cost in USD (Layer 3 only, Layers 1-2 are free) */
+  aiCostUSD?: number;
+  /** Number of tokens used by AI (Layer 3) */
+  aiTokensUsed?: number;
 }
 
 /**

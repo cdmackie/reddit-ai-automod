@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.105] - 2025-10-30
+
+### Added
+- AI cost tracking in analysis history
+- Displays exact USD cost for each AI analysis (Layer 3)
+- Shows token usage in analysis form
+- Cost information from all providers (Claude, OpenAI, OpenAI Compatible)
+
+### Changed
+- Analysis form now includes "💰 AI Cost" and "🔢 Tokens Used" fields
+- AnalysisHistoryEntry interface includes aiCostUSD and aiTokensUsed fields
+- Provides full transparency on AI spending per post
+
+### Technical
+- Verified all AI providers (Claude, OpenAI, OpenAI Compatible) return cost data
+- Cost calculated accurately using provider-specific token pricing
+- Layer 1 and Layer 2 remain free (no cost tracked)
+
 ## [0.1.104] - 2025-10-30
 
 ### Changed
