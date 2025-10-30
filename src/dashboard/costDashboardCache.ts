@@ -23,7 +23,7 @@ import { SettingsService } from '../config/settingsService.js';
 interface CostSummary {
   claude: number;
   openai: number;
-  deepseek: number;
+  'openai-compatible': number;
   total: number;
 }
 
@@ -35,7 +35,7 @@ interface CostSummary {
 interface RequestCounts {
   claude: number;
   openai: number;
-  deepseek: number;
+  'openai-compatible': number;
   total: number;
 }
 
@@ -172,26 +172,26 @@ export class CostDashboardCache {
       const [dailyClaude, dailyOpenAI, dailyDeepSeek] = await Promise.all([
         this.getDailyCost(costTracker, 'claude'),
         this.getDailyCost(costTracker, 'openai'),
-        this.getDailyCost(costTracker, 'deepseek'),
+        this.getDailyCost(costTracker, 'openai-compatible'),
       ]);
 
       const dailyCosts = {
         claude: dailyClaude,
         openai: dailyOpenAI,
-        deepseek: dailyDeepSeek,
+        'openai-compatible': dailyDeepSeek,
       };
 
       // Fetch monthly costs per provider
       const [monthlyClaude, monthlyOpenAI, monthlyDeepSeek] = await Promise.all([
         this.getMonthlyCost(costTracker, 'claude'),
         this.getMonthlyCost(costTracker, 'openai'),
-        this.getMonthlyCost(costTracker, 'deepseek'),
+        this.getMonthlyCost(costTracker, 'openai-compatible'),
       ]);
 
       const monthlyCosts = {
         claude: monthlyClaude,
         openai: monthlyOpenAI,
-        deepseek: monthlyDeepSeek,
+        'openai-compatible': monthlyDeepSeek,
       };
 
       // Note: CostTracker doesn't track request counts currently
@@ -200,26 +200,26 @@ export class CostDashboardCache {
       const dailyRequests: RequestCounts = {
         claude: 0,
         openai: 0,
-        deepseek: 0,
+        'openai-compatible': 0,
         total: 0
       };
 
       const monthlyRequests: RequestCounts = {
         claude: 0,
         openai: 0,
-        deepseek: 0,
+        'openai-compatible': 0,
         total: 0
       };
 
       return {
         daily: {
           ...dailyCosts,
-          total: dailyCosts.claude + dailyCosts.openai + dailyCosts.deepseek,
+          total: dailyCosts.claude + dailyCosts.openai + dailyCosts['openai-compatible'],
           requests: dailyRequests,
         },
         monthly: {
           ...monthlyCosts,
-          total: monthlyCosts.claude + monthlyCosts.openai + monthlyCosts.deepseek,
+          total: monthlyCosts.claude + monthlyCosts.openai + monthlyCosts['openai-compatible'],
           requests: monthlyRequests,
         },
         settings: {
@@ -239,16 +239,16 @@ export class CostDashboardCache {
         daily: {
           claude: 0,
           openai: 0,
-          deepseek: 0,
+          'openai-compatible': 0,
           total: 0,
-          requests: { claude: 0, openai: 0, deepseek: 0, total: 0 },
+          requests: { claude: 0, openai: 0, 'openai-compatible': 0, total: 0 },
         },
         monthly: {
           claude: 0,
           openai: 0,
-          deepseek: 0,
+          'openai-compatible': 0,
           total: 0,
-          requests: { claude: 0, openai: 0, deepseek: 0, total: 0 },
+          requests: { claude: 0, openai: 0, 'openai-compatible': 0, total: 0 },
         },
         settings: {
           dailyLimit: budgetConfig.dailyLimitUSD,
@@ -289,8 +289,8 @@ export class CostDashboardCache {
           return status.perProviderSpent.claude;
         case 'openai':
           return status.perProviderSpent.openai;
-        case 'deepseek':
-          return status.perProviderSpent.deepseek;
+        case 'openai-compatible':
+          return status.perProviderSpent['openai-compatible'];
         default:
           return 0;
       }
@@ -328,8 +328,8 @@ export class CostDashboardCache {
           return status.perProviderSpent.claude;
         case 'openai':
           return status.perProviderSpent.openai;
-        case 'deepseek':
-          return status.perProviderSpent.deepseek;
+        case 'openai-compatible':
+          return status.perProviderSpent['openai-compatible'];
         default:
           return 0;
       }

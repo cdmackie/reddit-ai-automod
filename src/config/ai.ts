@@ -85,6 +85,14 @@ export const AI_CONFIG: AIConfig = {
       costPerMTokenInput: 0.15,
       costPerMTokenOutput: 0.6,
     },
+    'openai-compatible': {
+      type: 'openai-compatible' as const,
+      model: 'configurable',
+      enabled: true,
+      priority: 3, // Third fallback - configurable via settings
+      costPerMTokenInput: 0.27,
+      costPerMTokenOutput: 1.1,
+    },
   },
 
   /**

@@ -200,7 +200,7 @@ export class ProviderSelector {
           console.warn('[ProviderSelector] Claude API key not configured');
           return null;
         }
-        return new ClaudeProvider(aiSettings.claudeApiKey, 'claude-3-5-haiku-20241022');
+        return new ClaudeProvider(aiSettings.claudeApiKey);
       }
 
       if (type === 'openai') {
@@ -208,7 +208,7 @@ export class ProviderSelector {
           console.warn('[ProviderSelector] OpenAI API key not configured');
           return null;
         }
-        return new OpenAIProvider(aiSettings.openaiApiKey, 'gpt-4o-mini');
+        return new OpenAIProvider(aiSettings.openaiApiKey);
       }
 
       if (type === 'openai-compatible') {
