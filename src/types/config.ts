@@ -53,8 +53,6 @@ export interface AIProviderConfig {
   claudeApiKey?: string;
   /** OpenAI API key (optional - from settings) */
   openaiApiKey?: string;
-  /** DeepSeek API key (optional - from settings) */
-  deepseekApiKey?: string;
   /** OpenAI Compatible API key (optional - from settings) */
   openaiCompatibleApiKey?: string;
   /** OpenAI Compatible base URL (optional - from settings) */
@@ -62,9 +60,9 @@ export interface AIProviderConfig {
   /** OpenAI Compatible model name (optional - from settings) */
   openaiCompatibleModel?: string;
   /** Primary AI provider to use */
-  primaryProvider: 'claude' | 'openai' | 'deepseek';
+  primaryProvider: 'claude' | 'openai' | 'openai-compatible';
   /** Fallback provider if primary fails */
-  fallbackProvider: 'claude' | 'openai' | 'deepseek' | 'none';
+  fallbackProvider: 'claude' | 'openai' | 'openai-compatible' | 'none';
 }
 
 /**

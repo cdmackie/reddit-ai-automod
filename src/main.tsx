@@ -180,7 +180,7 @@ Devvit.addSettings([
     options: [
       { label: 'Claude 3.5 Haiku (Anthropic)', value: 'claude' },
       { label: 'GPT-4o Mini (OpenAI)', value: 'openai' },
-      { label: 'DeepSeek V3', value: 'deepseek' },
+      { label: 'OpenAI Compatible (Custom)', value: 'openai-compatible' },
     ],
     defaultValue: 'claude',
     scope: 'installation',
@@ -193,7 +193,7 @@ Devvit.addSettings([
     options: [
       { label: 'GPT-4o Mini (OpenAI)', value: 'openai' },
       { label: 'Claude 3.5 Haiku (Anthropic)', value: 'claude' },
-      { label: 'DeepSeek V3', value: 'deepseek' },
+      { label: 'OpenAI Compatible (Custom)', value: 'openai-compatible' },
       { label: 'None (no fallback)', value: 'none' },
     ],
     defaultValue: 'openai',
@@ -211,13 +211,6 @@ Devvit.addSettings([
     name: 'openaiApiKey',
     label: '🔑 OpenAI API Key',
     helpText: 'Your OpenAI API key for GPT-4o Mini. Get one at platform.openai.com. Only needed if using Layer 3 custom AI rules.',
-    scope: 'installation',
-  },
-  {
-    type: 'string',
-    name: 'deepseekApiKey',
-    label: '🔑 DeepSeek API Key',
-    helpText: 'Your DeepSeek API key for DeepSeek V3 (optional). Get one at platform.deepseek.com. Only needed if using Layer 3 custom AI rules.',
     scope: 'installation',
   },
   {

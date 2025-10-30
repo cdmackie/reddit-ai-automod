@@ -450,7 +450,21 @@ export class ProviderSelector {
    * ```
    */
   private async getProviderInstance(type: AIProviderType): Promise<IAIProvider> {
-    // Get effective config with settings-based API keys
+    // Handle OpenAI Compatible separately
+    if (type === 'openai-compatible') {
+      const aiSettings = await SettingsService.getAIConfig(this.context);
+      if (!aiSettings.openaiCompatibleApiKey || !aiSettings.openaiCompatibleBaseURL || !aiSettings.openaiCompatibleModel) {
+        console.warn('[ProviderSelector] OpenAI Compatible provider not fully configured');
+        throw new Error('OpenAI Compatible provider requires apiKey, baseURL, and model. Please configure in Devvit settings.');
+      }
+      return new OpenAICompatibleProvider({
+        apiKey: aiSettings.openaiCompatibleApiKey,
+        baseURL: aiSettings.openaiCompatibleBaseURL,
+        model: aiSettings.openaiCompatibleModel,
+      });
+    }
+
+    // Get effective config with settings-based API keys for standard providers
     const config = await ConfigurationManager.getEffectiveAIConfig(this.context);
     const providerConfig = config.providers[type];
 
@@ -461,14 +475,14 @@ export class ProviderSelector {
     }
 
     // Create provider instance with settings-based API key
-    // Note: Models are hardcoded in provider classes (claude-3-5-haiku, gpt-4o-mini, deepseek-chat)
+    // Note: Models are hardcoded in provider classes (claude-3-5-haiku, gpt-4o-mini)
     switch (type) {
       case 'claude':
         return new ClaudeProvider(providerConfig.apiKey);
       case 'openai':
         return new OpenAIProvider(providerConfig.apiKey);
-      case 'deepseek':
-        return new DeepSeekProvider(providerConfig.apiKey);
+      default:
+        throw new Error(`Unknown provider type: ${type}`);
     }
   }
 

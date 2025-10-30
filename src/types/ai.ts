@@ -14,9 +14,9 @@ import { UserProfile, UserPostHistory } from './profile.js';
  * Supported AI provider types
  * - claude: Anthropic Claude 3.5 Haiku (primary)
  * - openai: OpenAI GPT-4o Mini (fallback)
- * - deepseek: DeepSeek V3 (low-cost option)
+ * - openai-compatible: Custom OpenAI-compatible endpoints (Groq, Together AI, vLLM, Ollama, etc.)
  */
-export type AIProviderType = 'claude' | 'openai' | 'deepseek';
+export type AIProviderType = 'claude' | 'openai' | 'openai-compatible';
 
 /**
  * Classification of AI errors for specific handling strategies
