@@ -2,7 +2,13 @@
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
   "name": "ai-automod-app",
   "blocks": {
-    "entry": "src/main.tsx"
+    "entry": "src/main.tsx",
+    "triggers": [
+      "onPostSubmit",
+      "onCommentSubmit",
+      "onModAction",
+      "onAppInstall"
+    ]
   },
   "permissions": {
     "http": {

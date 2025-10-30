@@ -267,108 +267,70 @@ export function getProviderConfig(providerType: AIProviderType) {
  * // Will try openai first, then claude, then deepseek
  */
 export async function getEnabledProviders(context: any): Promise<AIProviderType[]> {
-  // Import ConfigurationManager dynamically to avoid circular dependency
-  const { ConfigurationManager } = await import('./configManager.js');
+  // Import SettingsService dynamically to avoid circular dependency
   const { SettingsService } = await import('./settingsService.js');
 
-  // Get effective config (includes API keys from settings)
-  const effectiveConfig = await ConfigurationManager.getEffectiveAIConfig(context);
-
-  // Get provider priority from settings
+  // Get provider settings - this tells us EXACTLY what the user selected
   const aiSettings = await SettingsService.getAIConfig(context);
 
   const providers: AIProviderType[] = [];
 
-  console.log('[getEnabledProviders] Provider selection debug:', {
+  console.log('[getEnabledProviders] User selected:', {
     primaryProvider: aiSettings.primaryProvider,
     fallbackProvider: aiSettings.fallbackProvider,
-    availableProviders: Object.keys(effectiveConfig.providers),
   });
 
-  // Add primary provider first (if enabled and has API key)
+  // SIMPLE LOGIC: Only add what the user explicitly selected
+
+  // 1. Add primary provider (if set and has required config)
   if (aiSettings.primaryProvider) {
-    const primaryConfig = effectiveConfig.providers[aiSettings.primaryProvider];
-
-    if (!primaryConfig) {
-      console.warn('[getEnabledProviders] Primary provider not found in config:', {
-        requestedProvider: aiSettings.primaryProvider,
-        availableProviders: Object.keys(effectiveConfig.providers),
-      });
+    const hasRequiredConfig = await checkProviderHasConfig(aiSettings, aiSettings.primaryProvider);
+    if (hasRequiredConfig) {
+      providers.push(aiSettings.primaryProvider);
+      console.log('[getEnabledProviders] ✓ Added primary:', aiSettings.primaryProvider);
     } else {
-      console.log('[getEnabledProviders] Primary provider config:', {
-        provider: aiSettings.primaryProvider,
-        enabled: primaryConfig.enabled,
-        hasApiKey: 'apiKey' in primaryConfig && !!primaryConfig.apiKey,
-      });
-
-      if (primaryConfig.enabled && 'apiKey' in primaryConfig && primaryConfig.apiKey) {
-        providers.push(aiSettings.primaryProvider);
-        console.log('[getEnabledProviders] Added primary provider:', aiSettings.primaryProvider);
-      } else {
-        console.warn('[getEnabledProviders] Primary provider NOT added:', {
-          provider: aiSettings.primaryProvider,
-          enabled: primaryConfig?.enabled,
-          hasApiKeyField: primaryConfig && 'apiKey' in primaryConfig,
-          apiKeyValue: primaryConfig && 'apiKey' in primaryConfig ? (primaryConfig.apiKey ? '***set***' : '***empty***') : '***missing***'
-        });
-      }
+      console.warn('[getEnabledProviders] ✗ Primary provider missing config:', aiSettings.primaryProvider);
     }
   }
 
-  // Log final result
-  console.log('[getEnabledProviders] Final enabled providers:', providers);
-
-  // Add fallback provider second (if enabled, has API key, not 'none', and not already added)
+  // 2. Add fallback provider (if not 'none' and not already added)
   if (aiSettings.fallbackProvider && aiSettings.fallbackProvider !== 'none') {
     if (!providers.includes(aiSettings.fallbackProvider)) {
-      const fallbackConfig = effectiveConfig.providers[aiSettings.fallbackProvider];
-
-      if (!fallbackConfig) {
-        console.warn('[getEnabledProviders] Fallback provider not found in config:', {
-          requestedProvider: aiSettings.fallbackProvider,
-          availableProviders: Object.keys(effectiveConfig.providers),
-        });
+      const hasRequiredConfig = await checkProviderHasConfig(aiSettings, aiSettings.fallbackProvider);
+      if (hasRequiredConfig) {
+        providers.push(aiSettings.fallbackProvider);
+        console.log('[getEnabledProviders] ✓ Added fallback:', aiSettings.fallbackProvider);
       } else {
-        console.log('[getEnabledProviders] Fallback provider config:', {
-          provider: aiSettings.fallbackProvider,
-          enabled: fallbackConfig.enabled,
-          hasApiKey: 'apiKey' in fallbackConfig && !!fallbackConfig.apiKey,
-        });
-
-        if (fallbackConfig.enabled && 'apiKey' in fallbackConfig && fallbackConfig.apiKey) {
-          providers.push(aiSettings.fallbackProvider);
-          console.log('[getEnabledProviders] Added fallback provider:', aiSettings.fallbackProvider);
-        }
+        console.warn('[getEnabledProviders] ✗ Fallback provider missing config:', aiSettings.fallbackProvider);
       }
     }
   }
 
-  // Add any other enabled providers ONLY if fallback is not 'none'
-  // This respects the user's "no fallback" setting
-  if (aiSettings.fallbackProvider !== 'none') {
-    const otherProviders = Object.entries(effectiveConfig.providers)
-      .filter(([type, config]) => {
-        const providerType = type as AIProviderType;
-        return (
-          config.enabled &&
-          'apiKey' in config &&
-          config.apiKey &&
-          !providers.includes(providerType)
-        );
-      })
-      .sort((a, b) => a[1].priority - b[1].priority)
-      .map(([type, _]) => type as AIProviderType);
-
-    providers.push(...otherProviders);
-
-    if (otherProviders.length > 0) {
-      console.log('[getEnabledProviders] Added additional providers:', otherProviders);
-    }
-  } else {
-    console.log('[getEnabledProviders] Fallback is "none" - not adding additional providers');
-  }
-
+  console.log('[getEnabledProviders] Final providers:', providers);
   return providers;
+}
+
+/**
+ * Check if a provider has the required configuration
+ * - claude: needs claudeApiKey
+ * - openai: needs openaiApiKey
+ * - openai-compatible: needs openaiCompatibleApiKey + baseURL + model
+ */
+async function checkProviderHasConfig(aiSettings: any, provider: AIProviderType): Promise<boolean> {
+  switch (provider) {
+    case 'claude':
+      return !!aiSettings.claudeApiKey;
+    case 'openai':
+      return !!aiSettings.openaiApiKey;
+    case 'openai-compatible':
+      return !!(
+        aiSettings.openaiCompatibleApiKey &&
+        aiSettings.openaiCompatibleBaseURL &&
+        aiSettings.openaiCompatibleModel
+      );
+    default:
+      return false;
+  }
 }
 
 /**

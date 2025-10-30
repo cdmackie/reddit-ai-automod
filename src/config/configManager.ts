@@ -112,7 +112,12 @@ export class ConfigurationManager {
         'openai-compatible': {
           type: 'openai-compatible' as const,
           model: aiProviderConfig.openaiCompatibleModel || 'gpt-4o-mini',
-          enabled: !!(aiProviderConfig.openaiCompatibleApiKey && aiProviderConfig.openaiCompatibleBaseURL),
+          // IMPORTANT: Only enabled if explicitly selected as primary or fallback provider
+          // Having API key/URL filled does NOT automatically enable it
+          enabled: (
+            aiProviderConfig.primaryProvider === 'openai-compatible' ||
+            aiProviderConfig.fallbackProvider === 'openai-compatible'
+          ),
           priority: 4, // Last resort fallback
           costPerMTokenInput: 0.15, // Use OpenAI default costs (can be overridden)
           costPerMTokenOutput: 0.6,
