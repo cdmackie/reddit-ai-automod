@@ -119,9 +119,13 @@ export async function handlePostSubmit(
     }
   }
 
+  // Get settings version once for this request
+  const { getSettingsVersion } = await import('../storage/keyBuilder.js');
+  const settingsVersion = await getSettingsVersion(context);
+
   // Initialize profiling services
-  const profileFetcher = new UserProfileFetcher(redis, reddit, rateLimiter);
-  const historyAnalyzer = new PostHistoryAnalyzer(redis, reddit, rateLimiter);
+  const profileFetcher = new UserProfileFetcher(redis, reddit, rateLimiter, settingsVersion);
+  const historyAnalyzer = new PostHistoryAnalyzer(redis, reddit, rateLimiter, settingsVersion);
   const trustScoreCalc = new TrustScoreCalculator(redis);
 
   // Fetch profile and history for pipeline (Layer 1/2)
