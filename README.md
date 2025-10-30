@@ -365,11 +365,10 @@ This app requires HTTP fetch access to the following external domains for AI pro
 - `api.anthropic.com` - Anthropic Claude AI API
 - `api.openai.com` - OpenAI GPT API
 - `api.x.ai` - X.AI Grok API
-- `api.z.ai` - Z.AI (ChatGLM) API
-- `*.groq.com` - Groq AI API
-- `*.together.ai` - Together AI API
+- `api.z.ai` - Z.AI API
+- `api.groq.com` - Groq AI API
 
-These domains are configured in `devvit.yaml` under `http.fetch.allowList` and are required for the app's AI-powered moderation features to function.
+These domains are configured in `devvit.yaml` under `http.fetch.allowList` and are submitted for Reddit admin review when the app is uploaded or playtested. They are required for the app's AI-powered moderation features to function.
 
 ---
 

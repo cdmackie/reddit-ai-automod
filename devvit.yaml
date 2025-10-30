@@ -1,5 +1,5 @@
 name: ai-automod-app
-version: 0.1.58
+version: 0.1.60
 description: AI-powered moderation tool for Reddit communities
 
 # HTTP Fetch Configuration
@@ -11,5 +11,4 @@ http:
       - 'api.openai.com'
       - 'api.z.ai'
       - 'api.x.ai'
-      - '*.groq.com'
-      - '*.together.ai'
+      - 'api.groq.com'
