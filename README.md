@@ -370,6 +370,19 @@ The following domains are requested for this app:
 
 ---
 
+## Configuration Notes
+
+### Domain Approval Process
+
+This app uses `devvit.json` (NOT `devvit.yaml`) for configuration. This is critical for domain approval:
+
+- **✅ REQUIRED**: `devvit.json` with `permissions.http.domains` array
+- **❌ DEPRECATED**: `devvit.yaml` with `http.fetch.allowList` does NOT trigger domain approval
+
+When you upload the app with `devvit upload`, domains listed in `devvit.json` are automatically submitted to Reddit admins for review and will appear in the Developer Settings > Domain Exceptions section.
+
+---
+
 ## License
 
 MIT License - See [LICENSE](./LICENSE) file for details.
