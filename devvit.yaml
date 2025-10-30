@@ -1,5 +1,5 @@
 name: ai-automod-app
-version: 0.1.64
+version: 0.1.65
 description: AI-powered moderation tool for Reddit communities
 
 # HTTP Fetch Configuration
