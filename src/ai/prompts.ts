@@ -68,7 +68,7 @@ USER PROFILE:
 - Email verified: {emailVerified}
 - Is moderator: {isModerator}
 
-POSTING HISTORY (last 20 posts/comments):
+POSTING HISTORY (up to 100 posts and 100 comments):
 {postHistory}
 
 CURRENT POST:
@@ -147,7 +147,7 @@ USER PROFILE:
 - Email verified: {emailVerified}
 - Is moderator: {isModerator}
 
-POSTING HISTORY (last 20 posts/comments):
+POSTING HISTORY (up to 100 posts and 100 comments):
 {postHistory}
 
 CURRENT POST:
@@ -661,14 +661,14 @@ Important:
    * Format post history into readable text for the prompt
    *
    * Combines posts and comments into a chronological list with metadata.
-   * Limits to most recent 20 items to stay within token limits.
+   * Limits to most recent 200 items (100 posts + 100 comments).
    *
    * @param postHistory - User's post and comment history
    * @returns Formatted text representation
    */
   private formatPostHistory(postHistory: UserPostHistory): string {
-    // Take only the most recent 20 items (already sorted by fetcher)
-    const recentItems = postHistory.items.slice(0, 20);
+    // Take only the most recent 200 items (100 posts + 100 comments, already sorted by fetcher)
+    const recentItems = postHistory.items.slice(0, 200);
 
     if (recentItems.length === 0) {
       return '(No post history available)';
