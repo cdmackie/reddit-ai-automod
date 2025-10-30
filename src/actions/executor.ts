@@ -86,7 +86,7 @@ async function saveAnalysisHistory(
   action: 'REMOVE' | 'FLAG' | 'COMMENT',
   correlationId: string
 ): Promise<void> {
-  const { post, profile, ruleResult, context, aiAnalysis } = params;
+  const { post, profile, ruleResult, context, aiAnalysis, pipelineInfo } = params;
 
   // Don't save in dry-run mode
   if (params.dryRun) {
@@ -95,7 +95,7 @@ async function saveAnalysisHistory(
   }
 
   try {
-    // Get AI data from analysis result
+    // Get AI data from analysis result (Layer 3)
     const aiProvider = aiAnalysis?.provider;
     const aiModel = aiAnalysis?.model;
     const aiReasoning = extractAIReasoning(aiAnalysis);
@@ -109,6 +109,18 @@ async function saveAnalysisHistory(
       trustScore: Math.round(profile.totalKarma / 100), // Simplified trust score
       accountAgeInDays: profile.accountAgeInDays,
       totalKarma: profile.totalKarma,
+
+      // Pipeline layer information
+      layerTriggered: pipelineInfo?.layerTriggered,
+      layer1Passed: pipelineInfo?.layer1Passed,
+      layer1RuleId: pipelineInfo?.layer1RuleId,
+      layer1Reason: pipelineInfo?.layer1Reason,
+      layer2Passed: pipelineInfo?.layer2Passed,
+      layer2Categories: pipelineInfo?.layer2Categories,
+      layer2Reason: pipelineInfo?.layer2Reason,
+      layer3Passed: pipelineInfo?.layer3Passed,
+
+      // Layer 3 AI data
       aiProvider,
       aiModel,
       confidence: ruleResult.confidence,
@@ -116,7 +128,7 @@ async function saveAnalysisHistory(
       ruleReason: ruleResult.reason,
     });
 
-    console.log(`[ActionExecutor:${correlationId}] Analysis history saved successfully`);
+    console.log(`[ActionExecutor:${correlationId}] Analysis history saved successfully (layer: ${pipelineInfo?.layerTriggered || 'unknown'})`);
   } catch (error) {
     // Log error but don't throw - storage failure shouldn't block action execution
     console.error(`[ActionExecutor:${correlationId}] Failed to save analysis history:`, {
@@ -142,6 +154,17 @@ export interface ExecuteActionParams {
   dryRun: boolean;
   /** Optional AI analysis result for mod notes */
   aiAnalysis?: AIQuestionBatchResult;
+  /** Pipeline layer information (which layers were evaluated and their results) */
+  pipelineInfo?: {
+    layerTriggered?: string;
+    layer1Passed?: boolean;
+    layer1RuleId?: string;
+    layer1Reason?: string;
+    layer2Passed?: boolean;
+    layer2Categories?: string[];
+    layer2Reason?: string;
+    layer3Passed?: boolean;
+  };
 }
 
 /**

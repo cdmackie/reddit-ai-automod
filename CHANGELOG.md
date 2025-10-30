@@ -7,19 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.102] - 2025-10-30
+
+### Fixed
+- Removed `disabled` flag from form fields to fix light grey text color
+- Form text now displays in normal/dark color for better readability
+- Fields remain effectively read-only (no submit handler logic)
+
+## [0.1.101] - 2025-10-30
+
+### Changed
+- Restructured AI analysis form with organized multi-field layout
+- Replaced single cramped paragraph field with separate labeled fields
+- Added field groups: "User Information" and "AI Analysis"
+- Only reasoning uses paragraph field (where scrolling is appropriate)
+- Much more readable and scannable interface
+
+## [0.1.100] - 2025-10-30
+
+### Changed
+- Replaced toast notification with proper Devvit form for AI analysis display
+- Form provides much more space for displaying complete analysis information
+- Better user experience for viewing detailed AI decisions
+
+## [0.1.99] - 2025-10-30
+
+### Added
+- Redis-based AI analysis history storage system
+- Created `src/storage/analysisHistory.ts` for storing analysis data with 90-day retention
+- Analysis data includes: action, rule, user trust metrics, AI provider/model, confidence, reasoning
+- "View AI Analysis" menu action fetches and displays stored analysis data
+
+### Removed
+- Removed broken `modLog` integration (API not available in trigger contexts)
+- Deleted obsolete `src/actions/modNotes.ts`
+- Removed `modLog: true` from Devvit.configure() (not needed)
+- Removed `enableModLog` setting
+
+### Changed
+- Updated executor to save analysis to Redis instead of trying to create mod log entries
+- Updated `src/ui/postAnalysis.ts` to fetch from Redis storage
+
+### Technical Note
+- `context.modLog` API is only available in UI contexts (forms, menus), not trigger contexts (onPostSubmit, onCommentSubmit)
+- `TriggerContext` and `JobContext` explicitly omit `modLog` from their type definitions
+- Redis-based storage provides equivalent transparency for moderators
+
+## [0.1.98] - 2025-10-30
+
+### Changed
+- Added `modLog: true` to `Devvit.configure()` (later discovered this alone wasn't sufficient)
+
 ## [0.1.97] - 2025-10-30
 
 ### Changed
-- **BREAKING**: Switched from mod notes to mod log entries (correct API)
-- Now uses `context.modLog.add()` instead of `context.reddit.addModNote()`
-- Mod log entries appear in subreddit's moderation log (not user profiles)
-- Maps actions to correct mod log types: `removelink`/`removecomment`, `reportlink`/`reportcomment`
-- Renamed setting from `enableModNotes` to `enableModLog` for accuracy
+- **BREAKING**: Attempted switch from mod notes to mod log entries
+- Tried using `context.modLog.add()` (later discovered not available in triggers)
+- Maps actions to mod log types: `removelink`/`removecomment`, `reportlink`/`reportcomment`
+- Renamed setting from `enableModNotes` to `enableModLog`
 - Renamed function from `addAutomodNote` to `addAutomodLogEntry`
 
-### Fixed
-- Corrected API usage - mod log is the proper way to track moderation actions
-- Entries now appear in the mod log where moderators actually review actions
+### Note
+- This implementation was later replaced in 0.1.99 due to API limitations
 
 ## [0.1.96] - 2025-10-30
 

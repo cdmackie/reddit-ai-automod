@@ -416,81 +416,190 @@ const aiAnalysisForm = Devvit.createForm(
       {
         type: 'string',
         name: 'action',
-        label: `${actionEmoji} Action`,
+        label: `${actionEmoji} Action Taken`,
         defaultValue: analysis.action,
       },
       {
         type: 'string',
-        name: 'rule',
-        label: '📋 Rule',
-        defaultValue: analysis.ruleName,
+        name: 'triggered',
+        label: '⚡ Triggered By',
+        defaultValue: analysis.layerTriggered ?
+          (analysis.layerTriggered === 'builtin' ? 'Layer 1: New Account Check' :
+           analysis.layerTriggered === 'moderation' ? 'Layer 2: OpenAI Moderation' :
+           analysis.layerTriggered === 'custom' ? 'Layer 3: Custom AI Rules' :
+           'Unknown') :
+          'Layer 3: Custom AI Rules',
       },
       {
         type: 'group',
-        label: 'User Information',
+        label: '👤 User Information',
         fields: [
           {
             type: 'string',
             name: 'author',
-            label: '👤 Author',
+            label: 'Author',
             defaultValue: `u/${analysis.authorName}`,
           },
           {
             type: 'string',
             name: 'trust',
-            label: '🎯 Trust Score',
+            label: 'Trust Score',
             defaultValue: `${analysis.trustScore}/100`,
           },
           {
             type: 'string',
             name: 'age',
-            label: '📅 Account Age',
+            label: 'Account Age',
             defaultValue: `${analysis.accountAgeInDays} days`,
           },
           {
             type: 'string',
             name: 'karma',
-            label: '⭐ Total Karma',
+            label: 'Total Karma',
             defaultValue: analysis.totalKarma.toLocaleString(),
           },
         ],
       },
     ];
 
-    if (analysis.aiProvider) {
+    // Layer 1: New Account Check
+    if (analysis.layer1Passed !== undefined) {
+      const layer1Status = analysis.layer1Passed ? '✅ Passed' : '❌ Failed';
+      const layer1Fields: any[] = [
+        {
+          type: 'string',
+          name: 'layer1_status',
+          label: 'Status',
+          defaultValue: layer1Status,
+        },
+      ];
+
+      if (!analysis.layer1Passed && analysis.layer1Reason) {
+        layer1Fields.push({
+          type: 'paragraph',
+          name: 'layer1_reason',
+          label: 'Reason',
+          defaultValue: analysis.layer1Reason,
+        });
+      }
+
       fields.push({
         type: 'group',
-        label: 'AI Analysis',
-        fields: [
-          {
-            type: 'string',
-            name: 'provider',
-            label: '🤖 Provider',
-            defaultValue: analysis.aiProvider,
-          },
-          {
-            type: 'string',
-            name: 'model',
-            label: '🔧 Model',
-            defaultValue: analysis.aiModel || 'Unknown',
-          },
-          ...(analysis.confidence ? [{
-            type: 'string' as const,
-            name: 'confidence',
-            label: '📊 Confidence',
-            defaultValue: `${analysis.confidence}%`,
-          }] : []),
-        ],
+        label: '🔧 Layer 1: New Account Check',
+        fields: layer1Fields,
       });
     }
 
-    if (analysis.aiReasoning || analysis.ruleReason) {
+    // Layer 2: OpenAI Moderation
+    if (analysis.layer2Passed !== undefined) {
+      const layer2Status = analysis.layer2Passed ? '✅ Passed' : '❌ Failed';
+      const layer2Fields: any[] = [
+        {
+          type: 'string',
+          name: 'layer2_status',
+          label: 'Status',
+          defaultValue: layer2Status,
+        },
+      ];
+
+      if (!analysis.layer2Passed) {
+        if (analysis.layer2Categories && analysis.layer2Categories.length > 0) {
+          layer2Fields.push({
+            type: 'string',
+            name: 'layer2_categories',
+            label: 'Flagged Categories',
+            defaultValue: analysis.layer2Categories.join(', '),
+          });
+        }
+        if (analysis.layer2Reason) {
+          layer2Fields.push({
+            type: 'paragraph',
+            name: 'layer2_reason',
+            label: 'Reason',
+            defaultValue: analysis.layer2Reason,
+          });
+        }
+      }
+
       fields.push({
-        type: 'paragraph',
-        name: 'reasoning',
-        label: '💭 Reasoning',
-        defaultValue: analysis.aiReasoning || analysis.ruleReason,
+        type: 'group',
+        label: '🛡️ Layer 2: OpenAI Moderation',
+        fields: layer2Fields,
       });
+    }
+
+    // Layer 3: Custom AI Rules
+    if (analysis.layer3Passed !== undefined || analysis.aiProvider) {
+      const layer3Status = analysis.layer3Passed === false ? '❌ Failed' :
+                           analysis.layer3Passed === true ? '✅ Passed' :
+                           'Evaluated';
+      const layer3Fields: any[] = [];
+
+      if (analysis.layer3Passed !== undefined) {
+        layer3Fields.push({
+          type: 'string',
+          name: 'layer3_status',
+          label: 'Status',
+          defaultValue: layer3Status,
+        });
+      }
+
+      if (analysis.aiProvider) {
+        layer3Fields.push({
+          type: 'string',
+          name: 'provider',
+          label: 'AI Provider',
+          defaultValue: analysis.aiProvider,
+        });
+        layer3Fields.push({
+          type: 'string',
+          name: 'model',
+          label: 'AI Model',
+          defaultValue: analysis.aiModel || 'Unknown',
+        });
+      }
+
+      if (analysis.confidence) {
+        layer3Fields.push({
+          type: 'string',
+          name: 'confidence',
+          label: 'Confidence',
+          defaultValue: `${analysis.confidence}%`,
+        });
+      }
+
+      if (analysis.ruleName) {
+        layer3Fields.push({
+          type: 'string',
+          name: 'rule',
+          label: 'Matched Rule',
+          defaultValue: analysis.ruleName,
+        });
+      }
+
+      if (analysis.aiReasoning) {
+        layer3Fields.push({
+          type: 'paragraph',
+          name: 'ai_reasoning',
+          label: 'AI Reasoning',
+          defaultValue: analysis.aiReasoning,
+        });
+      } else if (analysis.ruleReason) {
+        layer3Fields.push({
+          type: 'paragraph',
+          name: 'rule_reason',
+          label: 'Reason',
+          defaultValue: analysis.ruleReason,
+        });
+      }
+
+      if (layer3Fields.length > 0) {
+        fields.push({
+          type: 'group',
+          label: '🤖 Layer 3: Custom AI Rules',
+          fields: layer3Fields,
+        });
+      }
     }
 
     fields.push({
@@ -502,7 +611,7 @@ const aiAnalysisForm = Devvit.createForm(
 
     return {
       title: '🤖 AI Automod Analysis',
-      description: `Post: ${data.postId}`,
+      description: `Analysis results for all moderation layers. Shows which layers were evaluated and why the action was taken.`,
       fields,
       acceptLabel: 'Close',
     };
@@ -514,19 +623,166 @@ const aiAnalysisForm = Devvit.createForm(
 
 console.log('[AI Automod] ✓ Registered: AI Analysis Form');
 
+// Cost Dashboard Form - displays AI usage and budget information
+const costDashboardForm = Devvit.createForm(
+  (data) => {
+    const dashboard = data.dashboard as any;
+
+    if (!dashboard) {
+      return {
+        title: '💰 AI Cost Dashboard',
+        description: 'No cost data available',
+        fields: [],
+        acceptLabel: 'Close',
+      };
+    }
+
+    const dailyPercent = dashboard.settings.dailyLimit > 0
+      ? ((dashboard.daily.total / dashboard.settings.dailyLimit) * 100).toFixed(1)
+      : '0.0';
+
+    const monthlyPercent = dashboard.settings.monthlyLimit > 0
+      ? ((dashboard.monthly.total / dashboard.settings.monthlyLimit) * 100).toFixed(1)
+      : '0.0';
+
+    const dailyStatus = parseFloat(dailyPercent) >= 90 ? '🔴' : parseFloat(dailyPercent) >= 75 ? '⚠️' : parseFloat(dailyPercent) >= 50 ? '⚠️' : '✅';
+    const monthlyStatus = parseFloat(monthlyPercent) >= 90 ? '🔴' : parseFloat(monthlyPercent) >= 75 ? '⚠️' : parseFloat(monthlyPercent) >= 50 ? '⚠️' : '✅';
+
+    const lastUpdated = new Date(dashboard.lastUpdated).toLocaleString();
+
+    const fields: any[] = [
+      {
+        type: 'group',
+        label: '📅 Today',
+        fields: [
+          {
+            type: 'string',
+            name: 'daily_total',
+            label: `${dailyStatus} Total Spent`,
+            defaultValue: `$${dashboard.daily.total.toFixed(4)}`,
+          },
+          {
+            type: 'string',
+            name: 'daily_limit',
+            label: '💵 Daily Budget',
+            defaultValue: `$${dashboard.settings.dailyLimit.toFixed(2)}`,
+          },
+          {
+            type: 'string',
+            name: 'daily_percent',
+            label: '📊 Usage',
+            defaultValue: `${dailyPercent}%`,
+          },
+          ...(dashboard.daily.claude > 0 ? [{
+            type: 'string' as const,
+            name: 'daily_claude',
+            label: '🤖 Claude',
+            defaultValue: `$${dashboard.daily.claude.toFixed(4)}`,
+          }] : []),
+          ...(dashboard.daily.openai > 0 ? [{
+            type: 'string' as const,
+            name: 'daily_openai',
+            label: '🤖 OpenAI',
+            defaultValue: `$${dashboard.daily.openai.toFixed(4)}`,
+          }] : []),
+          ...(dashboard.daily['openai-compatible'] > 0 ? [{
+            type: 'string' as const,
+            name: 'daily_compat',
+            label: '🔌 OpenAI Compatible',
+            defaultValue: `$${dashboard.daily['openai-compatible'].toFixed(4)}`,
+          }] : []),
+        ],
+      },
+      {
+        type: 'group',
+        label: '📆 This Month',
+        fields: [
+          {
+            type: 'string',
+            name: 'monthly_total',
+            label: `${monthlyStatus} Total Spent`,
+            defaultValue: `$${dashboard.monthly.total.toFixed(4)}`,
+          },
+          {
+            type: 'string',
+            name: 'monthly_limit',
+            label: '💵 Monthly Budget',
+            defaultValue: `$${dashboard.settings.monthlyLimit.toFixed(2)}`,
+          },
+          {
+            type: 'string',
+            name: 'monthly_percent',
+            label: '📊 Usage',
+            defaultValue: `${monthlyPercent}%`,
+          },
+          ...(dashboard.monthly.claude > 0 ? [{
+            type: 'string' as const,
+            name: 'monthly_claude',
+            label: '🤖 Claude',
+            defaultValue: `$${dashboard.monthly.claude.toFixed(4)}`,
+          }] : []),
+          ...(dashboard.monthly.openai > 0 ? [{
+            type: 'string' as const,
+            name: 'monthly_openai',
+            label: '🤖 OpenAI',
+            defaultValue: `$${dashboard.monthly.openai.toFixed(4)}`,
+          }] : []),
+          ...(dashboard.monthly['openai-compatible'] > 0 ? [{
+            type: 'string' as const,
+            name: 'monthly_compat',
+            label: '🔌 OpenAI Compatible',
+            defaultValue: `$${dashboard.monthly['openai-compatible'].toFixed(4)}`,
+          }] : []),
+        ],
+      },
+      {
+        type: 'group',
+        label: '⚙️ Configuration',
+        fields: [
+          {
+            type: 'string',
+            name: 'mode',
+            label: '🧪 Mode',
+            defaultValue: dashboard.settings.dryRunMode ? 'DRY-RUN (testing)' : 'LIVE (active)',
+          },
+          {
+            type: 'string',
+            name: 'primary',
+            label: '🔑 Primary AI',
+            defaultValue: dashboard.settings.primaryProvider,
+          },
+          {
+            type: 'string',
+            name: 'fallback',
+            label: '🔄 Fallback AI',
+            defaultValue: dashboard.settings.fallbackProvider,
+          },
+        ],
+      },
+      {
+        type: 'string',
+        name: 'updated',
+        label: '🕐 Last Updated',
+        defaultValue: lastUpdated,
+      },
+    ];
+
+    return {
+      title: '💰 AI Cost Dashboard',
+      description: 'Layer 3 (Custom AI Rules) usage only. Layer 1 & 2 are free.',
+      fields,
+      acceptLabel: 'Close',
+    };
+  },
+  async (event, context) => {
+    // Form submission handler (just closes)
+  }
+);
+
+console.log('[AI Automod] ✓ Registered: Cost Dashboard Form');
+
 // Register menu items
 console.log('[AI Automod] Registering menu items...');
-
-// Add menu action for settings (future Phase 5)
-Devvit.addMenuItem({
-  label: 'AI Automod Settings',
-  location: 'subreddit',
-  forUserType: 'moderator',
-  onPress: async (_event, context) => {
-    context.ui.showToast('Phase 4: Settings UI - Configure in Subreddit Settings');
-  },
-});
-console.log('[AI Automod] ✓ Registered: AI Automod Settings (subreddit)');
 
 // Cost Dashboard Menu Item (Phase 4.4)
 Devvit.addMenuItem({
@@ -535,14 +791,17 @@ Devvit.addMenuItem({
   forUserType: 'moderator',
   onPress: async (_event, context) => {
     try {
-      const dashboard = await renderCostDashboard(context);
+      const { CostDashboardCache } = await import('./dashboard/costDashboardCache.js');
+      const dashboard = await CostDashboardCache.getDashboardData(context);
+
+      // Show form with dashboard data
+      context.ui.showForm(costDashboardForm, { dashboard });
+    } catch (error) {
+      console.error('[CostDashboard] Error loading dashboard:', error);
       context.ui.showToast({
-        text: dashboard,
+        text: 'Error loading cost dashboard. Check logs for details.',
         appearance: 'neutral',
       });
-    } catch (error) {
-      console.error('[CostDashboard] Error rendering dashboard:', error);
-      context.ui.showToast('Error loading cost dashboard. Check logs for details.');
     }
   },
 });

@@ -45,15 +45,39 @@ export interface AnalysisHistoryEntry {
   accountAgeInDays: number;
   /** Total karma */
   totalKarma: number;
-  /** AI provider used */
+
+  // Pipeline Layer Information
+  /** Which layer triggered the action ('layer1', 'layer2', 'layer3', or 'none') */
+  layerTriggered?: string;
+
+  // Layer 1: Built-in Rules
+  /** Layer 1 passed (true/false/undefined if not evaluated) */
+  layer1Passed?: boolean;
+  /** Layer 1 matched rule ID */
+  layer1RuleId?: string;
+  /** Layer 1 reason */
+  layer1Reason?: string;
+
+  // Layer 2: OpenAI Moderation
+  /** Layer 2 passed (true/false/undefined if not evaluated) */
+  layer2Passed?: boolean;
+  /** Layer 2 flagged categories */
+  layer2Categories?: string[];
+  /** Layer 2 reason */
+  layer2Reason?: string;
+
+  // Layer 3: Custom AI Rules
+  /** Layer 3 passed (true/false/undefined if not evaluated) */
+  layer3Passed?: boolean;
+  /** AI provider used (Layer 3) */
   aiProvider?: string;
-  /** AI model name */
+  /** AI model name (Layer 3) */
   aiModel?: string;
-  /** AI confidence percentage */
+  /** AI confidence percentage (Layer 3) */
   confidence?: number;
-  /** AI reasoning text */
+  /** AI reasoning text (Layer 3) */
   aiReasoning?: string;
-  /** Rule reason text */
+  /** Rule reason text (Layer 3) */
   ruleReason?: string;
 }
 
