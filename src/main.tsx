@@ -399,8 +399,10 @@ Devvit.addMenuItem({
 
       let trustDeleted = 0;
       let trackingDeleted = 0;
+      let profileDeleted = 0;
+      let historyDeleted = 0;
 
-      // Delete trust records for each user
+      // Delete trust records, tracking, and caches for each user
       for (const userId of trackedUsers) {
         const trustKey = `trust:community:${userId.member}:${subredditName}`;
         await redis.del(trustKey);
@@ -410,16 +412,26 @@ Devvit.addMenuItem({
         const trackingKey = `approved:tracking:${userId.member}:${subredditName}`;
         await redis.del(trackingKey);
         trackingDeleted++;
+
+        // Delete profile cache for this user (forces fresh data from Reddit API)
+        const profileKey = `user:${userId.member}:profile`;
+        await redis.del(profileKey);
+        profileDeleted++;
+
+        // Delete post history cache for this user (forces fresh data from Reddit API)
+        const historyKey = `user:${userId.member}:history`;
+        await redis.del(historyKey);
+        historyDeleted++;
       }
 
       // Delete the users tracking set itself
       await redis.del(usersSetKey);
 
-      const totalDeleted = trustDeleted + trackingDeleted;
-      console.log(`[ResetTrust] Reset complete: ${trustDeleted} trust records and ${trackingDeleted} tracking records deleted`);
+      const totalDeleted = trustDeleted + trackingDeleted + profileDeleted + historyDeleted;
+      console.log(`[ResetTrust] Reset complete: ${trustDeleted} trust records, ${trackingDeleted} tracking records, ${profileDeleted} profile caches, and ${historyDeleted} history caches deleted`);
 
       context.ui.showToast({
-        text: `✅ Reset complete! Deleted ${trustDeleted} trust records and ${trackingDeleted} tracking records for r/${subredditName}. All users will start fresh.`,
+        text: `✅ Reset complete! Deleted ${trustDeleted} trust records, ${trackingDeleted} tracking records, ${profileDeleted} profile caches, and ${historyDeleted} history caches for r/${subredditName}. All users will start completely fresh.`,
         appearance: 'success',
       });
     } catch (error) {
