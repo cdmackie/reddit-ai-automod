@@ -175,7 +175,7 @@ async function runTests() {
     assertNotNull(healthStatus, 'Should return health status');
     assertNotNull(healthStatus.claude, 'Should have Claude status');
     assertNotNull(healthStatus.openai, 'Should have OpenAI status');
-    assertNotNull(healthStatus.deepseek, 'Should have DeepSeek status');
+    assertNotNull(healthStatus['openai-compatible'], 'Should have OpenAI Compatible status');
 
     // Verify structure
     assert(
@@ -239,7 +239,7 @@ async function runTests() {
     selector.setABTestMode(true, {
       claude: 40,
       openai: 30,
-      deepseek: 30,
+      'openai-compatible': 30,
     });
 
     assert(true, 'A/B testing mode configured successfully');
@@ -266,7 +266,7 @@ async function runTests() {
       selector.setABTestMode(true, {
         claude: 50,
         openai: 30,
-        deepseek: 10, // Sums to 90, not 100
+        'openai-compatible': 10, // Sums to 90, not 100
       });
 
       console.warn = originalWarn;
@@ -286,7 +286,7 @@ async function runTests() {
     selector.setABTestMode(false, {
       claude: 100,
       openai: 0,
-      deepseek: 0,
+      'openai-compatible': 0,
     });
 
     // Should still use priority-based selection

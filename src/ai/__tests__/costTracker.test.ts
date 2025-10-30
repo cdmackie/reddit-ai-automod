@@ -210,12 +210,12 @@ describe('CostTracker', () => {
 
       await costTracker.recordCost(createCostRecord({ costUSD: 0.05, provider: 'claude' }));
       await costTracker.recordCost(createCostRecord({ costUSD: 0.1, provider: 'openai' }));
-      await costTracker.recordCost(createCostRecord({ costUSD: 0.02, provider: 'deepseek' }));
+      await costTracker.recordCost(createCostRecord({ costUSD: 0.02, provider: 'openai-compatible' }));
 
       // $0.05 = 5 cents, $0.10 = 10 cents, $0.02 = 2 cents, total = 17 cents
       expect(await mockRedis.get(`cost:daily:${today}:claude`)).toBe('5');
       expect(await mockRedis.get(`cost:daily:${today}:openai`)).toBe('10');
-      expect(await mockRedis.get(`cost:daily:${today}:deepseek`)).toBe('2');
+      expect(await mockRedis.get(`cost:daily:${today}:openai-compatible`)).toBe('2');
       expect(await mockRedis.get(`cost:daily:${today}`)).toBe('17');
     });
 
@@ -264,7 +264,7 @@ describe('CostTracker', () => {
       expect(status.perProviderSpent).toEqual({
         claude: 0,
         openai: 0,
-        deepseek: 0,
+        'openai-compatible': 0,
       });
     });
 
@@ -285,7 +285,7 @@ describe('CostTracker', () => {
       expect(status.monthlySpent).toBe(15.75);
       expect(status.perProviderSpent.claude).toBe(2.0);
       expect(status.perProviderSpent.openai).toBe(0.5);
-      expect(status.perProviderSpent.deepseek).toBe(0);
+      expect(status.perProviderSpent['openai-compatible']).toBe(0);
     });
 
     it('should calculate alert level NONE for low spending', async () => {
@@ -336,7 +336,7 @@ describe('CostTracker', () => {
       expect(status.perProviderSpent).toEqual({
         claude: 0,
         openai: 0,
-        deepseek: 0,
+        'openai-compatible': 0,
       });
     });
   });
@@ -582,7 +582,7 @@ describe('CostTracker', () => {
       const record = {
         id: 'test-small',
         timestamp: Date.now(),
-        provider: 'deepseek' as const,
+        provider: 'openai-compatible' as const,
         userId: 't2_test',
         tokensUsed: 100,
         costUSD: 0.001, // Will round to 0 cents

@@ -252,12 +252,12 @@ export class CostTracker {
 
     try {
       // Fetch all spending data in parallel
-      const [dailyTotal, claudeSpent, openaiSpent, deepseekSpent, monthlyTotal] =
+      const [dailyTotal, claudeSpent, openaiSpent, openaiCompatSpent, monthlyTotal] =
         await Promise.all([
           this.redis.get(GlobalKeys.costDaily(today)),
           this.redis.get(GlobalKeys.costDailyProvider(today, 'claude')),
           this.redis.get(GlobalKeys.costDailyProvider(today, 'openai')),
-          this.redis.get(GlobalKeys.costDailyProvider(today, 'deepseek')),
+          this.redis.get(GlobalKeys.costDailyProvider(today, 'openai-compatible')),
           this.redis.get(GlobalKeys.costMonthly(month)),
         ]);
 
@@ -271,7 +271,7 @@ export class CostTracker {
       const perProviderSpent: Record<AIProviderType, number> = {
         claude: centsToUSD(parseInt(claudeSpent || '0')),
         openai: centsToUSD(parseInt(openaiSpent || '0')),
-        deepseek: centsToUSD(parseInt(deepseekSpent || '0')),
+        'openai-compatible': centsToUSD(parseInt(openaiCompatSpent || '0')),
       };
 
       // Get daily limit from settings (with fallback to config default)
@@ -348,7 +348,7 @@ export class CostTracker {
         this.redis.del(GlobalKeys.costDaily(yesterday)),
         this.redis.del(GlobalKeys.costDailyProvider(yesterday, 'claude')),
         this.redis.del(GlobalKeys.costDailyProvider(yesterday, 'openai')),
-        this.redis.del(GlobalKeys.costDailyProvider(yesterday, 'deepseek')),
+        this.redis.del(GlobalKeys.costDailyProvider(yesterday, 'openai-compatible')),
       ]);
 
       // Initialize today's keys to '0' if they don't exist
@@ -357,7 +357,7 @@ export class CostTracker {
         `cost:daily:${today}`,
         `cost:daily:${today}:claude`,
         `cost:daily:${today}:openai`,
-        `cost:daily:${today}:deepseek`,
+        `cost:daily:${today}:openai-compatible`,
       ]) {
         initPromises.push(
           this.redis.get(key).then((value) => {
@@ -420,11 +420,11 @@ export class CostTracker {
 
       // Fetch spending data for all dates and providers
       const dailyPromises = dates.map(async (date) => {
-        const [total, claude, openai, deepseek] = await Promise.all([
+        const [total, claude, openai, openaiCompat] = await Promise.all([
           this.redis.get(GlobalKeys.costDaily(date)),
           this.redis.get(GlobalKeys.costDailyProvider(date, 'claude')),
           this.redis.get(GlobalKeys.costDailyProvider(date, 'openai')),
-          this.redis.get(GlobalKeys.costDailyProvider(date, 'deepseek')),
+          this.redis.get(GlobalKeys.costDailyProvider(date, 'openai-compatible')),
         ]);
 
         const totalCents = parseInt(total || '0');
@@ -432,13 +432,13 @@ export class CostTracker {
         const perProvider: Record<AIProviderType, number> = {
           claude: centsToUSD(parseInt(claude || '0')),
           openai: centsToUSD(parseInt(openai || '0')),
-          deepseek: centsToUSD(parseInt(deepseek || '0')),
+          'openai-compatible': centsToUSD(parseInt(openaiCompat || '0')),
         };
 
         // Estimate request count (actual count would require separate tracking)
-        // Using average cost per request: Claude ~$0.05, OpenAI ~$0.10, DeepSeek ~$0.02
+        // Using average cost per request: Claude ~$0.05, OpenAI ~$0.10, Compatible ~$0.02
         const requestCount = Math.round(
-          perProvider.claude / 0.05 + perProvider.openai / 0.1 + perProvider.deepseek / 0.02
+          perProvider.claude / 0.05 + perProvider.openai / 0.1 + perProvider['openai-compatible'] / 0.02
         );
 
         return {
@@ -456,18 +456,18 @@ export class CostTracker {
         {
           claude: { totalUSD: 0, requestCount: 0 },
           openai: { totalUSD: 0, requestCount: 0 },
-          deepseek: { totalUSD: 0, requestCount: 0 },
+          'openai-compatible': { totalUSD: 0, requestCount: 0 },
         };
 
       dailySpending.forEach((day) => {
         providerTotals.claude.totalUSD += day.perProvider.claude;
         providerTotals.openai.totalUSD += day.perProvider.openai;
-        providerTotals.deepseek.totalUSD += day.perProvider.deepseek;
+        providerTotals['openai-compatible'].totalUSD += day.perProvider['openai-compatible'];
 
         // Estimate request counts
         providerTotals.claude.requestCount += Math.round(day.perProvider.claude / 0.05);
         providerTotals.openai.requestCount += Math.round(day.perProvider.openai / 0.1);
-        providerTotals.deepseek.requestCount += Math.round(day.perProvider.deepseek / 0.02);
+        providerTotals['openai-compatible'].requestCount += Math.round(day.perProvider['openai-compatible'] / 0.02);
       });
 
       const providerBreakdown: SpendingReport['providerBreakdown'] = Object.entries(

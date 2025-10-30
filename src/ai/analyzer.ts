@@ -90,9 +90,9 @@
 import { Devvit } from '@devvit/public-api';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import { AIAnalysisRequest, AIAnalysisResult, AIQuestion, AIQuestionRequest, AIQuestionBatchResult, AIProviderType, IAIProvider } from '../types/ai.js';
+import { AIAnalysisRequest, AIAnalysisResult, AIQuestion, AIQuestionRequest, AIQuestionBatchResult, AIProviderType } from '../types/ai.js';
+import { IAIProvider } from './provider.js';
 import { UserProfile, UserPostHistory } from '../types/profile.js';
-import { ProviderSelector } from './selector.js';
 import { ClaudeProvider } from './claude.js';
 import { OpenAIProvider } from './openai.js';
 import { OpenAICompatibleProvider } from './openaiCompatible.js';
@@ -100,7 +100,6 @@ import { RequestCoalescer } from './requestCoalescer.js';
 import { CostTracker } from './costTracker.js';
 import { getCacheTTLForTrustScore } from '../config/ai.js';
 import { SettingsService } from '../config/settingsService.js';
-import { AIQuestionsCache } from '../storage/cacheOperations.js';
 import { UserKeys } from '../storage/keyBuilder.js';
 
 /**
@@ -134,11 +133,25 @@ export class AIAnalyzer {
   /** Maximum number of questions allowed per batch to prevent excessive costs */
   private static readonly MAX_QUESTIONS_PER_BATCH = 10;
 
+  /** Cached settings version for this instance */
+  private settingsVersionCache: string | null = null;
+
   /**
    * Private constructor - use getInstance() instead
    * @param context - Devvit context for Redis and Secrets Manager access
    */
   private constructor(private context: Devvit.Context) {}
+
+  /**
+   * Get settings version (cached per instance)
+   */
+  private async getSettingsVersion(): Promise<string> {
+    if (!this.settingsVersionCache) {
+      const { getSettingsVersion } = await import('../storage/keyBuilder.js');
+      this.settingsVersionCache = await getSettingsVersion(this.context);
+    }
+    return this.settingsVersionCache;
+  }
 
   /**
    * Singleton instances keyed by Devvit context
@@ -927,7 +940,8 @@ export class AIAnalyzer {
     userId: string,
     questionIdsHash: string
   ): Promise<AIQuestionBatchResult | null> {
-    const key = UserKeys.aiQuestion(userId, questionIdsHash);
+    const sv = await this.getSettingsVersion();
+    const key = UserKeys.aiQuestion(userId, sv, questionIdsHash);
 
     try {
       const cached = await this.context.redis.get(key);
@@ -978,7 +992,8 @@ export class AIAnalyzer {
     result: AIQuestionBatchResult,
     cacheTTL: number
   ): Promise<void> {
-    const key = UserKeys.aiQuestion(userId, questionIdsHash);
+    const sv = await this.getSettingsVersion();
+    const key = UserKeys.aiQuestion(userId, sv, questionIdsHash);
 
     try {
       // Convert TTL (seconds) to Date object
@@ -987,7 +1002,7 @@ export class AIAnalyzer {
 
       // Track this cache key for cleanup
       // Store in sorted set with expiration timestamp as score
-      const trackingKey = UserKeys.aiQuestionsKeys(userId);
+      const trackingKey = UserKeys.aiQuestionsKeys(userId, sv);
       const expirationTimestamp = Date.now() + cacheTTL * 1000;
       await this.context.redis.zAdd(trackingKey, {
         member: questionIdsHash,
@@ -1064,7 +1079,8 @@ export class AIAnalyzer {
    * @private
    */
   private async clearQuestionCache(userId: string, questionIdsHash: string): Promise<void> {
-    const key = UserKeys.aiQuestion(userId, questionIdsHash);
+    const sv = await this.getSettingsVersion();
+    const key = UserKeys.aiQuestion(userId, sv, questionIdsHash);
 
     try {
       await this.context.redis.del(key);
@@ -1115,14 +1131,14 @@ export class AIAnalyzer {
       if (!aiSettings.claudeApiKey) {
         throw new Error('Claude API key not configured');
       }
-      return new ClaudeProvider(aiSettings.claudeApiKey, 'claude-3-5-haiku-20241022');
+      return new ClaudeProvider(aiSettings.claudeApiKey);
     }
 
     if (type === 'openai') {
       if (!aiSettings.openaiApiKey) {
         throw new Error('OpenAI API key not configured');
       }
-      return new OpenAIProvider(aiSettings.openaiApiKey, 'gpt-4o-mini');
+      return new OpenAIProvider(aiSettings.openaiApiKey);
     }
 
     if (type === 'openai-compatible') {
