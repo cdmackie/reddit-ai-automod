@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-30
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.103
+**Current Version**: 0.1.104
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.50 Complete ✅ | Enhanced UI forms and pipeline layer tracking
+**Status**: Phase 5.51 Complete ✅ | Analysis history for approved posts
 
 ---
 
@@ -32,6 +32,15 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.51 (2025-10-30)
+- [x] Updated saveAnalysisHistory to accept APPROVE actions
+- [x] APPROVE action now saves analysis history to Redis
+- [x] Moderators can view analysis for posts that passed all layers
+- [x] Provides visibility into "close calls" and AI decisions
+- [x] Only saves for posts that went through full pipeline evaluation
+- [x] Skips whitelisted/mod/approved/community-trusted users (too much data)
+- [x] Deployed version 0.1.104
 
 ### Phase 5.50 (2025-10-30)
 - [x] Removed pointless "AI Automod Settings" menu item

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.104] - 2025-10-30
+
+### Changed
+- Analysis history now saved for APPROVE actions (posts that pass all layers)
+- Moderators can now view analysis even for posts that were approved
+- Provides visibility into "close calls" and system decisions for all evaluated content
+- Only saves for posts that went through full pipeline evaluation
+- Skips saving for whitelisted users, moderators, approved users, community-trusted (too much data)
+
+### Fixed
+- Moderators can now see AI analysis for posts that passed Layer 3 evaluation
+- Previously only saved analysis for FLAG/REMOVE/COMMENT actions
+
 ## [0.1.103] - 2025-10-30
 
 ### Added

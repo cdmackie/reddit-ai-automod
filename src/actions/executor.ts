@@ -83,7 +83,7 @@ function extractAIReasoning(aiAnalysis: AIQuestionBatchResult | undefined): stri
  */
 async function saveAnalysisHistory(
   params: ExecuteActionParams,
-  action: 'REMOVE' | 'FLAG' | 'COMMENT',
+  action: 'REMOVE' | 'FLAG' | 'COMMENT' | 'APPROVE',
   correlationId: string
 ): Promise<void> {
   const { post, profile, ruleResult, context, aiAnalysis, pipelineInfo } = params;
@@ -209,7 +209,9 @@ export async function executeAction(
     // Route to appropriate action handler
     switch (ruleResult.action) {
       case 'APPROVE':
-        // No action needed - post is approved by default
+        // No action needed on Reddit - post is approved by default
+        // But save analysis history for moderator visibility
+        await saveAnalysisHistory(params, 'APPROVE', correlationId);
         return {
           success: true,
           action: 'APPROVE',
