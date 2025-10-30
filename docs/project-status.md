@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-30
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.58 (deployed as 0.1.56)
+**Current Version**: 0.1.85
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.44 Complete ✅ | Comprehensive Devvit documentation reference created
+**Status**: Phase 5.45 Complete ✅ | Fixed AI prompt logic to use preponderance of evidence
 
 ---
 
@@ -32,6 +32,17 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.45 (2025-10-30)
+- [x] Fixed AI prompt decision framework to use preponderance of evidence
+- [x] Root cause analysis: AI was treating YES/NO as requiring absolute certainty
+- [x] Reframed prompt: "Answer YES if evidence points toward yes, even if not 100% certain"
+- [x] Added DECISION FRAMEWORK section with clear guidance on probabilistic reasoning
+- [x] Fixed location inference issue (SeattleWA posts → US residence)
+- [x] Updated posting history description from "last 20" to "up to 200 items"
+- [x] Changed confidence score guidance to reflect evidence strength, not answer threshold
+- [x] Updated to version 0.1.85
+- [x] Committed and pushed changes (f51bfc6, f0db519, 69c71bf)
 
 ### Phase 5.44 (2025-10-30)
 - [x] Read and analyzed complete Reddit Devvit documentation (289KB source)
@@ -213,6 +224,16 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 ---
 
 ## Recent Decisions
+
+**2025-10-30**: Fixed AI prompt to use preponderance of evidence instead of requiring certainty
+- **Problem**: AI was finding correct evidence (r/SeattleWA posts) but answering NO to "Does this user live in the US?" questions. Had 70% confidence but wrong answer.
+- **Root Cause**: AI was treating YES/NO as requiring absolute certainty. It found evidence pointing toward YES but said NO because it couldn't be 100% certain.
+- **Solution**: Reframed prompt with DECISION FRAMEWORK:
+  - "Answer YES if the available evidence suggests the answer is more likely yes than no"
+  - "Answer NO if the available evidence suggests the answer is more likely no than yes"
+  - YES/NO = direction of evidence | Confidence = strength of evidence
+- **Impact**: AI now uses preponderance of evidence for binary decisions. Location-specific subreddit activity correctly interpreted as evidence of residence.
+- **Implementation**: Modified src/ai/prompts.ts lines 623-652 with new decision framework and simplified instructions.
 
 **2025-10-30**: Designed centralized cache invalidation system with version prefix
 - **Rationale**: Current cache invalidation incomplete - can't clear all data for testing, no version-based invalidation for breaking changes, no per-user clearing. Devvit Redis lacks SCAN operation requiring explicit key tracking. Scattered key patterns throughout codebase make maintenance difficult.
