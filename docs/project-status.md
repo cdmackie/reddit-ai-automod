@@ -293,7 +293,48 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 
 ## Known Issues
 
-None currently. System is stable and working as expected.
+### Cache Invalidation Requirements (Priority: High)
+
+**Context**: Devvit Redis doesn't support SCAN operation. Current cache invalidation is incomplete.
+
+**Requirements**:
+
+1. **Testing/Development (Immediate Need)**
+   - Need ability to completely wipe ALL cached data
+   - Current "Reset All Data" only clears tracked users, misses:
+     - AI analysis cache (`ai:analysis:*`)
+     - AI questions cache (`ai:questions:*`)
+     - Cost tracking (`cost:*`)
+     - Rule cache
+     - Any data not tied to tracked users
+   - Must be able to invalidate cache without waiting 24 hours for TTL expiry
+
+2. **Production Deployment (Breaking Changes)**
+   - Need version number system to invalidate caches on code changes
+   - When cache structure changes, old cached data causes errors
+   - Example: Changed post history from 20 to 200 items, but cached data still has old format
+   - Must be able to force all users to get fresh data after deployment
+
+3. **Per-User Cache Clearing (Moderator Tool)**
+   - Moderators need ability to clear cached data for specific user
+   - Should clear all cache types for that user:
+     - Profile cache (`user:{userId}:profile`)
+     - History cache (`user:{userId}:history`)
+     - AI analysis cache (`ai:analysis:{userId}:*`)
+     - AI questions cache (`ai:questions:{userId}:*`)
+     - Trust scores (`trust:*:{userId}:*`)
+   - Useful when user complains about wrong analysis or old data
+
+**Constraints**:
+- Devvit Redis does NOT support SCAN operation
+- Must track cache keys explicitly or use known patterns
+- Cannot iterate over all keys in Redis
+
+**Proposed Solutions**:
+- Option A: Cache version prefix (increment version = all old keys ignored)
+- Option B: Track all cache keys in Redis set, delete from tracking set
+- Option C: Rebuild "Reset All Data" to delete known key patterns for all users
+- Need simple solution that works with Devvit Redis limitations
 
 ---
 
