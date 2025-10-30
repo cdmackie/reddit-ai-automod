@@ -14,13 +14,13 @@ import { UserKeys, GlobalKeys } from './keyBuilder.js';
  * User profile cache operations
  */
 export class ProfileCache {
-  constructor(private redis: RedisClient) {}
+  constructor(private redis: RedisClient, private settingsVersion: string) {}
 
   /**
    * Get cached user profile
    */
   async get(userId: string): Promise<any | null> {
-    const key = UserKeys.profile(userId);
+    const key = UserKeys.profile(userId, this.settingsVersion);
     const value = await this.redis.get(key);
     return value ? JSON.parse(value) : null;
   }
@@ -32,7 +32,7 @@ export class ProfileCache {
    * @param ttlMs - TTL in milliseconds (default: 24 hours)
    */
   async set(userId: string, profile: any, ttlMs = 24 * 60 * 60 * 1000): Promise<void> {
-    const key = UserKeys.profile(userId);
+    const key = UserKeys.profile(userId, this.settingsVersion);
     await this.redis.set(key, JSON.stringify(profile), {
       expiration: new Date(Date.now() + ttlMs),
     });
@@ -42,7 +42,7 @@ export class ProfileCache {
    * Delete user profile cache
    */
   async delete(userId: string): Promise<void> {
-    await this.redis.del(UserKeys.profile(userId));
+    await this.redis.del(UserKeys.profile(userId, this.settingsVersion));
   }
 }
 
@@ -50,13 +50,13 @@ export class ProfileCache {
  * User history cache operations
  */
 export class HistoryCache {
-  constructor(private redis: RedisClient) {}
+  constructor(private redis: RedisClient, private settingsVersion: string) {}
 
   /**
    * Get cached user history
    */
   async get(userId: string): Promise<any | null> {
-    const key = UserKeys.history(userId);
+    const key = UserKeys.history(userId, this.settingsVersion);
     const value = await this.redis.get(key);
     return value ? JSON.parse(value) : null;
   }
@@ -68,7 +68,7 @@ export class HistoryCache {
    * @param ttlMs - TTL in milliseconds (default: 24 hours)
    */
   async set(userId: string, history: any, ttlMs = 24 * 60 * 60 * 1000): Promise<void> {
-    const key = UserKeys.history(userId);
+    const key = UserKeys.history(userId, this.settingsVersion);
     await this.redis.set(key, JSON.stringify(history), {
       expiration: new Date(Date.now() + ttlMs),
     });
@@ -78,7 +78,7 @@ export class HistoryCache {
    * Delete user history cache
    */
   async delete(userId: string): Promise<void> {
-    await this.redis.del(UserKeys.history(userId));
+    await this.redis.del(UserKeys.history(userId, this.settingsVersion));
   }
 }
 
@@ -88,14 +88,14 @@ export class HistoryCache {
  * Stores trust scores for all subreddits in a single dictionary.
  */
 export class TrustCache {
-  constructor(private redis: RedisClient) {}
+  constructor(private redis: RedisClient, private settingsVersion: string) {}
 
   /**
    * Get all trust scores for a user
    * @returns Dictionary of subreddit -> trust data
    */
   async getAll(userId: string): Promise<Record<string, any> | null> {
-    const key = UserKeys.trust(userId);
+    const key = UserKeys.trust(userId, this.settingsVersion);
     const value = await this.redis.get(key);
     return value ? JSON.parse(value) : null;
   }
@@ -115,7 +115,7 @@ export class TrustCache {
    * @param trustData - Trust score data
    */
   async set(userId: string, subreddit: string, trustData: any): Promise<void> {
-    const key = UserKeys.trust(userId);
+    const key = UserKeys.trust(userId, this.settingsVersion);
     const all = (await this.getAll(userId)) || {};
     all[subreddit] = trustData;
     await this.redis.set(key, JSON.stringify(all));
@@ -125,7 +125,7 @@ export class TrustCache {
    * Delete trust score for specific subreddit
    */
   async delete(userId: string, subreddit: string): Promise<void> {
-    const key = UserKeys.trust(userId);
+    const key = UserKeys.trust(userId, this.settingsVersion);
     const all = await this.getAll(userId);
     if (all && all[subreddit]) {
       delete all[subreddit];
@@ -142,7 +142,7 @@ export class TrustCache {
    * Delete all trust scores for user
    */
   async deleteAll(userId: string): Promise<void> {
-    await this.redis.del(UserKeys.trust(userId));
+    await this.redis.del(UserKeys.trust(userId, this.settingsVersion));
   }
 }
 
@@ -152,14 +152,14 @@ export class TrustCache {
  * Stores tracking data for all subreddits in a single dictionary.
  */
 export class TrackingCache {
-  constructor(private redis: RedisClient) {}
+  constructor(private redis: RedisClient, private settingsVersion: string) {}
 
   /**
    * Get all tracking data for a user
    * @returns Dictionary of subreddit -> tracking data
    */
   async getAll(userId: string): Promise<Record<string, any> | null> {
-    const key = UserKeys.tracking(userId);
+    const key = UserKeys.tracking(userId, this.settingsVersion);
     const value = await this.redis.get(key);
     return value ? JSON.parse(value) : null;
   }
@@ -176,7 +176,7 @@ export class TrackingCache {
    * Set tracking data for specific subreddit
    */
   async set(userId: string, subreddit: string, trackingData: any): Promise<void> {
-    const key = UserKeys.tracking(userId);
+    const key = UserKeys.tracking(userId, this.settingsVersion);
     const all = (await this.getAll(userId)) || {};
     all[subreddit] = trackingData;
     await this.redis.set(key, JSON.stringify(all));
@@ -186,7 +186,7 @@ export class TrackingCache {
    * Delete tracking data for specific subreddit
    */
   async delete(userId: string, subreddit: string): Promise<void> {
-    const key = UserKeys.tracking(userId);
+    const key = UserKeys.tracking(userId, this.settingsVersion);
     const all = await this.getAll(userId);
     if (all && all[subreddit]) {
       delete all[subreddit];
@@ -202,7 +202,7 @@ export class TrackingCache {
    * Delete all tracking data for user
    */
   async deleteAll(userId: string): Promise<void> {
-    await this.redis.del(UserKeys.tracking(userId));
+    await this.redis.del(UserKeys.tracking(userId, this.settingsVersion));
   }
 }
 
@@ -212,13 +212,13 @@ export class TrackingCache {
  * Uses tracking set to manage dynamic question hashes.
  */
 export class AIQuestionsCache {
-  constructor(private redis: RedisClient) {}
+  constructor(private redis: RedisClient, private settingsVersion: string) {}
 
   /**
    * Get cached AI question result
    */
   async get(userId: string, hash: string): Promise<any | null> {
-    const key = UserKeys.aiQuestion(userId, hash);
+    const key = UserKeys.aiQuestion(userId, this.settingsVersion, hash);
     const value = await this.redis.get(key);
     return value ? JSON.parse(value) : null;
   }
@@ -231,8 +231,8 @@ export class AIQuestionsCache {
    * @param ttlMs - TTL in milliseconds
    */
   async set(userId: string, hash: string, result: any, ttlMs: number): Promise<void> {
-    const key = UserKeys.aiQuestion(userId, hash);
-    const trackingKey = UserKeys.aiQuestionsKeys(userId);
+    const key = UserKeys.aiQuestion(userId, this.settingsVersion, hash);
+    const trackingKey = UserKeys.aiQuestionsKeys(userId, this.settingsVersion);
 
     // Store the result
     await this.redis.set(key, JSON.stringify(result), {
@@ -247,8 +247,8 @@ export class AIQuestionsCache {
    * Delete specific AI question cache
    */
   async delete(userId: string, hash: string): Promise<void> {
-    const key = UserKeys.aiQuestion(userId, hash);
-    const trackingKey = UserKeys.aiQuestionsKeys(userId);
+    const key = UserKeys.aiQuestion(userId, this.settingsVersion, hash);
+    const trackingKey = UserKeys.aiQuestionsKeys(userId, this.settingsVersion);
 
     await this.redis.del(key);
     await this.redis.sRem(trackingKey, [hash]);
@@ -258,13 +258,13 @@ export class AIQuestionsCache {
    * Delete all AI question caches for user
    */
   async deleteAll(userId: string): Promise<number> {
-    const trackingKey = UserKeys.aiQuestionsKeys(userId);
+    const trackingKey = UserKeys.aiQuestionsKeys(userId, this.settingsVersion);
     const hashes = await this.redis.sMembers(trackingKey);
 
     let deleted = 0;
     for (const hashEntry of hashes) {
       const hash = hashEntry.member;
-      await this.redis.del(UserKeys.aiQuestion(userId, hash));
+      await this.redis.del(UserKeys.aiQuestion(userId, this.settingsVersion, hash));
       deleted++;
     }
 
@@ -276,7 +276,7 @@ export class AIQuestionsCache {
    * Get all tracked hashes for user
    */
   async getTrackedHashes(userId: string): Promise<string[]> {
-    const trackingKey = UserKeys.aiQuestionsKeys(userId);
+    const trackingKey = UserKeys.aiQuestionsKeys(userId, this.settingsVersion);
     const hashes = await this.redis.sMembers(trackingKey);
     return hashes.map((h) => h.member);
   }
@@ -288,13 +288,13 @@ export class AIQuestionsCache {
  * Manages subreddit-level user tracking sets.
  */
 export class GlobalTracking {
-  constructor(private redis: RedisClient) {}
+  constructor(private redis: RedisClient, private settingsVersion: string) {}
 
   /**
    * Add user to subreddit tracking set
    */
   async addUser(subreddit: string, userId: string): Promise<void> {
-    const key = GlobalKeys.trackedUsers(subreddit);
+    const key = GlobalKeys.trackedUsers(this.settingsVersion, subreddit);
     await this.redis.sAdd(key, [{ member: userId, score: Date.now() }]);
   }
 
@@ -302,7 +302,7 @@ export class GlobalTracking {
    * Remove user from subreddit tracking set
    */
   async removeUser(subreddit: string, userId: string): Promise<void> {
-    const key = GlobalKeys.trackedUsers(subreddit);
+    const key = GlobalKeys.trackedUsers(this.settingsVersion, subreddit);
     await this.redis.sRem(key, [userId]);
   }
 
@@ -310,7 +310,7 @@ export class GlobalTracking {
    * Get all tracked users for subreddit
    */
   async getUsers(subreddit: string): Promise<string[]> {
-    const key = GlobalKeys.trackedUsers(subreddit);
+    const key = GlobalKeys.trackedUsers(this.settingsVersion, subreddit);
     const users = await this.redis.sMembers(key);
     return users.map((u) => u.member);
   }
@@ -319,7 +319,7 @@ export class GlobalTracking {
    * Clear all tracked users for subreddit
    */
   async clearUsers(subreddit: string): Promise<void> {
-    const key = GlobalKeys.trackedUsers(subreddit);
+    const key = GlobalKeys.trackedUsers(this.settingsVersion, subreddit);
     await this.redis.del(key);
   }
 }

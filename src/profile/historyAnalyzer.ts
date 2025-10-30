@@ -63,9 +63,10 @@ export class PostHistoryAnalyzer {
   constructor(
     redis: RedisClient,
     private reddit: RedditAPIClient,
-    private rateLimiter: RateLimiter
+    private rateLimiter: RateLimiter,
+    settingsVersion: string
   ) {
-    this.cache = new HistoryCache(redis);
+    this.cache = new HistoryCache(redis, settingsVersion);
     this.cacheTTL = DEFAULT_PROFILE_CONFIG.historyCacheTTL;
     this.historyLimit = DEFAULT_PROFILE_CONFIG.historyLimit;
 

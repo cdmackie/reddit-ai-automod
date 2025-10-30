@@ -42,6 +42,16 @@ Devvit.configure({
  * See SettingsService for type-safe access to these settings.
  */
 Devvit.addSettings([
+  // ===== Cache Version (Force Cache Invalidation) =====
+  {
+    type: 'string',
+    name: 'cacheVersion',
+    label: '🔄 Cache Version',
+    helpText: 'Increment this number (1→2→3...) to force complete cache invalidation for ALL users in this subreddit. Use when testing or after major configuration changes. All cache keys use format v1:{this}:user:... Current: Shows as first number after v1 in Redis keys.',
+    defaultValue: '1',
+    scope: 'installation',
+  },
+
   // ===== Whitelist (Bypass All Moderation) =====
   {
     type: 'string',
@@ -404,16 +414,19 @@ Devvit.addMenuItem({
       console.log('[ResetAllData] Starting complete data reset...');
       const { redis, subredditName } = context;
 
+      // Get current cache version from settings
+      const cacheVersion = (await context.settings.get('cacheVersion')) || '1';
+
       // Import cache invalidation functions
       const { clearSubredditCache } = await import('./storage/keyBuilder.js');
 
       // Clear all cached data for this subreddit
-      const stats = await clearSubredditCache(redis, subredditName, false);
+      const stats = await clearSubredditCache(redis, subredditName, cacheVersion, false);
 
-      console.log(`[ResetAllData] Reset complete: ${stats.usersCleared} users cleared, ${stats.keysDeleted} keys deleted.`);
+      console.log(`[ResetAllData] Reset complete: ${stats.usersCleared} users cleared, ${stats.keysDeleted} keys deleted (cache version: ${cacheVersion}).`);
 
       context.ui.showToast({
-        text: `✅ Reset complete! Cleared all data for ${stats.usersCleared} users (${stats.keysDeleted} cache entries) in r/${subredditName}. All users will start completely fresh.`,
+        text: `✅ Reset complete! Cleared all data for ${stats.usersCleared} users (${stats.keysDeleted} cache entries) in r/${subredditName} (v1:${cacheVersion}). All users will start completely fresh.`,
         appearance: 'success',
       });
     } catch (error) {
@@ -438,18 +451,21 @@ Devvit.addMenuItem({
       const userId = `t2_${post.authorId}`;
       const username = post.authorName;
 
-      console.log(`[ClearUserCache] Clearing cache for user ${username} (${userId})`);
+      // Get current cache version from settings
+      const cacheVersion = (await context.settings.get('cacheVersion')) || '1';
+
+      console.log(`[ClearUserCache] Clearing cache for user ${username} (${userId}) with version ${cacheVersion}`);
 
       // Import cache invalidation function
       const { clearUserCache } = await import('./storage/keyBuilder.js');
 
       // Clear all cached data for this user
-      await clearUserCache(context.redis, userId);
+      await clearUserCache(context.redis, userId, cacheVersion);
 
       console.log(`[ClearUserCache] Cache cleared for user ${username} (${userId})`);
 
       context.ui.showToast({
-        text: `✅ Cleared all cached data for u/${username}. Their next post will be fully re-analyzed.`,
+        text: `✅ Cleared all cached data for u/${username} (v1:${cacheVersion}). Their next post will be fully re-analyzed.`,
         appearance: 'success',
       });
     } catch (error) {
@@ -474,18 +490,21 @@ Devvit.addMenuItem({
       const userId = `t2_${comment.authorId}`;
       const username = comment.authorName;
 
-      console.log(`[ClearUserCache] Clearing cache for user ${username} (${userId})`);
+      // Get current cache version from settings
+      const cacheVersion = (await context.settings.get('cacheVersion')) || '1';
+
+      console.log(`[ClearUserCache] Clearing cache for user ${username} (${userId}) with version ${cacheVersion}`);
 
       // Import cache invalidation function
       const { clearUserCache } = await import('./storage/keyBuilder.js');
 
       // Clear all cached data for this user
-      await clearUserCache(context.redis, userId);
+      await clearUserCache(context.redis, userId, cacheVersion);
 
       console.log(`[ClearUserCache] Cache cleared for user ${username} (${userId})`);
 
       context.ui.showToast({
-        text: `✅ Cleared all cached data for u/${username}. Their next post will be fully re-analyzed.`,
+        text: `✅ Cleared all cached data for u/${username} (v1:${cacheVersion}). Their next post will be fully re-analyzed.`,
         appearance: 'success',
       });
     } catch (error) {

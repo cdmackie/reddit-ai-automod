@@ -42,9 +42,10 @@ export class UserProfileFetcher {
   constructor(
     redis: RedisClient,
     private reddit: RedditAPIClient,
-    private rateLimiter: RateLimiter
+    private rateLimiter: RateLimiter,
+    settingsVersion: string
   ) {
-    this.cache = new ProfileCache(redis);
+    this.cache = new ProfileCache(redis, settingsVersion);
     this.cacheTTL = DEFAULT_PROFILE_CONFIG.profileCacheTTL;
   }
 
