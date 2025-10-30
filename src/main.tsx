@@ -366,12 +366,12 @@ Devvit.addSettings([
     scope: 'installation',
   },
 
-  // ===== Mod Notes =====
+  // ===== Mod Log =====
   {
     type: 'boolean',
-    name: 'enableModNotes',
-    label: '📝 Create Mod Notes',
-    helpText: 'Add Reddit mod notes when AI Automod takes action (remove/flag/comment). Notes include rule name, trust score, AI confidence, and reasoning for transparency.',
+    name: 'enableModLog',
+    label: '📝 Create Mod Log Entries',
+    helpText: 'Add entries to the mod log when AI Automod takes action (remove/flag/comment). Entries include rule name, trust score, AI confidence, and reasoning for transparency.',
     defaultValue: true,
     scope: 'installation',
   },

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.97] - 2025-10-30
+
+### Changed
+- **BREAKING**: Switched from mod notes to mod log entries (correct API)
+- Now uses `context.modLog.add()` instead of `context.reddit.addModNote()`
+- Mod log entries appear in subreddit's moderation log (not user profiles)
+- Maps actions to correct mod log types: `removelink`/`removecomment`, `reportlink`/`reportcomment`
+- Renamed setting from `enableModNotes` to `enableModLog` for accuracy
+- Renamed function from `addAutomodNote` to `addAutomodLogEntry`
+
+### Fixed
+- Corrected API usage - mod log is the proper way to track moderation actions
+- Entries now appear in the mod log where moderators actually review actions
+
 ## [0.1.96] - 2025-10-30
 
 ### Added

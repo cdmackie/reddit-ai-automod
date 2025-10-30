@@ -17,9 +17,9 @@
  */
 
 /**
- * Mod Notes Helper
+ * Mod Log Helper
  *
- * Creates Reddit mod notes for AI Automod actions to provide
+ * Creates Reddit mod log entries for AI Automod actions to provide
  * transparency and audit trail for moderators.
  *
  * Format:
@@ -31,12 +31,11 @@
  */
 
 import { TriggerContext } from '@devvit/public-api';
-import { UserNoteLabel } from '@devvit/public-api';
 
 /**
- * Options for creating a mod note
+ * Options for creating a mod log entry
  */
-export interface ModNoteOptions {
+export interface ModLogOptions {
   userId: string;
   username: string;
   subreddit: string;
@@ -100,9 +99,9 @@ function truncateAtWordBoundary(text: string, maxLength: number): string {
 }
 
 /**
- * Format mod note text (max 250 characters)
+ * Format mod log description text
  */
-function formatModNote(options: ModNoteOptions): string {
+function formatModLogDescription(options: ModLogOptions): string {
   // Action name
   const action =
     options.action === 'REMOVE'
@@ -157,77 +156,68 @@ function formatModNote(options: ModNoteOptions): string {
 }
 
 /**
- * Determine appropriate label based on action and confidence
+ * Map action type to mod log action string
  */
-function getModNoteLabel(
+function getModLogAction(
   action: 'REMOVE' | 'FLAG' | 'COMMENT',
-  confidence?: number
-): UserNoteLabel | undefined {
-  // Only apply labels to REMOVE actions
-  if (action !== 'REMOVE' || !confidence) {
-    return undefined;
-  }
+  contentId: string
+): string {
+  const isPost = contentId.startsWith('t3_');
 
-  // High confidence removal - likely spam
-  if (confidence >= 90) {
-    return 'SPAM_WATCH';
+  if (action === 'REMOVE') {
+    return isPost ? 'removelink' : 'removecomment';
+  } else if (action === 'FLAG') {
+    return isPost ? 'reportlink' : 'reportcomment';
+  } else {
+    return isPost ? 'commentlink' : 'commentcomment';
   }
-
-  // Medium-high confidence - spam warning
-  if (confidence >= 70) {
-    return 'SPAM_WARNING';
-  }
-
-  // Lower confidence - no specific label
-  return undefined;
 }
 
 /**
- * Add mod note for AI Automod action
+ * Add mod log entry for AI Automod action
  *
  * @param context - Devvit trigger context
- * @param options - Mod note options
- * @returns Promise that resolves when note is created
+ * @param options - Mod log options
+ * @returns Promise that resolves when log entry is created
  */
-export async function addAutomodNote(
+export async function addAutomodLogEntry(
   context: TriggerContext,
-  options: ModNoteOptions
+  options: ModLogOptions
 ): Promise<void> {
   try {
-    // Check if mod notes are enabled
-    const enableModNotes = await context.settings.get<boolean>('enableModNotes');
-    if (enableModNotes === false) {
-      console.log('Mod notes disabled, skipping');
+    // Check if mod log entries are enabled
+    const enableModLog = await context.settings.get<boolean>('enableModLog');
+    if (enableModLog === false) {
+      console.log('Mod log entries disabled, skipping');
       return;
     }
 
-    // Format note text
-    const noteText = formatModNote(options);
+    // Format description text
+    const description = formatModLogDescription(options);
 
-    // Determine label
-    const label = getModNoteLabel(options.action, options.confidence);
+    // Determine mod log action
+    const modLogAction = getModLogAction(options.action, options.contentId);
 
-    console.log('Creating mod note:', {
+    console.log('Creating mod log entry:', {
       user: options.username,
       action: options.action,
+      modLogAction,
       confidence: options.confidence,
-      noteLength: noteText.length,
-      label,
+      descriptionLength: description.length,
     });
 
-    // Create mod note
-    await context.reddit.addModNote({
-      subreddit: options.subreddit,
-      user: options.username,
-      note: noteText,
-      redditId: options.contentId as `t3_${string}` | `t1_${string}`,
-      label,
+    // Create mod log entry
+    await context.modLog.add({
+      action: modLogAction,
+      target: options.contentId,
+      details: `Rule: ${options.ruleName}`,
+      description: description,
     });
 
-    console.log('Mod note created successfully');
+    console.log('Mod log entry created successfully');
   } catch (error) {
-    // Log error but don't throw - mod note failure shouldn't block action execution
-    console.error('Failed to create mod note:', {
+    // Log error but don't throw - mod log failure shouldn't block action execution
+    console.error('Failed to create mod log entry:', {
       error: error instanceof Error ? error.message : String(error),
       user: options.username,
       action: options.action,

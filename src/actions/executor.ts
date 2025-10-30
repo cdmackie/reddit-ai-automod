@@ -33,7 +33,7 @@ import { TriggerContext, Post } from '@devvit/public-api';
 import { RuleEvaluationResult, ActionExecutionResult } from '../types/rules.js';
 import { UserProfile } from '../types/profile.js';
 import { DEFAULT_REMOVE_TEMPLATE, DEFAULT_COMMENT_TEMPLATE, formatTemplate } from './templates.js';
-import { addAutomodNote } from './modNotes.js';
+import { addAutomodLogEntry } from './modNotes.js';
 import { AIQuestionBatchResult } from '../types/ai.js';
 
 /**
@@ -100,7 +100,7 @@ async function createModNote(
     const aiModel = aiAnalysis?.model;
     const aiReasoning = extractAIReasoning(aiAnalysis);
 
-    await addAutomodNote(context, {
+    await addAutomodLogEntry(context, {
       userId: post.authorId || 'unknown',
       username: post.authorName || '[deleted]',
       subreddit: post.subredditName,

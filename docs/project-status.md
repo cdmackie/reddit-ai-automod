@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-30
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.96
+**Current Version**: 0.1.97
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.47 Complete ✅ | Mod notes for transparency
+**Status**: Phase 5.48 Complete ✅ | Mod log entries for transparency
 
 ---
 
@@ -33,19 +33,26 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 
 ## Recent Completed Tasks
 
+### Phase 5.48 (2025-10-30)
+- [x] Switched from mod notes to mod log entries (correct API usage)
+- [x] Updated to use `context.modLog.add()` instead of `context.reddit.addModNote()`
+- [x] Mod log entries appear in subreddit moderation log (not user profile)
+- [x] Maps actions to correct mod log types: removelink/removecomment, reportlink/reportcomment
+- [x] Renamed setting from `enableModNotes` to `enableModLog` for accuracy
+- [x] Updated function names: `addAutomodNote` → `addAutomodLogEntry`
+- [x] Deployed version 0.1.97
+- [x] Build succeeded with no TypeScript errors
+
 ### Phase 5.47 (2025-10-30)
-- [x] Implemented Reddit mod notes for AI Automod actions
-- [x] Created mod notes helper module (src/actions/modNotes.ts)
-- [x] Added enableModNotes setting (default: true) to main.tsx
+- [x] Initial implementation of mod transparency feature (later corrected to mod log)
+- [x] Created moderation tracking helper module (src/actions/modNotes.ts)
 - [x] Updated AI analyzer to return provider and model information
 - [x] Added model field to AIAnalysisResult and AIQuestionBatchResult types
-- [x] Integrated mod note creation into action executor (FLAG, REMOVE, COMMENT)
-- [x] Mod notes include: rule name, trust score, account age, karma, AI provider/model, confidence, reasoning
-- [x] Format optimized for 250 character limit with smart truncation
-- [x] Graceful error handling - mod note failures don't block action execution
+- [x] Integrated tracking into action executor (FLAG, REMOVE, COMMENT)
+- [x] Includes: rule name, trust score, account age, karma, AI provider/model, confidence, reasoning
+- [x] Format optimized with smart truncation
+- [x] Graceful error handling - failures don't block action execution
 - [x] Only created after successful actions (not in dry-run mode)
-- [x] Deployed version 0.1.96
-- [x] Build succeeded with no TypeScript errors
 
 ### Phase 5.46 (2025-10-30)
 - [x] Implemented comment template system for REMOVE and COMMENT actions
@@ -254,10 +261,10 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 
 ## Recent Decisions
 
-**2025-10-30**: Implemented mod notes for transparency and audit trail
+**2025-10-30**: Implemented mod log entries for transparency and audit trail
 - **Problem**: Moderators had no visibility into why AI Automod took specific actions. No record of AI reasoning, confidence scores, or which provider made the decision.
-- **Solution**: Created automatic Reddit mod notes for all AI Automod actions (FLAG, REMOVE, COMMENT). Notes include rule name, trust score, account age/karma, AI provider/model, confidence score, and AI reasoning.
-- **Format**: Optimized for Reddit's 250 character limit with smart truncation:
+- **Solution**: Created automatic mod log entries for all AI Automod actions (FLAG, REMOVE, COMMENT). Entries appear in the subreddit's moderation log and include rule name, trust score, account age/karma, AI provider/model, confidence score, and AI reasoning.
+- **Format**: Optimized description text with smart truncation:
   ```
   AI Automod: Removed
   Rule: Dating content detection
@@ -265,8 +272,9 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
   AI: 87% (OpenAI GPT-4o-mini)
   User shows explicit dating intent across subreddits. Scammer pattern detected.
   ```
-- **Impact**: Full transparency for mod teams. Clear audit trail for appeals. Easy pattern recognition across users. Shows which AI model made each decision.
-- **Implementation**: Created modNotes.ts helper, updated AI analyzer to track provider/model, integrated into executor after successful actions. Respects enableModNotes setting (default: ON).
+- **Correction**: Initially implemented as mod notes (user profile notes) but corrected to use mod log API (`context.modLog.add()`) which is the proper API for action tracking in the moderation log.
+- **Impact**: Full transparency for mod teams. Clear audit trail in mod log. Easy pattern recognition. Shows which AI model made each decision.
+- **Implementation**: Created modNotes.ts helper (uses modLog API despite filename), updated AI analyzer to track provider/model, integrated into executor after successful actions. Respects enableModLog setting (default: ON).
 
 **2025-10-30**: Implemented comment templates and improved field naming
 - **Problem**: Removal/warning comments were just showing raw reason text with no context or appeal information. Field naming was confusing (`comment` field purpose unclear).
