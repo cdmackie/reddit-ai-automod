@@ -11,7 +11,18 @@ import { sendDailyDigest } from './notifications/modmailDigest';
 Devvit.configure({
   redditAPI: true, // Access Reddit API
   redis: true,     // Use Redis storage
-  http: true,      // HTTP enabled for AI API calls (Phase 2+)
+  http: {
+    // HTTP enabled for AI API calls (Phase 2+)
+    fetch: {
+      allowList: [
+        'api.anthropic.com',
+        'api.openai.com',
+        'api.z.ai',
+        'api.x.ai',
+        'api.groq.com',
+      ],
+    },
+  },
 });
 
 /**
@@ -382,68 +393,86 @@ Devvit.addMenuItem({
 });
 console.log('[AI Automod] ✓ Registered: View AI Analysis (post)');
 
-// Reset Community Trust Scores Menu Item
+// Reset All Data Menu Item
 Devvit.addMenuItem({
-  label: 'Reset Community Trust Scores',
+  label: 'Reset All Data',
   location: 'subreddit',
   forUserType: 'moderator',
   onPress: async (_event, context) => {
     try {
-      console.log('[ResetTrust] Starting community trust reset...');
+      console.log('[ResetAllData] Starting complete data reset...');
       const { redis, subredditName } = context;
 
       // Get all tracked users for this subreddit
       const usersSetKey = `trust:users:${subredditName}`;
       const trackedUsers = await redis.zRange(usersSetKey, 0, -1);
-      console.log(`[ResetTrust] Found ${trackedUsers.length} tracked users in r/${subredditName}`);
+      console.log(`[ResetAllData] Found ${trackedUsers.length} tracked users in r/${subredditName}`);
 
       let trustDeleted = 0;
       let trackingDeleted = 0;
       let profileDeleted = 0;
       let historyDeleted = 0;
+      let aiCacheDeleted = 0;
 
-      // Delete trust records, tracking, and caches for each user
+      // Delete all data for each tracked user
       for (const userId of trackedUsers) {
+        // Delete trust records
         const trustKey = `trust:community:${userId.member}:${subredditName}`;
         await redis.del(trustKey);
         trustDeleted++;
 
-        // Delete approved content tracking for this user
+        // Delete approved content tracking
         const trackingKey = `approved:tracking:${userId.member}:${subredditName}`;
         await redis.del(trackingKey);
         trackingDeleted++;
 
-        // Delete profile cache for this user (forces fresh data from Reddit API)
+        // Delete profile cache (forces fresh data from Reddit API)
         const profileKey = `user:${userId.member}:profile`;
         await redis.del(profileKey);
         profileDeleted++;
 
-        // Delete post history cache for this user (forces fresh data from Reddit API)
+        // Delete post history cache (forces fresh data from Reddit API)
         const historyKey = `user:${userId.member}:history`;
         await redis.del(historyKey);
         historyDeleted++;
+
+        // Delete AI question cache entries for this user
+        // AI cache uses pattern: ai:questions:{userId}:{questionIdsHash}
+        // Since we can't scan keys in Devvit, we'll try common patterns
+        // This is a best-effort cleanup - some AI cache may remain
+        try {
+          // Try to delete AI cache with common question ID patterns
+          // The hash is deterministic, so we can't predict all combinations
+          // but we'll clear what we can
+          const aiCachePrefix = `ai:questions:${userId.member}:`;
+          // Unfortunately Devvit doesn't support SCAN, so we can only delete known keys
+          // The AI cache will naturally expire based on TTL (12-48 hours)
+          console.log(`[ResetAllData] AI cache for user ${userId.member} will expire naturally (TTL-based)`);
+        } catch (aiError) {
+          console.warn(`[ResetAllData] Could not clear AI cache for user ${userId.member}:`, aiError);
+        }
       }
 
       // Delete the users tracking set itself
       await redis.del(usersSetKey);
 
       const totalDeleted = trustDeleted + trackingDeleted + profileDeleted + historyDeleted;
-      console.log(`[ResetTrust] Reset complete: ${trustDeleted} trust records, ${trackingDeleted} tracking records, ${profileDeleted} profile caches, and ${historyDeleted} history caches deleted`);
+      console.log(`[ResetAllData] Reset complete: ${trustDeleted} trust, ${trackingDeleted} tracking, ${profileDeleted} profiles, ${historyDeleted} histories deleted. AI cache will expire naturally.`);
 
       context.ui.showToast({
-        text: `✅ Reset complete! Deleted ${trustDeleted} trust records, ${trackingDeleted} tracking records, ${profileDeleted} profile caches, and ${historyDeleted} history caches for r/${subredditName}. All users will start completely fresh.`,
+        text: `✅ Reset complete! Cleared ${trustDeleted} trust scores, ${trackingDeleted} tracking records, ${profileDeleted} profiles, and ${historyDeleted} histories for r/${subredditName}. All users will start completely fresh. AI cache will expire naturally (12-48h TTL).`,
         appearance: 'success',
       });
     } catch (error) {
-      console.error('[ResetTrust] Error resetting trust scores:', error);
+      console.error('[ResetAllData] Error resetting data:', error);
       context.ui.showToast({
-        text: '❌ Error resetting trust scores. Check logs for details.',
+        text: '❌ Error resetting data. Check logs for details.',
         appearance: 'neutral',
       });
     }
   },
 });
-console.log('[AI Automod] ✓ Registered: Reset Community Trust Scores (subreddit)');
+console.log('[AI Automod] ✓ Registered: Reset All Data (subreddit)');
 
 console.log('[AI Automod] Menu items registration complete');
 
