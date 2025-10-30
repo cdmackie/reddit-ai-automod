@@ -343,21 +343,30 @@ export async function getEnabledProviders(context: any): Promise<AIProviderType[
     }
   }
 
-  // Add any other enabled providers with API keys (in priority order from AI_CONFIG)
-  const otherProviders = Object.entries(effectiveConfig.providers)
-    .filter(([type, config]) => {
-      const providerType = type as AIProviderType;
-      return (
-        config.enabled &&
-        'apiKey' in config &&
-        config.apiKey &&
-        !providers.includes(providerType)
-      );
-    })
-    .sort((a, b) => a[1].priority - b[1].priority)
-    .map(([type, _]) => type as AIProviderType);
+  // Add any other enabled providers ONLY if fallback is not 'none'
+  // This respects the user's "no fallback" setting
+  if (aiSettings.fallbackProvider !== 'none') {
+    const otherProviders = Object.entries(effectiveConfig.providers)
+      .filter(([type, config]) => {
+        const providerType = type as AIProviderType;
+        return (
+          config.enabled &&
+          'apiKey' in config &&
+          config.apiKey &&
+          !providers.includes(providerType)
+        );
+      })
+      .sort((a, b) => a[1].priority - b[1].priority)
+      .map(([type, _]) => type as AIProviderType);
 
-  providers.push(...otherProviders);
+    providers.push(...otherProviders);
+
+    if (otherProviders.length > 0) {
+      console.log('[getEnabledProviders] Added additional providers:', otherProviders);
+    }
+  } else {
+    console.log('[getEnabledProviders] Fallback is "none" - not adding additional providers');
+  }
 
   return providers;
 }

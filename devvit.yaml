@@ -1,3 +1,14 @@
 name: ai-automod-app
-version: 0.1.55
+version: 0.1.56
 description: AI-powered moderation tool for Reddit communities
+
+# HTTP Fetch Configuration
+# Allow requests to AI provider endpoints
+http:
+  fetch:
+    allowList:
+      - 'api.anthropic.com'
+      - 'api.openai.com'
+      - 'api.z.ai'
+      - '*.groq.com'
+      - '*.together.ai'
