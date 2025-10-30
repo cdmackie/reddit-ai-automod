@@ -622,15 +622,17 @@ ${userContext}
 
 YOUR TASK:
 Answer the following questions about this user based on their profile, posting history, and current post. For each question:
-- Provide a binary answer: YES or NO
+- Provide a binary answer: YES or NO (answer YES if the evidence points toward yes, even if not 100% certain)
 - Include a confidence score from 0-100 (how certain are you?)
 - Provide brief reasoning explaining your answer
 
-ANALYSIS GUIDELINES:
-- Location questions: If a user posts in location-specific subreddits (e.g., r/SeattleWA for Seattle, r/nyc for New York), treat this as strong evidence they live in or have significant connection to that location
-- Behavior patterns: Consistent posting patterns over time are more reliable than isolated incidents
-- Account indicators: Account age, karma, and verification status can indicate legitimacy
-- Content analysis: Look for explicit statements, implied behaviors, and contextual clues
+DECISION FRAMEWORK:
+- Answer YES if the available evidence suggests the answer is more likely yes than no
+- Answer NO if the available evidence suggests the answer is more likely no than yes
+- Use confidence score to express your certainty (50-70 = somewhat confident, 70-85 = confident, 85+ = very confident)
+- Don't require absolute proof - work with the evidence available
+- Location inference: Active posting in location-specific subreddits (e.g., r/SeattleWA, r/nyc) is strong evidence of residence or connection
+- Behavior patterns: Consistent patterns are more reliable than isolated incidents
 
 QUESTIONS:
 ${questionsSection}
@@ -645,11 +647,9 @@ ${exampleAnswers}
 Important:
 - Answer ALL questions in the array
 - Each answer must have: questionId, answer (YES/NO), confidence (0-100), and reasoning
-- Base your answers on the user's profile, posting history, and current post
-- Be objective and specific in your reasoning
-- Answer YES or NO based on the available evidence - don't default to NO just because you're uncertain
-- Use the confidence score to indicate your certainty level (lower confidence = less certain)
-- When you find evidence that supports a YES answer, state YES with appropriate confidence - don't second-guess clear evidence`;
+- Your answer (YES/NO) should reflect the preponderance of evidence - which direction does the evidence point?
+- Your confidence score should reflect how strong that evidence is
+- Be specific in your reasoning - cite what evidence led to your answer`;
 
     // Calculate total PII removed
     const totalPiiRemoved =
