@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.55 (deployed)
+**Current Version**: 0.1.58 (deployed as 0.1.56)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.40 Complete ✅ | Fixed openaiCompatibleBaseURL case sensitivity, removed deepseek
+**Status**: Phase 5.43 Complete ✅ | Provider fallback fixed, error logging enhanced, Grok API tested
 
 ---
 
@@ -32,6 +32,34 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.43 (2025-10-29)
+- [x] Added X.AI (Grok) domain to HTTP fetch allowlist
+- [x] Added 'api.x.ai' to devvit.yaml allowList (line 13)
+- [x] Tested Grok API endpoint successfully (grok-3 model working)
+- [x] Confirmed alternative OpenAI-compatible provider functionality
+- [x] Updated to version 0.1.58
+- [x] Committed and pushed changes (e4b3503)
+
+### Phase 5.42 (2025-10-29)
+- [x] Enhanced error logging in OpenAI-compatible provider
+- [x] Now captures full API error responses (status, code, message)
+- [x] Added detailed error extraction in 3 locations (analyze, analyzeWithQuestions, healthCheck)
+- [x] Logs now show complete error objects instead of just error.message
+- [x] Improved debugging for provider-specific API errors
+- [x] Updated to version 0.1.57
+- [x] Committed and pushed changes (a3c05ee)
+
+### Phase 5.41 (2025-10-29)
+- [x] Fixed critical fallback provider logic bug in src/config/ai.ts
+- [x] System now respects fallback='none' setting (lines 346-369)
+- [x] Added conditional check to prevent adding additional providers when fallback disabled
+- [x] Added comprehensive provider selection logging
+- [x] Created HTTP fetch allowlist in devvit.yaml for AI provider domains
+- [x] Added domains: api.anthropic.com, api.openai.com, api.z.ai, *.groq.com, *.together.ai
+- [x] Tested z.ai endpoint (confirmed connection works, insufficient balance error properly logged)
+- [x] Updated to version 0.1.56
+- [x] Committed and pushed changes (f1dd2b1)
 
 ### Phase 5.40 (2025-10-29)
 - [x] Fixed case sensitivity bug in configManager.ts (openaiCompatibleBaseURL)
@@ -178,6 +206,26 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 
 ## Recent Decisions
 
+**2025-10-29**: Added X.AI (Grok) to HTTP fetch allowlist and verified functionality
+- **Rationale**: User requested testing Grok API as alternative OpenAI-compatible provider. Initial test with grok-beta model revealed deprecation, switched to grok-3 successfully.
+- **Impact**: Confirmed Grok API working, provides additional OpenAI-compatible option for users seeking alternatives to z.ai, Groq, or Together AI.
+- **Implementation**: Added 'api.x.ai' to devvit.yaml HTTP fetch allowList. Tested with endpoint https://api.x.ai/v1 and model grok-3, confirmed successful responses.
+
+**2025-10-29**: Enhanced error logging in OpenAI-compatible provider
+- **Rationale**: User requested "pick up the error: {} and report it in the logs" after seeing generic "Connection error" messages without API error details. Detailed error information critical for debugging provider-specific issues.
+- **Impact**: Error logs now show complete API error responses including status codes, error codes, and full error messages. Makes debugging provider issues much easier.
+- **Implementation**: Enhanced error logging in openaiCompatible.ts to extract and log status, code, response, apiError, and fullMessage fields from error objects in analyze(), analyzeWithQuestions(), and healthCheck() methods.
+
+**2025-10-29**: Fixed fallback provider logic respecting 'none' setting
+- **Rationale**: Critical bug where system ignored fallback='none' setting and still called OpenAI as fallback. User reported "it's going on and calling openai anyway - even though the setting say no fallback."
+- **Impact**: System now correctly respects user's fallback preference. When fallback='none', only the primary provider is used - no automatic fallback to other enabled providers.
+- **Implementation**: Modified getEnabledProviders() in src/config/ai.ts (lines 346-369) to only add additional providers when aiSettings.fallbackProvider !== 'none'. Added comprehensive logging for provider selection process.
+
+**2025-10-29**: Created HTTP fetch allowlist for AI provider domains
+- **Rationale**: Devvit platform requires explicit domain allowlisting for external API calls. Z.ai endpoint connection was failing due to missing allowlist configuration.
+- **Impact**: All AI provider domains now accessible, enables use of Claude, OpenAI, and multiple OpenAI-compatible providers (z.ai, Groq, Together AI, X.AI).
+- **Implementation**: Added http.fetch.allowList section to devvit.yaml with domains: api.anthropic.com, api.openai.com, api.z.ai, api.x.ai, *.groq.com, *.together.ai.
+
 **2025-10-29**: Fixed openaiCompatibleBaseURL case sensitivity and removed deepseek
 - **Rationale**: Case sensitivity mismatch prevented OpenAI-compatible provider from being enabled. Deepseek support no longer needed per updated requirements - only supporting Claude, OpenAI, and OpenAI-Compatible providers.
 - **Impact**: OpenAI-compatible providers (z.ai, Groq, Together AI) now properly detected and enabled. Cleaner codebase with only three supported provider types.
@@ -250,9 +298,11 @@ For complete version history, see [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.m
 
 ## Quick Stats
 
-- **Total Versions**: 55 (0.0.1 → 0.1.55)
+- **Total Versions**: 58 (0.0.1 → 0.1.58)
 - **Current Trust System**: Working perfectly in production
-- **AI Providers**: Claude 3.5 Haiku, OpenAI, OpenAI-Compatible
+- **AI Providers**: Claude 3.5 Haiku, OpenAI, OpenAI-Compatible (z.ai, Groq, Together AI, X.AI/Grok)
 - **Active Subreddits**: 3 target communities
 - **Core Features**: 100% complete
 - **Test Coverage**: Comprehensive (93 tests for content sanitizer alone)
+- **Provider Fallback**: Fixed - respects 'none' setting correctly
+- **Error Logging**: Enhanced - captures full API error details

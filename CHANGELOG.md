@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.58] - 2025-10-29
+
+### Added
+- X.AI (Grok) domain support in HTTP fetch allowlist
+- Added 'api.x.ai' to devvit.yaml allowList for Grok API access
+- Verified Grok API functionality with grok-3 model
+
+### Fixed
+- Confirmed Grok API working as alternative OpenAI-compatible provider
+
+## [0.1.57] - 2025-10-29
+
+### Changed
+- Enhanced error logging in OpenAI-compatible provider
+- Now captures full API error responses including status codes, error codes, and messages
+- Added detailed error extraction in analyze(), analyzeWithQuestions(), and healthCheck() methods
+- Error logs now show complete error objects instead of just error.message
+
+### Fixed
+- Improved debugging capabilities for provider-specific API errors
+- Better visibility into API failures with detailed error information
+
+## [0.1.56] - 2025-10-29
+
+### Fixed
+- Critical bug: System now respects fallback='none' setting (was ignoring it and falling back to other providers)
+- Provider fallback logic in getEnabledProviders() now only adds additional providers when fallback is not 'none'
+- Z.ai endpoint connection issues resolved (confirmed working, insufficient balance error now properly logged)
+
+### Added
+- HTTP fetch allowlist in devvit.yaml for AI provider domains
+- Added domains: api.anthropic.com, api.openai.com, api.z.ai, *.groq.com, *.together.ai
+- Comprehensive provider selection logging to track enabled providers
+
+### Changed
+- Modified getEnabledProviders() in src/config/ai.ts (lines 346-369) to respect fallback preferences
+- Added conditional check to prevent adding additional providers when fallback is disabled
+
+## [0.1.55] - 2025-10-29
+
+### Fixed
+- Case sensitivity bug in configManager.ts: changed 'openaiCompatibleBaseUrl' to 'openaiCompatibleBaseURL' (lines 120, 124)
+
+### Removed
+- All deepseek references from codebase per updated requirements
+- Removed deepseek provider from AI_CONFIG in config/ai.ts
+- Removed deepseek merging logic from ConfigurationManager
+- Removed deepseekApiKey from settingsService.ts
+- Removed DeepSeekProvider import from selector.ts
+
+### Changed
+- Updated provider type annotations to only support: 'claude' | 'openai' | 'openai-compatible'
+- Now only three supported AI providers: Claude, OpenAI, OpenAI-Compatible
+- Cleaner codebase with simplified provider architecture
+
 ## [0.1.54] - 2025-10-29
 
 ### Fixed
