@@ -417,14 +417,12 @@ const aiAnalysisForm = Devvit.createForm(
         type: 'string',
         name: 'action',
         label: `${actionEmoji} Action`,
-        disabled: true,
         defaultValue: analysis.action,
       },
       {
         type: 'string',
         name: 'rule',
         label: '📋 Rule',
-        disabled: true,
         defaultValue: analysis.ruleName,
       },
       {
@@ -435,28 +433,24 @@ const aiAnalysisForm = Devvit.createForm(
             type: 'string',
             name: 'author',
             label: '👤 Author',
-            disabled: true,
             defaultValue: `u/${analysis.authorName}`,
           },
           {
             type: 'string',
             name: 'trust',
             label: '🎯 Trust Score',
-            disabled: true,
             defaultValue: `${analysis.trustScore}/100`,
           },
           {
             type: 'string',
             name: 'age',
             label: '📅 Account Age',
-            disabled: true,
             defaultValue: `${analysis.accountAgeInDays} days`,
           },
           {
             type: 'string',
             name: 'karma',
             label: '⭐ Total Karma',
-            disabled: true,
             defaultValue: analysis.totalKarma.toLocaleString(),
           },
         ],
@@ -472,21 +466,18 @@ const aiAnalysisForm = Devvit.createForm(
             type: 'string',
             name: 'provider',
             label: '🤖 Provider',
-            disabled: true,
             defaultValue: analysis.aiProvider,
           },
           {
             type: 'string',
             name: 'model',
             label: '🔧 Model',
-            disabled: true,
             defaultValue: analysis.aiModel || 'Unknown',
           },
           ...(analysis.confidence ? [{
             type: 'string' as const,
             name: 'confidence',
             label: '📊 Confidence',
-            disabled: true,
             defaultValue: `${analysis.confidence}%`,
           }] : []),
         ],
@@ -498,7 +489,6 @@ const aiAnalysisForm = Devvit.createForm(
         type: 'paragraph',
         name: 'reasoning',
         label: '💭 Reasoning',
-        disabled: true,
         defaultValue: analysis.aiReasoning || analysis.ruleReason,
       });
     }
@@ -507,7 +497,6 @@ const aiAnalysisForm = Devvit.createForm(
       type: 'string',
       name: 'timestamp',
       label: '🕐 Processed',
-      disabled: true,
       defaultValue: date.toLocaleString(),
     });
 
