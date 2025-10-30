@@ -227,13 +227,28 @@ export class OpenAICompatibleProvider implements IAIProvider {
         // Classify error type
         const errorType = this.classifyError(error);
 
-        console.error('[OpenAICompatible] Analysis error', {
+        // Extract detailed error information
+        const errorDetails: any = {
           correlationId,
           attempt,
           errorType,
           message: lastError.message,
           baseURL: this.config.baseURL,
-        });
+          model: this.model,
+        };
+
+        // Add detailed error info from API response if available
+        if (error && typeof error === 'object') {
+          const apiError = error as any;
+          if (apiError.status) errorDetails.status = apiError.status;
+          if (apiError.code) errorDetails.code = apiError.code;
+          if (apiError.response) errorDetails.response = apiError.response;
+          if (apiError.error) errorDetails.apiError = apiError.error;
+          // OpenAI SDK may nest the actual error
+          if (apiError.message) errorDetails.fullMessage = apiError.message;
+        }
+
+        console.error('[OpenAICompatible] Analysis error', errorDetails);
 
         // Don't retry on validation errors or non-retryable errors
         if (errorType === AIErrorType.VALIDATION_ERROR) {
@@ -421,13 +436,28 @@ export class OpenAICompatibleProvider implements IAIProvider {
         // Classify error type
         const errorType = this.classifyError(error);
 
-        console.error('[OpenAICompatible] Question analysis error', {
+        // Extract detailed error information
+        const errorDetails: any = {
           correlationId,
           attempt,
           errorType,
           message: lastError.message,
           baseURL: this.config.baseURL,
-        });
+          model: this.model,
+        };
+
+        // Add detailed error info from API response if available
+        if (error && typeof error === 'object') {
+          const apiError = error as any;
+          if (apiError.status) errorDetails.status = apiError.status;
+          if (apiError.code) errorDetails.code = apiError.code;
+          if (apiError.response) errorDetails.response = apiError.response;
+          if (apiError.error) errorDetails.apiError = apiError.error;
+          // OpenAI SDK may nest the actual error
+          if (apiError.message) errorDetails.fullMessage = apiError.message;
+        }
+
+        console.error('[OpenAICompatible] Question analysis error', errorDetails);
 
         // Don't retry on validation errors or non-retryable errors
         if (errorType === AIErrorType.VALIDATION_ERROR) {
@@ -488,11 +518,24 @@ export class OpenAICompatibleProvider implements IAIProvider {
 
       return true;
     } catch (error) {
-      console.warn('[OpenAICompatible] Health check failed', {
-        error: error instanceof Error ? error.message : String(error),
+      // Extract detailed error information for health check
+      const errorDetails: any = {
         baseURL: this.config.baseURL,
         model: this.model,
-      });
+      };
+
+      // Add detailed error info from API response if available
+      if (error && typeof error === 'object') {
+        const apiError = error as any;
+        errorDetails.error = apiError.message || String(error);
+        if (apiError.status) errorDetails.status = apiError.status;
+        if (apiError.code) errorDetails.code = apiError.code;
+        if (apiError.error) errorDetails.apiError = apiError.error;
+      } else {
+        errorDetails.error = String(error);
+      }
+
+      console.warn('[OpenAICompatible] Health check failed', errorDetails);
       return false;
     }
   }
