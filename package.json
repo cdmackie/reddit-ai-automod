@@ -20,8 +20,8 @@
     "ai",
     "automod"
   ],
-  "author": "",
-  "license": "BSD-3-Clause",
+  "author": "CoinsTax LLC",
+  "license": "AGPL-3.0",
   "devDependencies": {
     "@devvit/protos": "0.12.1",
     "@devvit/public-api": "0.12.1",
