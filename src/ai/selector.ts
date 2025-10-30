@@ -152,27 +152,91 @@ export class ProviderSelector {
    * ```
    */
   async selectProvider(): Promise<IAIProvider | null> {
+    // Get user settings - this tells us what they selected
+    const aiSettings = await SettingsService.getAIConfig(this.context);
+
+    console.log('[ProviderSelector] User settings:', {
+      primary: aiSettings.primaryProvider,
+      fallback: aiSettings.fallbackProvider,
+    });
+
+    // Try primary provider first
+    if (aiSettings.primaryProvider) {
+      console.log('[ProviderSelector] Trying primary provider:', aiSettings.primaryProvider);
+      const provider = await this.createProvider(aiSettings.primaryProvider, aiSettings);
+      if (provider) {
+        console.log('[ProviderSelector] ✓ Using primary provider:', aiSettings.primaryProvider);
+        return provider;
+      }
+      console.warn('[ProviderSelector] ✗ Primary provider failed:', aiSettings.primaryProvider);
+    }
+
+    // Try fallback provider if configured
+    if (aiSettings.fallbackProvider && aiSettings.fallbackProvider !== 'none') {
+      console.log('[ProviderSelector] Trying fallback provider:', aiSettings.fallbackProvider);
+      const provider = await this.createProvider(aiSettings.fallbackProvider, aiSettings);
+      if (provider) {
+        console.log('[ProviderSelector] ✓ Using fallback provider:', aiSettings.fallbackProvider);
+        return provider;
+      }
+      console.warn('[ProviderSelector] ✗ Fallback provider failed:', aiSettings.fallbackProvider);
+    }
+
+    console.error('[ProviderSelector] All providers failed');
+    return null;
+  }
+
+  /**
+   * Create a provider instance based on type
+   * Returns null if provider not configured or fails to create
+   */
+  private async createProvider(type: AIProviderType, aiSettings: any): Promise<IAIProvider | null> {
+    try {
+      if (type === 'claude') {
+        if (!aiSettings.claudeApiKey) {
+          console.warn('[ProviderSelector] Claude API key not configured');
+          return null;
+        }
+        return new ClaudeProvider(aiSettings.claudeApiKey, 'claude-3-5-haiku-20241022');
+      }
+
+      if (type === 'openai') {
+        if (!aiSettings.openaiApiKey) {
+          console.warn('[ProviderSelector] OpenAI API key not configured');
+          return null;
+        }
+        return new OpenAIProvider(aiSettings.openaiApiKey, 'gpt-4o-mini');
+      }
+
+      if (type === 'openai-compatible') {
+        if (!aiSettings.openaiCompatibleApiKey || !aiSettings.openaiCompatibleBaseURL || !aiSettings.openaiCompatibleModel) {
+          console.warn('[ProviderSelector] OpenAI Compatible not fully configured');
+          return null;
+        }
+        return new OpenAICompatibleProvider({
+          apiKey: aiSettings.openaiCompatibleApiKey,
+          baseURL: aiSettings.openaiCompatibleBaseURL,
+          model: aiSettings.openaiCompatibleModel,
+        });
+      }
+
+      console.warn('[ProviderSelector] Unknown provider type:', type);
+      return null;
+    } catch (error) {
+      console.error(`[ProviderSelector] Failed to create ${type} provider:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * OLD COMPLEX LOGIC BELOW - KEEPING FOR NOW BUT NOT USED
+   */
+  private async _oldSelectProvider_UNUSED(): Promise<IAIProvider | null> {
     // Get enabled providers sorted by priority (now respects settings)
     const enabledProviders = await getEnabledProviders(this.context);
 
     if (enabledProviders.length === 0) {
       console.error('[ProviderSelector] No enabled providers configured');
-
-      // Check if OpenAI Compatible is configured as last resort
-      const aiSettings = await SettingsService.getAIConfig(this.context);
-      if (aiSettings.openaiCompatibleApiKey && aiSettings.openaiCompatibleBaseURL && aiSettings.openaiCompatibleModel) {
-        console.log('[ProviderSelector] Standard providers unavailable, trying OpenAI Compatible');
-        try {
-          return new OpenAICompatibleProvider({
-            apiKey: aiSettings.openaiCompatibleApiKey,
-            baseURL: aiSettings.openaiCompatibleBaseURL,
-            model: aiSettings.openaiCompatibleModel,
-          });
-        } catch (error) {
-          console.error('[ProviderSelector] Failed to create OpenAI Compatible provider:', error);
-        }
-      }
-
       return null;
     }
 
