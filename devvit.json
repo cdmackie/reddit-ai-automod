@@ -18,7 +18,8 @@
         "api.openai.com",
         "api.z.ai",
         "api.x.ai",
-        "api.groq.com"
+        "api.groq.com",
+        "api.deepseek.com"
       ]
     },
     "redis": true,

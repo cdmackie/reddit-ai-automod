@@ -368,6 +368,7 @@ The following domains are requested for this app:
 - `api.x.ai` - Used for X.AI Grok AI analysis as OpenAI-compatible alternative provider (Devvit does not provide AI capabilities natively)
 - `api.z.ai` - Used for Z.AI ChatGLM AI analysis as OpenAI-compatible alternative provider (Devvit does not provide AI capabilities natively)
 - `api.groq.com` - Used for Groq AI analysis with Llama models as OpenAI-compatible alternative provider (Devvit does not provide AI capabilities natively)
+- `api.deepseek.com` - Used for DeepSeek AI analysis as OpenAI-compatible alternative provider (Devvit does not provide AI capabilities natively)
 
 ---
 
