@@ -204,6 +204,39 @@ export async function handlePostSubmit(
 
     // Execute the action using the existing executeAction API
     // Map pipeline reason to the correct field based on action type
+    // Build pipelineInfo based on which layer triggered
+    const pipelineInfo: {
+      layerTriggered?: string;
+      layer1Passed?: boolean;
+      layer1RuleId?: string;
+      layer1Reason?: string;
+      layer2Passed?: boolean;
+      layer2Categories?: string[];
+      layer2Reason?: string;
+      layer3Passed?: boolean;
+    } = {
+      layerTriggered: pipelineResult.layerTriggered,
+    };
+
+    // Map based on which layer triggered
+    if (pipelineResult.layerTriggered === 'builtin') {
+      // Layer 1 (Built-in Rules) triggered
+      pipelineInfo.layer1Passed = false;
+      pipelineInfo.layer1RuleId = pipelineResult.metadata?.builtInRuleId;
+      pipelineInfo.layer1Reason = pipelineResult.reason;
+    } else if (pipelineResult.layerTriggered === 'moderation') {
+      // Layer 2 (OpenAI Moderation) triggered
+      pipelineInfo.layer1Passed = true; // Layer 1 passed to reach Layer 2
+      pipelineInfo.layer2Passed = false;
+      pipelineInfo.layer2Categories = pipelineResult.metadata?.moderationCategories || [];
+      pipelineInfo.layer2Reason = pipelineResult.reason;
+    } else if (pipelineResult.layerTriggered === 'none') {
+      // Both Layer 1 and Layer 2 passed, proceeding to Layer 3
+      pipelineInfo.layer1Passed = true;
+      pipelineInfo.layer2Passed = true;
+    }
+    // Note: 'custom' layer should not appear in pipeline (that's Layer 3)
+
     const executionResult = await executeAction({
       post,
       ruleResult: {
@@ -221,6 +254,7 @@ export async function handlePostSubmit(
       context,
       dryRun: dryRunEnabled,
       aiAnalysis: undefined, // Pipeline actions don't use AI
+      pipelineInfo,
     });
 
     // Enhanced audit log with pipeline metadata
@@ -438,6 +472,14 @@ export async function handlePostSubmit(
   };
 
   // Execute the action
+  // Layer 3 actions have both Layer 1 and Layer 2 passed
+  const layer3PipelineInfo = {
+    layerTriggered: 'custom',
+    layer1Passed: true,
+    layer2Passed: true,
+    layer3Passed: ruleResult.action === 'APPROVE', // Layer 3 passed if approved
+  };
+
   const executionResult = await executeAction({
     post,
     ruleResult,
@@ -445,6 +487,7 @@ export async function handlePostSubmit(
     context,
     dryRun: effectiveDryRun,
     aiAnalysis, // Pass AI analysis data for mod notes
+    pipelineInfo: layer3PipelineInfo,
   });
 
   // Log to audit trail
