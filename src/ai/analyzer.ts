@@ -953,6 +953,17 @@ export class AIAnalyzer {
       const expirationDate = new Date(Date.now() + cacheTTL * 1000);
       await this.context.redis.set(key, JSON.stringify(result), { expiration: expirationDate });
 
+      // Track this cache key for cleanup
+      // Store in sorted set with expiration timestamp as score
+      const trackingKey = `ai:cache:keys:${userId}`;
+      const expirationTimestamp = Date.now() + cacheTTL * 1000;
+      await this.context.redis.zAdd(trackingKey, {
+        member: questionIdsHash,
+        score: expirationTimestamp,
+      });
+      // Set TTL on tracking set itself (slightly longer than cache TTL)
+      await this.context.redis.expire(trackingKey, Math.ceil(cacheTTL * 1.1));
+
       console.log('[AIAnalyzer] Question result cached', {
         userId,
         questionIdsHash,

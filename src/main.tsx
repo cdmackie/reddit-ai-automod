@@ -437,30 +437,37 @@ Devvit.addMenuItem({
         historyDeleted++;
 
         // Delete AI question cache entries for this user
-        // AI cache uses pattern: ai:questions:{userId}:{questionIdsHash}
-        // Since we can't scan keys in Devvit, we'll try common patterns
-        // This is a best-effort cleanup - some AI cache may remain
+        // AI cache tracking key: ai:cache:keys:{userId} contains all questionIdsHash values
         try {
-          // Try to delete AI cache with common question ID patterns
-          // The hash is deterministic, so we can't predict all combinations
-          // but we'll clear what we can
-          const aiCachePrefix = `ai:questions:${userId.member}:`;
-          // Unfortunately Devvit doesn't support SCAN, so we can only delete known keys
-          // The AI cache will naturally expire based on TTL (12-48 hours)
-          console.log(`[ResetAllData] AI cache for user ${userId.member} will expire naturally (TTL-based)`);
+          const cacheTrackingKey = `ai:cache:keys:${userId.member}`;
+          const cachedHashes = await redis.zRange(cacheTrackingKey, 0, -1);
+
+          for (const hashEntry of cachedHashes) {
+            const hash = hashEntry.member;
+            const cacheKey = `ai:questions:${userId.member}:${hash}`;
+            await redis.del(cacheKey);
+            aiCacheDeleted++;
+          }
+
+          // Delete the tracking set itself
+          await redis.del(cacheTrackingKey);
+
+          if (cachedHashes.length > 0) {
+            console.log(`[ResetAllData] Deleted ${cachedHashes.length} AI cache entries for user ${userId.member}`);
+          }
         } catch (aiError) {
-          console.warn(`[ResetAllData] Could not clear AI cache for user ${userId.member}:`, aiError);
+          console.warn(`[ResetAllData] Error clearing AI cache for user ${userId.member}:`, aiError);
         }
       }
 
       // Delete the users tracking set itself
       await redis.del(usersSetKey);
 
-      const totalDeleted = trustDeleted + trackingDeleted + profileDeleted + historyDeleted;
-      console.log(`[ResetAllData] Reset complete: ${trustDeleted} trust, ${trackingDeleted} tracking, ${profileDeleted} profiles, ${historyDeleted} histories deleted. AI cache will expire naturally.`);
+      const totalDeleted = trustDeleted + trackingDeleted + profileDeleted + historyDeleted + aiCacheDeleted;
+      console.log(`[ResetAllData] Reset complete: ${trustDeleted} trust, ${trackingDeleted} tracking, ${profileDeleted} profiles, ${historyDeleted} histories, ${aiCacheDeleted} AI cache entries deleted.`);
 
       context.ui.showToast({
-        text: `✅ Reset complete! Cleared ${trustDeleted} trust scores, ${trackingDeleted} tracking records, ${profileDeleted} profiles, and ${historyDeleted} histories for r/${subredditName}. All users will start completely fresh. AI cache will expire naturally (12-48h TTL).`,
+        text: `✅ Reset complete! Cleared ${trustDeleted} trust scores, ${trackingDeleted} tracking records, ${profileDeleted} profiles, ${historyDeleted} histories, and ${aiCacheDeleted} AI cache entries for r/${subredditName}. All users will start completely fresh.`,
         appearance: 'success',
       });
     } catch (error) {
