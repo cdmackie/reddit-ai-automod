@@ -641,7 +641,8 @@ Important:
 - Each answer must have: questionId, answer (YES/NO), confidence (0-100), and reasoning
 - Base your answers on the user's profile, posting history, and current post
 - Be objective and specific in your reasoning
-- Only answer YES if you have reasonable confidence (typically 60+)`;
+- Answer YES or NO based on the available evidence - don't default to NO just because you're uncertain
+- Use the confidence score to indicate your certainty level (lower confidence = less certain)`;
 
     // Calculate total PII removed
     const totalPiiRemoved =
