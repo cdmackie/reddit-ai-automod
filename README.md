@@ -358,17 +358,15 @@ If a user has made their profile private:
 
 ---
 
-## External API Access
+## Fetch Domains
 
-This app requires HTTP fetch access to the following external domains for AI provider functionality:
+The following domains are requested for this app:
 
-- `api.anthropic.com` - Anthropic Claude AI API
-- `api.openai.com` - OpenAI GPT API
-- `api.x.ai` - X.AI Grok API
-- `api.z.ai` - Z.AI API
-- `api.groq.com` - Groq AI API
-
-These domains are configured in `devvit.yaml` under `http.fetch.allowList` and are submitted for Reddit admin review when the app is uploaded or playtested. They are required for the app's AI-powered moderation features to function.
+- `api.anthropic.com` - Used for Claude 3.5 Haiku AI analysis of user profiles and post history to detect scammers, dating seekers, and problematic users (Devvit does not provide AI capabilities natively)
+- `api.openai.com` - Used for OpenAI GPT-4o Mini AI analysis as fallback provider and for free content moderation via OpenAI Moderation API (Devvit does not provide AI capabilities natively)
+- `api.x.ai` - Used for X.AI Grok AI analysis as OpenAI-compatible alternative provider (Devvit does not provide AI capabilities natively)
+- `api.z.ai` - Used for Z.AI ChatGLM AI analysis as OpenAI-compatible alternative provider (Devvit does not provide AI capabilities natively)
+- `api.groq.com` - Used for Groq AI analysis with Llama models as OpenAI-compatible alternative provider (Devvit does not provide AI capabilities natively)
 
 ---
 
