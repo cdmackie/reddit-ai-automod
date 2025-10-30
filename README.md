@@ -164,16 +164,18 @@ Customize the action's behavior:
 ```json
 {
   "actionConfig": {
-    "reason": "Account too new (karma: {profile.totalKarma})",
-    "comment": "Your post was removed because: {reason}"
+    "reason": "This is not a dating site",
+    "modlog": "Dating intent detected with 85% confidence"
   }
 }
 ```
 
 | Field | Used By | Description |
 |-------|---------|-------------|
-| `reason` | FLAG, REMOVE, COMMENT | Reason shown to moderators and/or users |
-| `comment` | REMOVE, COMMENT | Comment posted on the post/comment |
+| `reason` | FLAG, REMOVE, COMMENT | User-facing reason shown in removal/warning comments (inserted into template) |
+| `modlog` | REMOVE, COMMENT | Optional: Detailed information for mod logs only (not shown to users) |
+
+**Note:** The `reason` field is inserted into comment templates. Templates can be customized in settings or use professional defaults.
 
 **Variable Substitution:** Use `{field.path}` to insert values:
 - `{profile.totalKarma}` → User's karma
@@ -273,8 +275,8 @@ Ask AI to analyze the user and their content:
       },
       "action": "REMOVE",
       "actionConfig": {
-        "reason": "Dating/romance content detected with {ai.confidence}% confidence",
-        "comment": "This subreddit is for platonic friendships only. Please review our rules."
+        "reason": "This is not a dating site",
+        "modlog": "Dating/romance content detected with {ai.confidence}% confidence"
       }
     }
   ]
