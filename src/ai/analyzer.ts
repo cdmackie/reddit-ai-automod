@@ -615,9 +615,9 @@ export class AIAnalyzer {
   ): Promise<AIAnalysisResult> {
     const startTime = Date.now();
 
-    // Select best available AI provider
+    // Select best available AI provider and try with automatic fallback
     const selector = ProviderSelector.getInstance(this.context);
-    const provider = await selector.selectProvider();
+    let provider = await selector.selectProvider();
 
     if (provider === null) {
       console.error('[AIAnalyzer] No AI provider available', {
@@ -632,8 +632,35 @@ export class AIAnalyzer {
       correlationId: request.context.correlationId,
     });
 
-    // Call provider to analyze user
-    const result = await provider.analyze(request);
+    // Try to analyze, with fallback if primary fails
+    let result: AIAnalysisResult;
+    try {
+      result = await provider.analyze(request);
+    } catch (error) {
+      console.error('[AIAnalyzer] Primary provider failed, trying fallback', {
+        provider: provider.type,
+        error: error instanceof Error ? error.message : String(error),
+        correlationId: request.context.correlationId,
+      });
+
+      // Try to get fallback provider (excluding the one that just failed)
+      const fallbackProvider = await selector.selectProvider(provider.type);
+      if (fallbackProvider === null) {
+        console.error('[AIAnalyzer] No fallback provider available', {
+          correlationId: request.context.correlationId,
+        });
+        throw error; // Re-throw original error
+      }
+
+      console.log('[AIAnalyzer] Retrying with fallback provider', {
+        fallback: fallbackProvider.type,
+        correlationId: request.context.correlationId,
+      });
+
+      // Try with fallback provider
+      provider = fallbackProvider;
+      result = await provider.analyze(request);
+    }
 
     // Record cost for budget tracking
     const costTracker = CostTracker.getInstance(this.context);

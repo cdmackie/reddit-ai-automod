@@ -151,35 +151,38 @@ export class ProviderSelector {
    * }
    * ```
    */
-  async selectProvider(): Promise<IAIProvider | null> {
+  async selectProvider(excludeProvider?: AIProviderType): Promise<IAIProvider | null> {
     // Get user settings - this tells us what they selected
     const aiSettings = await SettingsService.getAIConfig(this.context);
 
     console.log('[ProviderSelector] User settings:', {
       primary: aiSettings.primaryProvider,
       fallback: aiSettings.fallbackProvider,
+      excluding: excludeProvider,
     });
 
-    // Try primary provider first
-    if (aiSettings.primaryProvider) {
+    // Try primary provider first (unless we're excluding it)
+    if (aiSettings.primaryProvider && aiSettings.primaryProvider !== excludeProvider) {
       console.log('[ProviderSelector] Trying primary provider:', aiSettings.primaryProvider);
       const provider = await this.createProvider(aiSettings.primaryProvider, aiSettings);
       if (provider) {
         console.log('[ProviderSelector] ✓ Using primary provider:', aiSettings.primaryProvider);
         return provider;
       }
-      console.warn('[ProviderSelector] ✗ Primary provider failed:', aiSettings.primaryProvider);
+      console.warn('[ProviderSelector] ✗ Primary provider failed to create:', aiSettings.primaryProvider);
     }
 
-    // Try fallback provider if configured
-    if (aiSettings.fallbackProvider && aiSettings.fallbackProvider !== 'none') {
+    // Try fallback provider if configured (unless we're excluding it)
+    if (aiSettings.fallbackProvider &&
+        aiSettings.fallbackProvider !== 'none' &&
+        aiSettings.fallbackProvider !== excludeProvider) {
       console.log('[ProviderSelector] Trying fallback provider:', aiSettings.fallbackProvider);
       const provider = await this.createProvider(aiSettings.fallbackProvider, aiSettings);
       if (provider) {
         console.log('[ProviderSelector] ✓ Using fallback provider:', aiSettings.fallbackProvider);
         return provider;
       }
-      console.warn('[ProviderSelector] ✗ Fallback provider failed:', aiSettings.fallbackProvider);
+      console.warn('[ProviderSelector] ✗ Fallback provider failed to create:', aiSettings.fallbackProvider);
     }
 
     console.error('[ProviderSelector] All providers failed');
