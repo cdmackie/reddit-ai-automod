@@ -39,7 +39,6 @@ import { Devvit } from '@devvit/public-api';
 import { IAIProvider } from './provider.js';
 import { ClaudeProvider } from './claude.js';
 import { OpenAIProvider } from './openai.js';
-import { DeepSeekProvider } from './deepseek.js';
 import { OpenAICompatibleProvider } from './openaiCompatible.js';
 import { CircuitBreaker } from './circuitBreaker.js';
 import { AIProviderType, ProviderHealthStatus } from '../types/ai.js';

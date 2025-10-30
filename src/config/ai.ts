@@ -85,14 +85,6 @@ export const AI_CONFIG: AIConfig = {
       costPerMTokenInput: 0.15,
       costPerMTokenOutput: 0.6,
     },
-    deepseek: {
-      type: 'deepseek' as const,
-      model: 'deepseek-chat',
-      enabled: true,
-      priority: 3, // Low-cost option for high-volume scenarios
-      costPerMTokenInput: 0.27,
-      costPerMTokenOutput: 1.1,
-    },
   },
 
   /**
@@ -312,9 +304,19 @@ export async function getEnabledProviders(context: any): Promise<AIProviderType[
       if (primaryConfig.enabled && 'apiKey' in primaryConfig && primaryConfig.apiKey) {
         providers.push(aiSettings.primaryProvider);
         console.log('[getEnabledProviders] Added primary provider:', aiSettings.primaryProvider);
+      } else {
+        console.warn('[getEnabledProviders] Primary provider NOT added:', {
+          provider: aiSettings.primaryProvider,
+          enabled: primaryConfig?.enabled,
+          hasApiKeyField: primaryConfig && 'apiKey' in primaryConfig,
+          apiKeyValue: primaryConfig && 'apiKey' in primaryConfig ? (primaryConfig.apiKey ? '***set***' : '***empty***') : '***missing***'
+        });
       }
     }
   }
+
+  // Log final result
+  console.log('[getEnabledProviders] Final enabled providers:', providers);
 
   // Add fallback provider second (if enabled, has API key, not 'none', and not already added)
   if (aiSettings.fallbackProvider && aiSettings.fallbackProvider !== 'none') {

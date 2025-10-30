@@ -109,19 +109,14 @@ export class ConfigurationManager {
           // Add API key if configured in settings
           ...(aiProviderConfig.openaiApiKey && { apiKey: aiProviderConfig.openaiApiKey }),
         },
-        deepseek: {
-          ...AI_CONFIG.providers.deepseek,
-          // Add API key if configured in settings
-          ...(aiProviderConfig.deepseekApiKey && { apiKey: aiProviderConfig.deepseekApiKey }),
-        },
         'openai-compatible': {
           type: 'openai-compatible' as const,
           model: aiProviderConfig.openaiCompatibleModel || 'gpt-4o-mini',
-          enabled: !!(aiProviderConfig.openaiCompatibleApiKey && aiProviderConfig.openaiCompatibleBaseUrl),
+          enabled: !!(aiProviderConfig.openaiCompatibleApiKey && aiProviderConfig.openaiCompatibleBaseURL),
           priority: 4, // Last resort fallback
           costPerMTokenInput: 0.15, // Use OpenAI default costs (can be overridden)
           costPerMTokenOutput: 0.6,
-          baseUrl: aiProviderConfig.openaiCompatibleBaseUrl || '',
+          baseUrl: aiProviderConfig.openaiCompatibleBaseURL || '',
           // Add API key if configured in settings
           ...(aiProviderConfig.openaiCompatibleApiKey && { apiKey: aiProviderConfig.openaiCompatibleApiKey }),
         },
