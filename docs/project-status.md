@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.50 (ready to deploy)
+**Current Version**: 0.1.52 (ready to deploy)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.36 Complete ✅ | Enhanced logging and private profile handling
+**Status**: Phase 5.37 Complete ✅ | Fixed email verification and post/comment fetching
 
 ---
 
@@ -32,6 +32,15 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.37 (2025-10-29)
+- [x] Fixed email verification to read `hasVerifiedEmail` field from Devvit User API
+- [x] Changed from hardcoded `false` to `user.hasVerifiedEmail ?? false`
+- [x] Fixed post/comment fetching to use separate API calls
+- [x] Now uses `getPostsByUser()` and `getCommentsByUser()` separately
+- [x] Ensures balanced data: up to 100 posts AND 100 comments (instead of 200 total items that could be skewed)
+- [x] Changed README status badge from "Production Ready" to "Alpha"
+- [x] Updated to version 0.1.52
 
 ### Phase 5.36 (2025-10-29)
 - [x] Added enhanced logging to verify data access scope (site-wide vs subreddit-scoped)
@@ -139,6 +148,11 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 
 ## Recent Decisions
 
+**2025-10-29**: Fixed email verification and separated post/comment fetching
+- **Rationale**: Email verification was always showing as `false` because it was hardcoded. Post/comment fetching was skewed towards whichever type the user had more of (e.g., 176 comments + 24 posts = 200 total).
+- **Impact**: More accurate user profiling, better AI analysis context, email verification now reflects actual user status
+- **Implementation**: Read `hasVerifiedEmail` field from Devvit User API, use separate `getPostsByUser()` and `getCommentsByUser()` calls to ensure balanced data (up to 100 of each)
+
 **2025-10-29**: Enhanced logging and private profile handling
 - **Rationale**: Verify data access scope (site-wide vs subreddit-only), better diagnose API issues
 - **Impact**: Clear visibility into whether we're accessing all subreddits or just the installed one
@@ -191,7 +205,7 @@ For complete version history, see [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.m
 
 ## Quick Stats
 
-- **Total Versions**: 47 (0.0.1 → 0.1.47)
+- **Total Versions**: 52 (0.0.1 → 0.1.52)
 - **Current Trust System**: Working perfectly in production
 - **AI Providers**: Claude 3.5 Haiku, OpenAI, DeepSeek
 - **Active Subreddits**: 3 target communities

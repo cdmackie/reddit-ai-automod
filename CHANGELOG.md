@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.52] - 2025-10-29
+
+### Fixed
+- Email verification now correctly reads `hasVerifiedEmail` field from Devvit User API instead of hardcoded `false`
+- Post/comment fetching now uses separate API calls (`getPostsByUser()` and `getCommentsByUser()`) to prevent skewed results
+- Ensures balanced data retrieval: up to 100 posts AND up to 100 comments (not 200 total that could be 24 posts + 176 comments)
+
+### Changed
+- Status badge changed from "Production Ready" to "Alpha" in README
+- Better user profiling accuracy with guaranteed balanced post/comment history
+
 ## [0.1.47] - 2025-10-29
 
 ### Fixed
@@ -403,7 +414,8 @@ Complete Devvit settings forms, cost dashboard, rule management with schema vali
 ### Phase 5: Refinement & Optimization (2025-10-28 to 2025-10-29)
 Three-layer pipeline, community trust system, infinite loop fixes, notification improvements, schema simplification, debug logging, post history expansion.
 
-[Unreleased]: https://github.com/cdmackie/redditmod/compare/v0.1.47...HEAD
+[Unreleased]: https://github.com/cdmackie/redditmod/compare/v0.1.52...HEAD
+[0.1.52]: https://github.com/cdmackie/redditmod/compare/v0.1.47...v0.1.52
 [0.1.47]: https://github.com/cdmackie/redditmod/compare/v0.1.46...v0.1.47
 [0.1.46]: https://github.com/cdmackie/redditmod/compare/v0.1.45...v0.1.46
 [0.1.45]: https://github.com/cdmackie/redditmod/compare/v0.1.44...v0.1.45
