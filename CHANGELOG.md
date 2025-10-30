@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.103] - 2025-10-30
+
+### Added
+- Enhanced AI analysis form to show all three moderation layers
+- Layer 1 (New Account Check) results with pass/fail status and reason
+- Layer 2 (OpenAI Moderation) results with flagged categories and reason
+- Layer 3 (Custom AI Rules) results with AI provider, model, and reasoning
+- "Triggered By" field shows which layer caused the action
+- Cost dashboard form with organized daily/monthly budget tracking
+- Provider-specific cost breakdowns (Claude, OpenAI, OpenAI Compatible)
+- Configuration section showing dry-run mode, primary/fallback AI providers
+
+### Changed
+- Replaced "View AI Costs" toast with proper Devvit form display
+- Enhanced analysis history storage to track all pipeline layer results
+- Updated postSubmit and commentSubmit handlers to pass pipeline info
+- Form displays dynamically based on which layers were evaluated
+- Only shows layer information if that layer was actually evaluated
+
+### Removed
+- Removed pointless "AI Automod Settings" menu item (just showed toast)
+
+### Fixed
+- Analysis history now properly captures Layer 1 and Layer 2 decisions
+- Moderators can now see complete audit trail for all moderation layers
+
 ## [0.1.102] - 2025-10-30
 
 ### Fixed

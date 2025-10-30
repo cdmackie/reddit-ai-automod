@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-30
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.102
+**Current Version**: 0.1.103
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.49 Complete ✅ | AI analysis history with form UI
+**Status**: Phase 5.50 Complete ✅ | Enhanced UI forms and pipeline layer tracking
 
 ---
 
@@ -32,6 +32,24 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.50 (2025-10-30)
+- [x] Removed pointless "AI Automod Settings" menu item
+- [x] Created cost dashboard form to replace toast notification
+- [x] Enhanced cost dashboard with daily/monthly budget tracking
+- [x] Added provider-specific cost breakdowns (Claude, OpenAI, OpenAI Compatible)
+- [x] Added configuration display (dry-run mode, primary/fallback providers)
+- [x] Enhanced analysis history storage to track all three pipeline layers
+- [x] Updated AnalysisHistoryEntry interface with layer1/layer2/layer3 fields
+- [x] Updated postSubmit handler to pass pipeline info to executeAction
+- [x] Updated commentSubmit handler to pass pipeline info to executeAction
+- [x] Enhanced AI analysis form to display all three moderation layers
+- [x] Form shows Layer 1 (New Account Check) pass/fail with reason
+- [x] Form shows Layer 2 (OpenAI Moderation) pass/fail with categories
+- [x] Form shows Layer 3 (Custom AI Rules) with full AI analysis
+- [x] Added "Triggered By" field showing which layer caused action
+- [x] Deployed version 0.1.103
+- [x] Verified forms display correctly with organized layout
 
 ### Phase 5.49 (2025-10-30)
 - [x] Discovered modLog API not available in trigger contexts (only UI contexts)
