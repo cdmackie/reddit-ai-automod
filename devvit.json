@@ -1,18 +1,18 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
   "name": "ai-automod-app",
-  "version": "0.1.66",
-  "description": "AI-powered moderation tool for Reddit communities",
   "blocks": {},
-  "http": {
-    "fetch": {
-      "allowList": [
+  "permissions": {
+    "http": {
+      "enable": true,
+      "domains": [
         "api.anthropic.com",
         "api.openai.com",
         "api.z.ai",
         "api.x.ai",
         "api.groq.com"
       ]
-    }
+    },
+    "redis": true
   }
 }
