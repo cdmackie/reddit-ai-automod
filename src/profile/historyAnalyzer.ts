@@ -6,9 +6,10 @@
  * and calculates metrics used for trust score calculation.
  *
  * **Caching Strategy**:
- * - Redis key pattern: `user:{userId}:history`
+ * - Redis key pattern: `v1:user:{userId}:history`
  * - TTL: 24 hours (86400000 ms)
  * - Check cache first, fetch from API on miss
+ * - Uses centralized key builder for version-based cache invalidation
  *
  * **Data Fetched**:
  * - Up to 100 posts and 100 comments (200 total max, configurable via DEFAULT_PROFILE_CONFIG.historyLimit)
@@ -47,14 +48,13 @@
 import { RedisClient, RedditAPIClient, Post, Comment } from '@devvit/public-api';
 import { UserPostHistory, PostHistoryItem, DEFAULT_PROFILE_CONFIG } from '../types/profile';
 import { RateLimiter } from './rateLimiter';
-import { RedisStorage } from '../storage/redis';
-import { StorageKey } from '../types/storage';
+import { HistoryCache } from '../storage/cacheOperations.js';
 
 /**
  * Fetches and analyzes user post history from Reddit
  */
 export class PostHistoryAnalyzer {
-  private storage: RedisStorage;
+  private cache: HistoryCache;
   private cacheTTL: number;
   private historyLimit: number;
   private targetSubreddits: Set<string>; // Lowercase for case-insensitive comparison
@@ -65,7 +65,7 @@ export class PostHistoryAnalyzer {
     private reddit: RedditAPIClient,
     private rateLimiter: RateLimiter
   ) {
-    this.storage = new RedisStorage(redis);
+    this.cache = new HistoryCache(redis);
     this.cacheTTL = DEFAULT_PROFILE_CONFIG.historyCacheTTL;
     this.historyLimit = DEFAULT_PROFILE_CONFIG.historyLimit;
 
@@ -94,9 +94,7 @@ export class PostHistoryAnalyzer {
   async getPostHistory(userId: string, username: string): Promise<UserPostHistory> {
     try {
       // Check cache first
-      // Key format: user:{userId}:history
-      const cacheKey = this.storage.buildKey(StorageKey.USER_HISTORY, userId, 'history');
-      const cached = await this.storage.get<UserPostHistory>(cacheKey);
+      const cached = await this.cache.get(userId);
 
       if (cached) {
         console.log(`[HistoryAnalyzer] Cache hit for user ${username} (${userId})`);
@@ -143,7 +141,7 @@ export class PostHistoryAnalyzer {
       };
 
       // Cache the result
-      await this.cacheHistory(history);
+      await this.cache.set(userId, history, this.cacheTTL);
 
       console.log(
         `[HistoryAnalyzer] Successfully fetched and cached history for ${username} (${items.length} items)`
@@ -398,24 +396,4 @@ export class PostHistoryAnalyzer {
     };
   }
 
-  /**
-   * Cache user post history in Redis
-   *
-   * Stores the post history data with a 24-hour TTL. Date objects are
-   * serialized as ISO strings by JSON.stringify and need to be deserialized
-   * on retrieval.
-   *
-   * @param history - User post history data to cache
-   * @private
-   */
-  private async cacheHistory(history: UserPostHistory): Promise<void> {
-    try {
-      // Key format: user:{userId}:history
-      const cacheKey = this.storage.buildKey(StorageKey.USER_HISTORY, history.userId, 'history');
-      await this.storage.set(cacheKey, history, this.cacheTTL);
-    } catch (error) {
-      console.error(`[HistoryAnalyzer] Error caching history for ${history.userId}:`, error);
-      // Non-fatal error, don't throw - cache failure shouldn't break the request
-    }
-  }
 }

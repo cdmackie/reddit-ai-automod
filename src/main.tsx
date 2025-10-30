@@ -404,71 +404,16 @@ Devvit.addMenuItem({
       console.log('[ResetAllData] Starting complete data reset...');
       const { redis, subredditName } = context;
 
-      // Get all tracked users for this subreddit
-      const usersSetKey = `trust:users:${subredditName}`;
-      const trackedUsers = await redis.zRange(usersSetKey, 0, -1);
-      console.log(`[ResetAllData] Found ${trackedUsers.length} tracked users in r/${subredditName}`);
+      // Import cache invalidation functions
+      const { clearSubredditCache } = await import('./storage/keyBuilder.js');
 
-      let trustDeleted = 0;
-      let trackingDeleted = 0;
-      let profileDeleted = 0;
-      let historyDeleted = 0;
-      let aiCacheDeleted = 0;
+      // Clear all cached data for this subreddit
+      const stats = await clearSubredditCache(redis, subredditName, false);
 
-      // Delete all data for each tracked user
-      for (const userId of trackedUsers) {
-        // Delete trust records
-        const trustKey = `trust:community:${userId.member}:${subredditName}`;
-        await redis.del(trustKey);
-        trustDeleted++;
-
-        // Delete approved content tracking
-        const trackingKey = `approved:tracking:${userId.member}:${subredditName}`;
-        await redis.del(trackingKey);
-        trackingDeleted++;
-
-        // Delete profile cache (forces fresh data from Reddit API)
-        const profileKey = `user:${userId.member}:profile`;
-        await redis.del(profileKey);
-        profileDeleted++;
-
-        // Delete post history cache (forces fresh data from Reddit API)
-        const historyKey = `user:${userId.member}:history`;
-        await redis.del(historyKey);
-        historyDeleted++;
-
-        // Delete AI question cache entries for this user
-        // AI cache tracking key: ai:cache:keys:{userId} contains all questionIdsHash values
-        try {
-          const cacheTrackingKey = `ai:cache:keys:${userId.member}`;
-          const cachedHashes = await redis.zRange(cacheTrackingKey, 0, -1);
-
-          for (const hashEntry of cachedHashes) {
-            const hash = hashEntry.member;
-            const cacheKey = `ai:questions:${userId.member}:${hash}`;
-            await redis.del(cacheKey);
-            aiCacheDeleted++;
-          }
-
-          // Delete the tracking set itself
-          await redis.del(cacheTrackingKey);
-
-          if (cachedHashes.length > 0) {
-            console.log(`[ResetAllData] Deleted ${cachedHashes.length} AI cache entries for user ${userId.member}`);
-          }
-        } catch (aiError) {
-          console.warn(`[ResetAllData] Error clearing AI cache for user ${userId.member}:`, aiError);
-        }
-      }
-
-      // Delete the users tracking set itself
-      await redis.del(usersSetKey);
-
-      const totalDeleted = trustDeleted + trackingDeleted + profileDeleted + historyDeleted + aiCacheDeleted;
-      console.log(`[ResetAllData] Reset complete: ${trustDeleted} trust, ${trackingDeleted} tracking, ${profileDeleted} profiles, ${historyDeleted} histories, ${aiCacheDeleted} AI cache entries deleted.`);
+      console.log(`[ResetAllData] Reset complete: ${stats.usersCleared} users cleared, ${stats.keysDeleted} keys deleted.`);
 
       context.ui.showToast({
-        text: `✅ Reset complete! Cleared ${trustDeleted} trust scores, ${trackingDeleted} tracking records, ${profileDeleted} profiles, ${historyDeleted} histories, and ${aiCacheDeleted} AI cache entries for r/${subredditName}. All users will start completely fresh.`,
+        text: `✅ Reset complete! Cleared all data for ${stats.usersCleared} users (${stats.keysDeleted} cache entries) in r/${subredditName}. All users will start completely fresh.`,
         appearance: 'success',
       });
     } catch (error) {
@@ -481,6 +426,78 @@ Devvit.addMenuItem({
   },
 });
 console.log('[AI Automod] ✓ Registered: Reset All Data (subreddit)');
+
+// Clear User Cache Menu Item (on posts)
+Devvit.addMenuItem({
+  label: 'Clear User Cache',
+  location: 'post',
+  forUserType: 'moderator',
+  onPress: async (event, context) => {
+    try {
+      const post = await context.reddit.getPostById(event.targetId);
+      const userId = `t2_${post.authorId}`;
+      const username = post.authorName;
+
+      console.log(`[ClearUserCache] Clearing cache for user ${username} (${userId})`);
+
+      // Import cache invalidation function
+      const { clearUserCache } = await import('./storage/keyBuilder.js');
+
+      // Clear all cached data for this user
+      await clearUserCache(context.redis, userId);
+
+      console.log(`[ClearUserCache] Cache cleared for user ${username} (${userId})`);
+
+      context.ui.showToast({
+        text: `✅ Cleared all cached data for u/${username}. Their next post will be fully re-analyzed.`,
+        appearance: 'success',
+      });
+    } catch (error) {
+      console.error('[ClearUserCache] Error clearing user cache:', error);
+      context.ui.showToast({
+        text: '❌ Error clearing cache. Check logs for details.',
+        appearance: 'neutral',
+      });
+    }
+  },
+});
+console.log('[AI Automod] ✓ Registered: Clear User Cache (post)');
+
+// Clear User Cache Menu Item (on comments)
+Devvit.addMenuItem({
+  label: 'Clear User Cache',
+  location: 'comment',
+  forUserType: 'moderator',
+  onPress: async (event, context) => {
+    try {
+      const comment = await context.reddit.getCommentById(event.targetId);
+      const userId = `t2_${comment.authorId}`;
+      const username = comment.authorName;
+
+      console.log(`[ClearUserCache] Clearing cache for user ${username} (${userId})`);
+
+      // Import cache invalidation function
+      const { clearUserCache } = await import('./storage/keyBuilder.js');
+
+      // Clear all cached data for this user
+      await clearUserCache(context.redis, userId);
+
+      console.log(`[ClearUserCache] Cache cleared for user ${username} (${userId})`);
+
+      context.ui.showToast({
+        text: `✅ Cleared all cached data for u/${username}. Their next post will be fully re-analyzed.`,
+        appearance: 'success',
+      });
+    } catch (error) {
+      console.error('[ClearUserCache] Error clearing user cache:', error);
+      context.ui.showToast({
+        text: '❌ Error clearing cache. Check logs for details.',
+        appearance: 'neutral',
+      });
+    }
+  },
+});
+console.log('[AI Automod] ✓ Registered: Clear User Cache (comment)');
 
 console.log('[AI Automod] Menu items registration complete');
 

@@ -46,6 +46,7 @@ import { AIProviderType, CostRecord, BudgetStatus, SpendingReport } from '../typ
 import { SettingsService } from '../config/settingsService.js';
 import { CostDashboardCache } from '../dashboard/costDashboardCache.js';
 import { sendBudgetAlert } from '../notifications/modmailDigest.js';
+import { GlobalKeys } from '../storage/keyBuilder.js';
 
 /**
  * Default cost tracker configuration
@@ -191,13 +192,13 @@ export class CostTracker {
       // Use INCRBY for atomic increment (prevents race conditions)
       // All increments happen atomically, no read-modify-write race
       await Promise.all([
-        this.redis.incrBy(`cost:daily:${today}`, costCents),
-        this.redis.incrBy(`cost:daily:${today}:${record.provider}`, costCents),
-        this.redis.incrBy(`cost:monthly:${month}`, costCents),
+        this.redis.incrBy(GlobalKeys.costDaily(today), costCents),
+        this.redis.incrBy(GlobalKeys.costDailyProvider(today, record.provider), costCents),
+        this.redis.incrBy(GlobalKeys.costMonthly(month), costCents),
 
         // Store individual record for auditing (TTL: 30 days)
         this.redis.set(
-          `cost:record:${record.timestamp}:${record.userId}`,
+          GlobalKeys.costRecord(record.timestamp, record.userId),
           JSON.stringify(record),
           { expiration: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } // 30 days
         ),
@@ -241,11 +242,11 @@ export class CostTracker {
       // Fetch all spending data in parallel
       const [dailyTotal, claudeSpent, openaiSpent, deepseekSpent, monthlyTotal] =
         await Promise.all([
-          this.redis.get(`cost:daily:${today}`),
-          this.redis.get(`cost:daily:${today}:claude`),
-          this.redis.get(`cost:daily:${today}:openai`),
-          this.redis.get(`cost:daily:${today}:deepseek`),
-          this.redis.get(`cost:monthly:${month}`),
+          this.redis.get(GlobalKeys.costDaily(today)),
+          this.redis.get(GlobalKeys.costDailyProvider(today, 'claude')),
+          this.redis.get(GlobalKeys.costDailyProvider(today, 'openai')),
+          this.redis.get(GlobalKeys.costDailyProvider(today, 'deepseek')),
+          this.redis.get(GlobalKeys.costMonthly(month)),
         ]);
 
       // Parse Redis strings to integers (cents), default to 0 if missing
@@ -325,17 +326,17 @@ export class CostTracker {
 
     try {
       // Archive yesterday's data (get first, then set)
-      const yesterdayTotal = await this.redis.get(`cost:daily:${yesterday}`);
+      const yesterdayTotal = await this.redis.get(GlobalKeys.costDaily(yesterday));
       if (yesterdayTotal) {
         await this.redis.set(`cost:archive:${yesterday}`, yesterdayTotal);
       }
 
       // Delete yesterday's keys (sequential operations)
       await Promise.all([
-        this.redis.del(`cost:daily:${yesterday}`),
-        this.redis.del(`cost:daily:${yesterday}:claude`),
-        this.redis.del(`cost:daily:${yesterday}:openai`),
-        this.redis.del(`cost:daily:${yesterday}:deepseek`),
+        this.redis.del(GlobalKeys.costDaily(yesterday)),
+        this.redis.del(GlobalKeys.costDailyProvider(yesterday, 'claude')),
+        this.redis.del(GlobalKeys.costDailyProvider(yesterday, 'openai')),
+        this.redis.del(GlobalKeys.costDailyProvider(yesterday, 'deepseek')),
       ]);
 
       // Initialize today's keys to '0' if they don't exist
@@ -408,10 +409,10 @@ export class CostTracker {
       // Fetch spending data for all dates and providers
       const dailyPromises = dates.map(async (date) => {
         const [total, claude, openai, deepseek] = await Promise.all([
-          this.redis.get(`cost:daily:${date}`),
-          this.redis.get(`cost:daily:${date}:claude`),
-          this.redis.get(`cost:daily:${date}:openai`),
-          this.redis.get(`cost:daily:${date}:deepseek`),
+          this.redis.get(GlobalKeys.costDaily(date)),
+          this.redis.get(GlobalKeys.costDailyProvider(date, 'claude')),
+          this.redis.get(GlobalKeys.costDailyProvider(date, 'openai')),
+          this.redis.get(GlobalKeys.costDailyProvider(date, 'deepseek')),
         ]);
 
         const totalCents = parseInt(total || '0');

@@ -100,6 +100,8 @@ import { RequestCoalescer } from './requestCoalescer.js';
 import { CostTracker } from './costTracker.js';
 import { getCacheTTLForTrustScore } from '../config/ai.js';
 import { SettingsService } from '../config/settingsService.js';
+import { AIQuestionsCache } from '../storage/cacheOperations.js';
+import { UserKeys } from '../storage/keyBuilder.js';
 
 /**
  * Current post data for analysis context
@@ -352,7 +354,7 @@ export class AIAnalyzer {
    *
    * **Cache Strategy**: Cache key includes sorted question IDs to allow
    * different question sets to be cached separately:
-   * - `ai:questions:{userId}:{questionIds}` (e.g., `ai:questions:t2_abc:dating,age`)
+   * - `v1:user:{userId}:ai:questions:{questionIds}` (e.g., `v1:user:t2_abc:ai:questions:dating,age`)
    * - Different question combinations are cached independently
    * - Same questions for same user = cache hit
    *
@@ -914,7 +916,7 @@ export class AIAnalyzer {
    * Checks Redis cache for existing analysis result for this user with
    * this specific set of questions.
    *
-   * Cache key format: `ai:questions:{userId}:{questionIdsHash}`
+   * Cache key format: `v1:user:{userId}:ai:questions:{questionIdsHash}`
    *
    * @param userId - Reddit user ID (format: t2_xxxxx)
    * @param questionIdsHash - MD5 hash of sorted question IDs (16 chars)
@@ -925,7 +927,7 @@ export class AIAnalyzer {
     userId: string,
     questionIdsHash: string
   ): Promise<AIQuestionBatchResult | null> {
-    const key = `ai:questions:${userId}:${questionIdsHash}`;
+    const key = UserKeys.aiQuestion(userId, questionIdsHash);
 
     try {
       const cached = await this.context.redis.get(key);
@@ -962,7 +964,7 @@ export class AIAnalyzer {
    *
    * Stores question analysis result in Redis with TTL based on trust score.
    *
-   * Cache key format: `ai:questions:{userId}:{questionIdsHash}`
+   * Cache key format: `v1:user:{userId}:ai:questions:{questionIdsHash}`
    *
    * @param userId - Reddit user ID (format: t2_xxxxx)
    * @param questionIdsHash - MD5 hash of sorted question IDs (16 chars)
@@ -976,7 +978,7 @@ export class AIAnalyzer {
     result: AIQuestionBatchResult,
     cacheTTL: number
   ): Promise<void> {
-    const key = `ai:questions:${userId}:${questionIdsHash}`;
+    const key = UserKeys.aiQuestion(userId, questionIdsHash);
 
     try {
       // Convert TTL (seconds) to Date object
@@ -985,7 +987,7 @@ export class AIAnalyzer {
 
       // Track this cache key for cleanup
       // Store in sorted set with expiration timestamp as score
-      const trackingKey = `ai:cache:keys:${userId}`;
+      const trackingKey = UserKeys.aiQuestionsKeys(userId);
       const expirationTimestamp = Date.now() + cacheTTL * 1000;
       await this.context.redis.zAdd(trackingKey, {
         member: questionIdsHash,
@@ -1062,7 +1064,7 @@ export class AIAnalyzer {
    * @private
    */
   private async clearQuestionCache(userId: string, questionIdsHash: string): Promise<void> {
-    const key = `ai:questions:${userId}:${questionIdsHash}`;
+    const key = UserKeys.aiQuestion(userId, questionIdsHash);
 
     try {
       await this.context.redis.del(key);

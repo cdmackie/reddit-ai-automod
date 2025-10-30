@@ -214,6 +214,12 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 
 ## Recent Decisions
 
+**2025-10-30**: Designed centralized cache invalidation system with version prefix
+- **Rationale**: Current cache invalidation incomplete - can't clear all data for testing, no version-based invalidation for breaking changes, no per-user clearing. Devvit Redis lacks SCAN operation requiring explicit key tracking. Scattered key patterns throughout codebase make maintenance difficult.
+- **Impact**: Enables complete cache wipes for testing, instant cache invalidation via version bump (v1→v2), per-user cache clearing for moderators. Single source of truth for all Redis keys. Future-proof architecture.
+- **Implementation**: Centralized key builder with format `v{version}:{scope}:{userId}:{...parts}`. User data stored as dictionaries (trust scores for all subreddits in single key). Dynamic data uses tracking sets (AI questions). Migration path: create key builder, migrate code incrementally, add menu actions.
+- **Status**: Design approved and documented in project-status.md, implementation pending.
+
 **2025-10-29**: Added X.AI (Grok) to HTTP fetch allowlist and verified functionality
 - **Rationale**: User requested testing Grok API as alternative OpenAI-compatible provider. Initial test with grok-beta model revealed deprecation, switched to grok-3 successfully.
 - **Impact**: Confirmed Grok API working, provides additional OpenAI-compatible option for users seeking alternatives to z.ai, Groq, or Together AI.
@@ -293,48 +299,154 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 
 ## Known Issues
 
-### Cache Invalidation Requirements (Priority: High)
+### Cache Invalidation System (Priority: High) - DESIGN APPROVED
 
 **Context**: Devvit Redis doesn't support SCAN operation. Current cache invalidation is incomplete.
 
 **Requirements**:
 
-1. **Testing/Development (Immediate Need)**
-   - Need ability to completely wipe ALL cached data
-   - Current "Reset All Data" only clears tracked users, misses:
-     - AI analysis cache (`ai:analysis:*`)
-     - AI questions cache (`ai:questions:*`)
-     - Cost tracking (`cost:*`)
-     - Rule cache
-     - Any data not tied to tracked users
-   - Must be able to invalidate cache without waiting 24 hours for TTL expiry
-
-2. **Production Deployment (Breaking Changes)**
-   - Need version number system to invalidate caches on code changes
-   - When cache structure changes, old cached data causes errors
-   - Example: Changed post history from 20 to 200 items, but cached data still has old format
-   - Must be able to force all users to get fresh data after deployment
-
-3. **Per-User Cache Clearing (Moderator Tool)**
-   - Moderators need ability to clear cached data for specific user
-   - Should clear all cache types for that user:
-     - Profile cache (`user:{userId}:profile`)
-     - History cache (`user:{userId}:history`)
-     - AI analysis cache (`ai:analysis:{userId}:*`)
-     - AI questions cache (`ai:questions:{userId}:*`)
-     - Trust scores (`trust:*:{userId}:*`)
-   - Useful when user complains about wrong analysis or old data
+1. **Testing/Development** - Complete wipe of ALL cached data
+2. **Production Deployment** - Version-based cache invalidation for breaking changes
+3. **Per-User Cache Clearing** - Moderator tool to clear specific user's cache
 
 **Constraints**:
 - Devvit Redis does NOT support SCAN operation
 - Must track cache keys explicitly or use known patterns
 - Cannot iterate over all keys in Redis
 
-**Proposed Solutions**:
-- Option A: Cache version prefix (increment version = all old keys ignored)
-- Option B: Track all cache keys in Redis set, delete from tracking set
-- Option C: Rebuild "Reset All Data" to delete known key patterns for all users
-- Need simple solution that works with Devvit Redis limitations
+**APPROVED DESIGN: Centralized Key Builder with Version Prefix**
+
+### Key Structure
+
+All Redis keys use centralized builder with version prefix:
+
+```typescript
+// Pattern: v{version}:{scope}:{userId}:{...parts}
+
+// User-scoped keys
+v1:user:t2_abc123:profile           → { karma: 1000, age: 365, ... }
+v1:user:t2_abc123:history           → { posts: [...], comments: [...] }
+v1:user:t2_abc123:trust             → { "FriendsOver40": {...}, "FriendsOver50": {...} }
+v1:user:t2_abc123:tracking          → { "FriendsOver40": {...}, "FriendsOver50": {...} }
+
+// AI questions with tracking set
+v1:user:t2_abc123:ai:questions:keys → SET of [hash1, hash2, hash3]
+v1:user:t2_abc123:ai:questions:hash123
+v1:user:t2_abc123:ai:questions:hash456
+
+// Global keys
+v1:global:cost:daily:2025-01-30
+v1:global:cost:monthly:2025-01
+v1:global:cost:record:timestamp:userId
+v1:global:tracking:subreddit:users  → SET of all user IDs
+```
+
+### Key Design Principles
+
+1. **Version Prefix** - Enables instant cache invalidation
+   - Change v1 → v2, all old keys automatically ignored
+   - No migration needed, old keys expire naturally via TTL
+
+2. **Hierarchical Organization**
+   - User data under `v1:user:{userId}:*`
+   - Global data under `v1:global:*`
+   - Easy to clear all data for a user
+
+3. **Dictionary Storage** - Multi-value data in single key
+   - Trust scores for all subreddits: `v1:user:{userId}:trust`
+   - No need to know which subreddits exist
+   - Single Redis operation to clear
+
+4. **Tracking Sets** - For dynamic/unknown keys
+   - AI questions use tracking set: `v1:user:{userId}:ai:questions:keys`
+   - Contains list of hashes to delete
+   - Hierarchical: tracking key lives with data
+
+### Implementation Components
+
+**1. Centralized Key Builder Service**
+```typescript
+// src/storage/keyBuilder.ts
+const CACHE_VERSION = 1;
+
+function buildKey(scope: 'user' | 'global', userId: string | null, ...parts: string[]): string {
+  if (scope === 'user' && userId) {
+    return `v${CACHE_VERSION}:user:${userId}:${parts.join(':')}`;
+  }
+  return `v${CACHE_VERSION}:global:${parts.join(':')}`;
+}
+```
+
+**2. Clear User Cache Function**
+```typescript
+async function clearUserCache(userId: string) {
+  // Clear AI questions (with tracking set)
+  const aiKeysSet = buildKey('user', userId, 'ai', 'questions', 'keys');
+  const aiHashes = await redis.sMembers(aiKeysSet);
+  for (const hash of aiHashes) {
+    await redis.del(buildKey('user', userId, 'ai', 'questions', hash));
+  }
+  await redis.del(aiKeysSet);
+
+  // Clear dictionary keys (no iteration needed)
+  await redis.del(buildKey('user', userId, 'profile'));
+  await redis.del(buildKey('user', userId, 'history'));
+  await redis.del(buildKey('user', userId, 'trust'));
+  await redis.del(buildKey('user', userId, 'tracking'));
+}
+```
+
+**3. Version Bump Process**
+```
+When breaking change occurs:
+1. Change CACHE_VERSION from 1 to 2
+2. All code now uses v2:* keys
+3. Old v1:* keys ignored automatically
+4. Old keys expire via TTL (24-48h)
+```
+
+**4. Reset All Data (Enhanced)**
+```typescript
+async function resetAllData(subreddit: string) {
+  // Get all tracked users
+  const trackingKey = buildKey('global', null, 'tracking', subreddit, 'users');
+  const userIds = await redis.sMembers(trackingKey);
+
+  // Clear each user's cache
+  for (const userId of userIds) {
+    await clearUserCache(userId);
+  }
+
+  // Clear global tracking
+  await redis.del(trackingKey);
+
+  // Optionally clear cost data
+  // (TBD: preserve for auditing?)
+}
+```
+
+### Migration Path
+
+1. Create centralized key builder service
+2. Add helper functions for common operations
+3. Migrate existing code incrementally:
+   - Profile fetcher
+   - History analyzer
+   - AI analyzer
+   - Trust manager
+   - Cost tracker
+4. Update "Reset All Data" menu action
+5. Add "Clear User Cache" menu action (post/comment)
+6. Test all scenarios
+
+### Benefits
+
+✅ **Testing**: Complete data wipe via enhanced "Reset All Data"
+✅ **Version Bump**: Instant cache invalidation (v1→v2)
+✅ **Per-User Clear**: Simple function, no SCAN needed
+✅ **Maintainable**: Single source of truth for all keys
+✅ **Future-proof**: Easy to add new cache types
+✅ **No Breaking Changes**: Old keys expire naturally
 
 ---
 

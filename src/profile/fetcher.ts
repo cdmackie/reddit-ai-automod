@@ -6,9 +6,10 @@
  * status, and other profile information used for trust score calculation.
  *
  * **Caching Strategy**:
- * - Redis key pattern: `user:{userId}:profile`
+ * - Redis key pattern: `v1:user:{userId}:profile`
  * - TTL: 24 hours (86400000 ms)
  * - Check cache first, fetch from API on miss
+ * - Uses centralized key builder for version-based cache invalidation
  *
  * **Error Handling**:
  * - Invalid user ID format → Return null
@@ -29,14 +30,13 @@
 import { RedisClient, RedditAPIClient } from '@devvit/public-api';
 import { UserProfile, DEFAULT_PROFILE_CONFIG } from '../types/profile';
 import { RateLimiter } from './rateLimiter';
-import { RedisStorage } from '../storage/redis';
-import { StorageKey } from '../types/storage';
+import { ProfileCache } from '../storage/cacheOperations.js';
 
 /**
  * Fetches and caches user profile data from Reddit
  */
 export class UserProfileFetcher {
-  private storage: RedisStorage;
+  private cache: ProfileCache;
   private cacheTTL: number;
 
   constructor(
@@ -44,7 +44,7 @@ export class UserProfileFetcher {
     private reddit: RedditAPIClient,
     private rateLimiter: RateLimiter
   ) {
-    this.storage = new RedisStorage(redis);
+    this.cache = new ProfileCache(redis);
     this.cacheTTL = DEFAULT_PROFILE_CONFIG.profileCacheTTL;
   }
 
@@ -69,9 +69,7 @@ export class UserProfileFetcher {
 
     try {
       // Check cache first
-      // Key format: user:{userId}:profile
-      const cacheKey = this.storage.buildKey(StorageKey.USER_PROFILE, userId, 'profile');
-      const cached = await this.storage.get<UserProfile>(cacheKey);
+      const cached = await this.cache.get(userId);
 
       if (cached) {
         console.log(`[ProfileFetcher] Cache hit for user ${userId}`);
@@ -92,7 +90,7 @@ export class UserProfileFetcher {
       }
 
       // Cache the result
-      await this.cacheProfile(profile);
+      await this.cache.set(profile.userId, profile, this.cacheTTL);
 
       console.log(`[ProfileFetcher] Successfully fetched and cached profile for ${profile.username}`);
       return profile;
@@ -156,26 +154,6 @@ export class UserProfileFetcher {
     } catch (error) {
       console.error(`[ProfileFetcher] API error fetching user ${userId}:`, error);
       return null;
-    }
-  }
-
-  /**
-   * Cache user profile in Redis
-   *
-   * Stores the profile data with a 24-hour TTL. Date objects are serialized
-   * as ISO strings by JSON.stringify and need to be deserialized on retrieval.
-   *
-   * @param profile - User profile data to cache
-   * @private
-   */
-  private async cacheProfile(profile: UserProfile): Promise<void> {
-    try {
-      // Key format: user:{userId}:profile
-      const cacheKey = this.storage.buildKey(StorageKey.USER_PROFILE, profile.userId, 'profile');
-      await this.storage.set(cacheKey, profile, this.cacheTTL);
-    } catch (error) {
-      console.error(`[ProfileFetcher] Error caching profile for ${profile.userId}:`, error);
-      // Non-fatal error, don't throw - cache failure shouldn't break the request
     }
   }
 
