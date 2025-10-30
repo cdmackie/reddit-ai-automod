@@ -141,8 +141,8 @@ export class RulesEngine {
           if (matched) {
             // Rule matched! Prepare result
             const reason = this.substitutor.substitute(rule.actionConfig.reason, evalContext);
-            const comment = rule.actionConfig.comment
-              ? this.substitutor.substitute(rule.actionConfig.comment, evalContext)
+            const modlog = rule.actionConfig.modlog
+              ? this.substitutor.substitute(rule.actionConfig.modlog, evalContext)
               : null;
 
             // Get confidence
@@ -168,7 +168,7 @@ export class RulesEngine {
             return {
               action,
               reason: dryRunMode && rule.action !== 'APPROVE' ? `[DRY RUN] ${reason}` : reason,
-              comment: dryRunMode ? null : comment,
+              modlog: dryRunMode ? null : modlog,
               matchedRule: rule.id,
               confidence,
               dryRun: dryRunMode,

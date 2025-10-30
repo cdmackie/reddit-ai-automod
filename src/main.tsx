@@ -289,6 +289,24 @@ Devvit.addSettings([
     scope: 'installation',
   },
 
+  // ===== Comment Templates =====
+  {
+    type: 'paragraph',
+    name: 'removeCommentTemplate',
+    label: '💬 REMOVE Action Comment Template',
+    helpText: 'Custom template for comments posted when content is removed. Leave blank to use default. Variables: {reason}, {subreddit}, {contentType}, {confidence}',
+    defaultValue: '',
+    scope: 'installation',
+  },
+  {
+    type: 'paragraph',
+    name: 'commentActionTemplate',
+    label: '💬 COMMENT Action Template',
+    helpText: 'Custom template for warning comments (no removal). Leave blank to use default. Variables: {reason}, {subreddit}, {contentType}, {confidence}',
+    defaultValue: '',
+    scope: 'installation',
+  },
+
   // ===== Notification Recipients (Unified) =====
   {
     type: 'select',
@@ -348,6 +366,16 @@ Devvit.addSettings([
     scope: 'installation',
   },
 
+  // ===== Mod Notes =====
+  {
+    type: 'boolean',
+    name: 'enableModNotes',
+    label: '📝 Create Mod Notes',
+    helpText: 'Add Reddit mod notes when AI Automod takes action (remove/flag/comment). Notes include rule name, trust score, AI confidence, and reasoning for transparency.',
+    defaultValue: true,
+    scope: 'installation',
+  },
+
   // ===== Dry-Run Mode =====
   {
     type: 'boolean',
@@ -374,6 +402,7 @@ console.log('[AI Automod] Registering menu items...');
 Devvit.addMenuItem({
   label: 'AI Automod Settings',
   location: 'subreddit',
+  forUserType: 'moderator',
   onPress: async (_event, context) => {
     context.ui.showToast('Phase 4: Settings UI - Configure in Subreddit Settings');
   },
@@ -384,6 +413,7 @@ console.log('[AI Automod] ✓ Registered: AI Automod Settings (subreddit)');
 Devvit.addMenuItem({
   label: 'View AI Costs',
   location: 'subreddit',
+  forUserType: 'moderator',
   onPress: async (_event, context) => {
     try {
       const dashboard = await renderCostDashboard(context);

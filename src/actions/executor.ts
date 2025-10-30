@@ -32,14 +32,15 @@
 import { TriggerContext, Post } from '@devvit/public-api';
 import { RuleEvaluationResult, ActionExecutionResult } from '../types/rules.js';
 import { UserProfile } from '../types/profile.js';
+import { DEFAULT_REMOVE_TEMPLATE, DEFAULT_COMMENT_TEMPLATE, formatTemplate } from './templates.js';
+import { addAutomodNote } from './modNotes.js';
+import { AIQuestionBatchResult } from '../types/ai.js';
 
 /**
  * Reddit API limits and constants
  */
 const MAX_COMMENT_LENGTH = 10000;
 const MAX_REPORT_REASON_LENGTH = 100;
-const DEFAULT_REMOVAL_MESSAGE =
-  'Your post has been removed.\n\nReason: {reason}\n\nIf you believe this was done in error, please contact the moderators.';
 
 /**
  * Validate and truncate comment text to Reddit's character limit
@@ -60,6 +61,73 @@ function validateCommentLength(text: string, correlationId: string): string {
 }
 
 /**
+ * Extract AI reasoning from analysis result
+ * Gets reasoning from the first answer with high confidence
+ */
+function extractAIReasoning(aiAnalysis: AIQuestionBatchResult | undefined): string | undefined {
+  if (!aiAnalysis || !aiAnalysis.answers || aiAnalysis.answers.length === 0) {
+    return undefined;
+  }
+
+  // Find first answer with YES response and confidence >= 70
+  const significantAnswer = aiAnalysis.answers.find(
+    a => a.answer === 'YES' && a.confidence >= 70
+  );
+
+  return significantAnswer?.reasoning;
+}
+
+/**
+ * Create mod note after successful action execution
+ * Handles all the data extraction and error handling
+ */
+async function createModNote(
+  params: ExecuteActionParams,
+  action: 'REMOVE' | 'FLAG' | 'COMMENT',
+  correlationId: string
+): Promise<void> {
+  const { post, profile, ruleResult, context, aiAnalysis } = params;
+
+  // Don't create mod notes in dry-run mode
+  if (params.dryRun) {
+    console.log(`[ActionExecutor:${correlationId}] Skipping mod note creation (dry-run mode)`);
+    return;
+  }
+
+  try {
+    // Get AI data from analysis result
+    const aiProvider = aiAnalysis?.provider;
+    const aiModel = aiAnalysis?.model;
+    const aiReasoning = extractAIReasoning(aiAnalysis);
+
+    await addAutomodNote(context, {
+      userId: post.authorId || 'unknown',
+      username: post.authorName || '[deleted]',
+      subreddit: post.subredditName,
+      contentId: post.id,
+      action,
+      ruleName: ruleResult.matchedRule,
+      trustScore: Math.round(profile.totalKarma / 100), // Simplified trust score
+      accountAge: profile.accountAgeInDays * 24 * 60 * 60 * 1000, // Convert days to milliseconds
+      totalKarma: profile.totalKarma,
+      confidence: ruleResult.confidence,
+      aiProvider,
+      aiModel,
+      aiReasoning,
+      reason: ruleResult.reason,
+    });
+
+    console.log(`[ActionExecutor:${correlationId}] Mod note created successfully`);
+  } catch (error) {
+    // Log error but don't throw - mod note failure shouldn't block action execution
+    console.error(`[ActionExecutor:${correlationId}] Failed to create mod note:`, {
+      error: error instanceof Error ? error.message : String(error),
+      action,
+    });
+  }
+}
+
+/**
  * Parameters for executing an action
  */
 export interface ExecuteActionParams {
@@ -73,6 +141,8 @@ export interface ExecuteActionParams {
   context: TriggerContext;
   /** If true, log instead of execute */
   dryRun: boolean;
+  /** Optional AI analysis result for mod notes */
+  aiAnalysis?: AIQuestionBatchResult;
 }
 
 /**
@@ -214,6 +284,9 @@ async function executeFlagAction(
       reason: ruleResult.reason,
     });
 
+    // Create mod note after successful FLAG
+    await createModNote(params, 'FLAG', correlationId);
+
     return {
       success: true,
       action: 'FLAG',
@@ -254,11 +327,11 @@ async function executeFlagAction(
 }
 
 /**
- * Execute REMOVE action - remove post and optionally add comment
+ * Execute REMOVE action - remove post and add removal comment
  *
- * Removes a post from the subreddit and optionally posts an explanation
- * comment. If ruleResult.comment is provided, it's used as the removal
- * explanation. Otherwise, uses a default message with the reason.
+ * Removes a post from the subreddit and posts an explanation comment
+ * using the configured template (or default template if not customized).
+ * The template is populated with the rule's reason field and other variables.
  *
  * In dry-run mode, logs the action instead of executing.
  *
@@ -273,19 +346,27 @@ async function executeRemoveAction(
   const { post, ruleResult, context, dryRun } = params;
 
   try {
-    // Determine comment text
-    let commentText = ruleResult.comment ||
-      DEFAULT_REMOVAL_MESSAGE.replace('{reason}', ruleResult.reason);
+    // Get custom template from settings or use default
+    const customTemplate = await context.settings.get('removeCommentTemplate');
+    const template = (customTemplate as string) || DEFAULT_REMOVE_TEMPLATE;
+
+    // Format template with variables
+    const commentText = formatTemplate(template, {
+      reason: ruleResult.reason,
+      subreddit: post.subredditName,
+      contentType: 'post',
+      confidence: ruleResult.confidence,
+    });
 
     // Validate comment length
-    commentText = validateCommentLength(commentText, correlationId);
+    const validatedCommentText = validateCommentLength(commentText, correlationId);
 
     if (dryRun) {
       console.log(`[ActionExecutor:${correlationId}] [DRY-RUN] Would REMOVE post:`, {
         postId: post.id,
         reason: ruleResult.reason,
         wouldComment: true,
-        commentText,
+        commentText: validatedCommentText,
       });
 
       return {
@@ -303,7 +384,7 @@ async function executeRemoveAction(
     try {
       await context.reddit.submitComment({
         id: post.id,
-        text: commentText,
+        text: validatedCommentText,
       });
       commentAdded = true;
 
@@ -325,6 +406,9 @@ async function executeRemoveAction(
       reason: ruleResult.reason,
       commentAdded,
     });
+
+    // Create mod note after successful REMOVE
+    await createModNote(params, 'REMOVE', correlationId);
 
     return {
       success: true,
@@ -384,28 +468,25 @@ async function executeCommentAction(
   const { post, ruleResult, context, dryRun } = params;
 
   try {
-    // Comment text is required for COMMENT action
-    if (!ruleResult.comment) {
-      console.error(`[ActionExecutor:${correlationId}] COMMENT action missing comment text:`, {
-        postId: post.id,
-        matchedRule: ruleResult.matchedRule,
-      });
+    // Get custom template from settings or use default
+    const customTemplate = await context.settings.get('commentActionTemplate');
+    const template = (customTemplate as string) || DEFAULT_COMMENT_TEMPLATE;
 
-      return {
-        success: false,
-        action: 'COMMENT',
-        error: 'Comment text is required for COMMENT action',
-        dryRun,
-      };
-    }
+    // Format template with variables
+    const commentText = formatTemplate(template, {
+      reason: ruleResult.reason,
+      subreddit: post.subredditName,
+      contentType: 'post',
+      confidence: ruleResult.confidence,
+    });
 
     // Validate comment length
-    const commentText = validateCommentLength(ruleResult.comment, correlationId);
+    const validatedCommentText = validateCommentLength(commentText, correlationId);
 
     if (dryRun) {
       console.log(`[ActionExecutor:${correlationId}] [DRY-RUN] Would COMMENT on post:`, {
         postId: post.id,
-        commentText,
+        commentText: validatedCommentText,
       });
 
       return {
@@ -413,7 +494,7 @@ async function executeCommentAction(
         action: 'COMMENT',
         dryRun: true,
         details: {
-          commentText,
+          commentText: validatedCommentText,
         },
       };
     }
@@ -421,22 +502,25 @@ async function executeCommentAction(
     // Execute: Post comment
     await context.reddit.submitComment({
       id: post.id,
-      text: commentText,
+      text: validatedCommentText,
     });
 
     // Phase 5.33: Comment tracking removed - now using getAppUser() in commentSubmit handler
 
     console.log(`[ActionExecutor:${correlationId}] Successfully posted comment:`, {
       postId: post.id,
-      commentLength: commentText.length,
+      commentLength: validatedCommentText.length,
     });
+
+    // Create mod note after successful COMMENT
+    await createModNote(params, 'COMMENT', correlationId);
 
     return {
       success: true,
       action: 'COMMENT',
       dryRun: false,
       details: {
-        commentText,
+        commentText: validatedCommentText,
       },
     };
   } catch (error) {

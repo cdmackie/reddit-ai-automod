@@ -178,6 +178,8 @@ export interface AIAnalysisResult {
   timestamp: number;
   /** AI provider that performed the analysis */
   provider: AIProviderType;
+  /** AI model used for this analysis */
+  model: string;
   /** Correlation ID for tracking */
   correlationId: string;
   /** Prompt version used for this analysis */
@@ -598,6 +600,8 @@ export interface AIQuestionBatchResult {
   timestamp: number;
   /** AI provider that performed the analysis */
   provider: AIProviderType;
+  /** AI model used for this analysis */
+  model: string;
   /** Correlation ID for tracking */
   correlationId: string;
   /** Cache TTL for this result (seconds) - based on trust score */

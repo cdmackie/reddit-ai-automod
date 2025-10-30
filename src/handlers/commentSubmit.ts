@@ -209,7 +209,7 @@ export async function handleCommentSubmit(
       ruleResult: {
         action: pipelineResult.action,
         reason: pipelineResult.reason, // For FLAG actions
-        comment: pipelineResult.action === 'COMMENT' ? pipelineResult.reason : undefined,
+        modlog: pipelineResult.action === 'COMMENT' ? pipelineResult.reason : undefined,
         removalReason: pipelineResult.action === 'REMOVE' ? pipelineResult.reason : undefined,
         matchedRule: pipelineResult.metadata?.builtInRuleId ||
                      (pipelineResult.metadata?.moderationCategories?.join(',')) ||
@@ -220,6 +220,7 @@ export async function handleCommentSubmit(
       profile,
       context,
       dryRun: dryRunEnabled,
+      aiAnalysis: undefined, // Pipeline actions don't use AI
     });
 
     // Enhanced audit log with pipeline metadata
@@ -440,6 +441,7 @@ export async function handleCommentSubmit(
     profile,
     context,
     dryRun: effectiveDryRun,
+    aiAnalysis, // Pass AI analysis data for mod notes
   });
 
   // Log to audit trail
@@ -495,17 +497,23 @@ export async function handleCommentSubmit(
     const trustManager = new CommunityTrustManager(context as Devvit.Context);
 
     // Map action to trust action
-    let trustAction: 'APPROVE' | 'FLAG' | 'REMOVE';
+    // COMMENT actions should NOT update trust - wait for moderator decision
+    let trustAction: 'APPROVE' | 'FLAG' | 'REMOVE' | null = null;
     if (ruleResult.action === 'APPROVE') {
       trustAction = 'APPROVE';
     } else if (ruleResult.action === 'FLAG') {
       trustAction = 'FLAG';
-    } else {
+    } else if (ruleResult.action === 'REMOVE') {
       trustAction = 'REMOVE';
     }
+    // COMMENT action results in trustAction = null (no update)
 
-    await trustManager.updateTrust(userId, subredditName, trustAction, 'comment');
-    console.log(`[CommentSubmit] Updated community trust: ${trustAction}`);
+    if (trustAction) {
+      await trustManager.updateTrust(userId, subredditName, trustAction, 'comment');
+      console.log(`[CommentSubmit] Updated community trust: ${trustAction}`);
+    } else {
+      console.log(`[CommentSubmit] Action ${ruleResult.action} - waiting for moderator decision before updating trust`);
+    }
 
     // If approved, track for ModAction
     if (ruleResult.action === 'APPROVE') {

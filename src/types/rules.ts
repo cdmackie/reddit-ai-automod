@@ -110,11 +110,11 @@ export interface Condition {
  * Defines what happens when a rule matches
  */
 export interface ActionConfig {
-  /** Reason for the action (supports variable substitution with {field.path}) */
+  /** User-facing reason shown in removal/warning comments (supports variable substitution with {field.path}) */
   reason: string;
-  /** Comment text to post (for COMMENT action or REMOVE with explanation) */
-  comment?: string | null;
-  /** Custom variables for substitution in reason/comment text */
+  /** Optional: Detailed information for mod logs only (not shown to users) */
+  modlog?: string | null;
+  /** Custom variables for substitution in reason/modlog text */
   variables?: Record<string, string>;
 }
 
@@ -234,10 +234,10 @@ export interface RuleEvaluationContext {
 export interface RuleEvaluationResult {
   /** Action to take */
   action: ModerationAction;
-  /** Reason for the action (with variables substituted) */
+  /** User-facing reason shown in comments (with variables substituted) */
   reason: string;
-  /** Comment text (with variables substituted) */
-  comment?: string | null;
+  /** Optional: Detailed mod log information (with variables substituted) */
+  modlog?: string | null;
   /** ID of the rule that matched */
   matchedRule: string;
   /** Confidence score (0-100, always 100 for hard rules) */

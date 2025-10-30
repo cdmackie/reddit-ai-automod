@@ -656,6 +656,7 @@ export class AIAnalyzer {
     const aiSettings = await SettingsService.getAIConfig(this.context);
     let result: AIAnalysisResult;
     let usedProvider: AIProviderType;
+    let usedModel: string;
 
     // Try primary provider
     try {
@@ -663,6 +664,7 @@ export class AIAnalyzer {
       const primaryProvider = await this.getProvider(aiSettings.primaryProvider, aiSettings);
       result = await primaryProvider.analyze(request);
       usedProvider = aiSettings.primaryProvider;
+      usedModel = this.getModelName(aiSettings.primaryProvider, aiSettings);
       console.log('[AIAnalyzer] ✓ Primary provider succeeded:', aiSettings.primaryProvider);
     } catch (primaryError) {
       // Primary failed, try fallback
@@ -678,6 +680,7 @@ export class AIAnalyzer {
         const fallbackProvider = await this.getProvider(aiSettings.fallbackProvider, aiSettings);
         result = await fallbackProvider.analyze(request);
         usedProvider = aiSettings.fallbackProvider;
+        usedModel = this.getModelName(aiSettings.fallbackProvider, aiSettings);
         console.log('[AIAnalyzer] ✓ Fallback provider succeeded:', aiSettings.fallbackProvider);
       } catch (fallbackError) {
         console.error('[AIAnalyzer] Fallback provider also failed:', fallbackError instanceof Error ? fallbackError.message : String(fallbackError));
@@ -707,6 +710,7 @@ export class AIAnalyzer {
     // Add metadata to result
     result.correlationId = request.context.correlationId;
     result.latencyMs = Date.now() - startTime;
+    result.model = usedModel; // Add model name for mod notes
 
     // Calculate cache TTL based on trust score and risk
     const isKnownBad = result.overallRisk === 'HIGH' || result.overallRisk === 'CRITICAL';
@@ -873,6 +877,7 @@ export class AIAnalyzer {
     const aiSettings = await SettingsService.getAIConfig(this.context);
     let result: AIQuestionBatchResult;
     let usedProvider: AIProviderType;
+    let usedModel: string;
 
     // Try primary provider
     try {
@@ -885,6 +890,7 @@ export class AIAnalyzer {
 
       result = await primaryProvider.analyzeWithQuestions(request);
       usedProvider = aiSettings.primaryProvider;
+      usedModel = this.getModelName(aiSettings.primaryProvider, aiSettings);
       console.log('[AIAnalyzer] ✓ Primary provider succeeded for questions:', aiSettings.primaryProvider);
     } catch (primaryError) {
       // Primary failed, try fallback
@@ -905,6 +911,7 @@ export class AIAnalyzer {
 
         result = await fallbackProvider.analyzeWithQuestions(request);
         usedProvider = aiSettings.fallbackProvider;
+        usedModel = this.getModelName(aiSettings.fallbackProvider, aiSettings);
         console.log('[AIAnalyzer] ✓ Fallback provider succeeded for questions:', aiSettings.fallbackProvider);
       } catch (fallbackError) {
         console.error('[AIAnalyzer] Fallback provider also failed for questions:', fallbackError instanceof Error ? fallbackError.message : String(fallbackError));
@@ -934,6 +941,7 @@ export class AIAnalyzer {
     // Add metadata to result
     result.correlationId = request.context.correlationId;
     result.latencyMs = Date.now() - startTime;
+    result.model = usedModel; // Add model name for mod notes
 
     // Calculate cache TTL based on trust score
     result.cacheTTL = getCacheTTLForTrustScore(trustScore, false);
@@ -1144,6 +1152,30 @@ export class AIAnalyzer {
   /**
    * Get provider instance - simple if/else based on type
    */
+  /**
+   * Get model name for a provider type
+   *
+   * @param type - Provider type
+   * @param aiSettings - AI settings from configuration
+   * @returns Model name string
+   * @private
+   */
+  private getModelName(type: AIProviderType, aiSettings: any): string {
+    if (type === 'claude') {
+      return 'claude-3-5-haiku-20241022';
+    }
+
+    if (type === 'openai') {
+      return 'gpt-4o-mini';
+    }
+
+    if (type === 'openai-compatible') {
+      return aiSettings.openaiCompatibleModel || 'custom-model';
+    }
+
+    return 'unknown';
+  }
+
   private async getProvider(type: AIProviderType, aiSettings: any): Promise<IAIProvider> {
     if (type === 'claude') {
       if (!aiSettings.claudeApiKey) {

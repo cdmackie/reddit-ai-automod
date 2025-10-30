@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-30
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.85
+**Current Version**: 0.1.96
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.45 Complete ✅ | Fixed AI prompt logic to use preponderance of evidence
+**Status**: Phase 5.47 Complete ✅ | Mod notes for transparency
 
 ---
 
@@ -32,6 +32,35 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.47 (2025-10-30)
+- [x] Implemented Reddit mod notes for AI Automod actions
+- [x] Created mod notes helper module (src/actions/modNotes.ts)
+- [x] Added enableModNotes setting (default: true) to main.tsx
+- [x] Updated AI analyzer to return provider and model information
+- [x] Added model field to AIAnalysisResult and AIQuestionBatchResult types
+- [x] Integrated mod note creation into action executor (FLAG, REMOVE, COMMENT)
+- [x] Mod notes include: rule name, trust score, account age, karma, AI provider/model, confidence, reasoning
+- [x] Format optimized for 250 character limit with smart truncation
+- [x] Graceful error handling - mod note failures don't block action execution
+- [x] Only created after successful actions (not in dry-run mode)
+- [x] Deployed version 0.1.96
+- [x] Build succeeded with no TypeScript errors
+
+### Phase 5.46 (2025-10-30)
+- [x] Implemented comment template system for REMOVE and COMMENT actions
+- [x] Added customizable templates via settings with professional defaults
+- [x] Created template variable substitution: {reason}, {subreddit}, {contentType}, {confidence}
+- [x] Renamed confusing `comment` field to `modlog` in actionConfig
+- [x] Made menu items (View AI Costs, AI Automod Settings) moderator-only
+- [x] Fixed modmail URL format (removed extra slash: to=r/{subreddit})
+- [x] Improved template wording ("someone will review" instead of "a human")
+- [x] Fixed COMMENT action trust tracking bug (was incorrectly treating as REMOVE)
+- [x] Simplified COMMENT template to just reason + footer
+- [x] Standardized footer format across all templates for consistency
+- [x] Updated README.md with new field names and template documentation
+- [x] Deployed versions 0.1.88 through 0.1.95
+- [x] Committed and pushed all changes
 
 ### Phase 5.45 (2025-10-30)
 - [x] Fixed AI prompt decision framework to use preponderance of evidence
@@ -224,6 +253,27 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 ---
 
 ## Recent Decisions
+
+**2025-10-30**: Implemented mod notes for transparency and audit trail
+- **Problem**: Moderators had no visibility into why AI Automod took specific actions. No record of AI reasoning, confidence scores, or which provider made the decision.
+- **Solution**: Created automatic Reddit mod notes for all AI Automod actions (FLAG, REMOVE, COMMENT). Notes include rule name, trust score, account age/karma, AI provider/model, confidence score, and AI reasoning.
+- **Format**: Optimized for Reddit's 250 character limit with smart truncation:
+  ```
+  AI Automod: Removed
+  Rule: Dating content detection
+  Trust: 34/100 | Age: 2d | Karma: 15
+  AI: 87% (OpenAI GPT-4o-mini)
+  User shows explicit dating intent across subreddits. Scammer pattern detected.
+  ```
+- **Impact**: Full transparency for mod teams. Clear audit trail for appeals. Easy pattern recognition across users. Shows which AI model made each decision.
+- **Implementation**: Created modNotes.ts helper, updated AI analyzer to track provider/model, integrated into executor after successful actions. Respects enableModNotes setting (default: ON).
+
+**2025-10-30**: Implemented comment templates and improved field naming
+- **Problem**: Removal/warning comments were just showing raw reason text with no context or appeal information. Field naming was confusing (`comment` field purpose unclear).
+- **Solution**: Created professional comment templates for REMOVE and COMMENT actions with customizable settings. Renamed `comment` to `modlog` to clarify purpose (user-facing vs mod-only).
+- **Impact**: Much better user experience - removal comments now explain what happened, how to appeal, and that replies aren't monitored. Cleaner field naming makes rules easier to understand.
+- **Templates**: REMOVE shows full explanation with appeal process. COMMENT shows just the reason with simple footer. Both customizable via settings with professional defaults.
+- **Bug Fixed**: COMMENT actions were incorrectly being treated as REMOVE for trust tracking, causing posts to be removed when they should only get a warning comment.
 
 **2025-10-30**: Fixed AI prompt to use preponderance of evidence instead of requiring certainty
 - **Problem**: AI was finding correct evidence (r/SeattleWA posts) but answering NO to "Does this user live in the US?" questions. Had 70% confidence but wrong answer.
