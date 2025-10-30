@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.96] - 2025-10-30
+
+### Added
+- Automatic Reddit mod notes for AI Automod actions (FLAG, REMOVE, COMMENT)
+- Mod notes include: rule name, trust score, account age, karma, AI provider/model, confidence, reasoning
+- `enableModNotes` setting (default: ON) to control mod note creation
+- AI provider and model tracking in analysis results
+- `model` field added to `AIAnalysisResult` and `AIQuestionBatchResult` types
+- Smart truncation to fit 250 character Reddit limit
+
+### Changed
+- Updated AI analyzer to track which provider and model performed each analysis
+- Integrated mod note creation into action executor (after successful actions)
+- Mod notes only created in non-dry-run mode
+
+### Benefits
+- Full transparency for mod teams on AI decisions
+- Clear audit trail for user appeals
+- Easy pattern recognition across users
+- Shows which AI model made each decision
+
+## [0.1.95] - 2025-10-30
+
+### Added
+- Comment template system for REMOVE and COMMENT actions
+- Customizable templates via settings with professional defaults
+- Template variable substitution: `{reason}`, `{subreddit}`, `{contentType}`, `{confidence}`
+
+### Changed
+- Renamed confusing `comment` field to `modlog` in actionConfig for clarity
+- Made menu items (View AI Costs, AI Automod Settings) moderator-only
+- Improved template wording ("someone will review" instead of "a human")
+- Simplified COMMENT template to just reason + footer
+- Standardized footer format across all templates
+
+### Fixed
+- COMMENT action trust tracking bug (was incorrectly treating as REMOVE)
+- Modmail URL format (removed extra slash in `to=r/{subreddit}`)
+
+## [0.1.85] - 2025-10-30
+
+### Fixed
+- AI prompt decision framework to use preponderance of evidence instead of requiring absolute certainty
+- Location inference issue (SeattleWA posts now correctly indicate US residence)
+- AI was treating YES/NO questions as requiring 100% certainty
+
+### Changed
+- Reframed prompt: "Answer YES if evidence points toward yes, even if not 100% certain"
+- Added DECISION FRAMEWORK section with clear guidance on probabilistic reasoning
+- Updated posting history description from "last 20" to "up to 200 items"
+- Confidence score now reflects evidence strength, not answer certainty threshold
+
 ## [0.1.58] - 2025-10-29
 
 ### Added
