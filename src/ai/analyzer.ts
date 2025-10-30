@@ -90,12 +90,16 @@
 import { Devvit } from '@devvit/public-api';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import { AIAnalysisRequest, AIAnalysisResult, AIQuestion, AIQuestionRequest, AIQuestionBatchResult } from '../types/ai.js';
+import { AIAnalysisRequest, AIAnalysisResult, AIQuestion, AIQuestionRequest, AIQuestionBatchResult, AIProviderType, IAIProvider } from '../types/ai.js';
 import { UserProfile, UserPostHistory } from '../types/profile.js';
 import { ProviderSelector } from './selector.js';
+import { ClaudeProvider } from './claude.js';
+import { OpenAIProvider } from './openai.js';
+import { OpenAICompatibleProvider } from './openaiCompatible.js';
 import { RequestCoalescer } from './requestCoalescer.js';
 import { CostTracker } from './costTracker.js';
 import { getCacheTTLForTrustScore } from '../config/ai.js';
+import { SettingsService } from '../config/settingsService.js';
 
 /**
  * Current post data for analysis context
@@ -615,51 +619,37 @@ export class AIAnalyzer {
   ): Promise<AIAnalysisResult> {
     const startTime = Date.now();
 
-    // Select best available AI provider and try with automatic fallback
-    const selector = ProviderSelector.getInstance(this.context);
-    let provider = await selector.selectProvider();
-
-    if (provider === null) {
-      console.error('[AIAnalyzer] No AI provider available', {
-        correlationId: request.context.correlationId,
-      });
-      throw new Error('No AI provider available');
-    }
-
-    console.log('[AIAnalyzer] Provider selected', {
-      provider: provider.type,
-      model: provider.model,
-      correlationId: request.context.correlationId,
-    });
-
-    // Try to analyze, with fallback if primary fails
+    // Get settings
+    const aiSettings = await SettingsService.getAIConfig(this.context);
     let result: AIAnalysisResult;
-    try {
-      result = await provider.analyze(request);
-    } catch (error) {
-      console.error('[AIAnalyzer] Primary provider failed, trying fallback', {
-        provider: provider.type,
-        error: error instanceof Error ? error.message : String(error),
-        correlationId: request.context.correlationId,
-      });
+    let usedProvider: AIProviderType;
 
-      // Try to get fallback provider (excluding the one that just failed)
-      const fallbackProvider = await selector.selectProvider(provider.type);
-      if (fallbackProvider === null) {
-        console.error('[AIAnalyzer] No fallback provider available', {
-          correlationId: request.context.correlationId,
-        });
-        throw error; // Re-throw original error
+    // Try primary provider
+    try {
+      console.log('[AIAnalyzer] Trying primary provider:', aiSettings.primaryProvider);
+      const primaryProvider = await this.getProvider(aiSettings.primaryProvider, aiSettings);
+      result = await primaryProvider.analyze(request);
+      usedProvider = aiSettings.primaryProvider;
+      console.log('[AIAnalyzer] ✓ Primary provider succeeded:', aiSettings.primaryProvider);
+    } catch (primaryError) {
+      // Primary failed, try fallback
+      console.warn('[AIAnalyzer] Primary provider failed:', primaryError instanceof Error ? primaryError.message : String(primaryError));
+
+      if (!aiSettings.fallbackProvider || aiSettings.fallbackProvider === 'none') {
+        console.error('[AIAnalyzer] No fallback configured');
+        throw primaryError;
       }
 
-      console.log('[AIAnalyzer] Retrying with fallback provider', {
-        fallback: fallbackProvider.type,
-        correlationId: request.context.correlationId,
-      });
-
-      // Try with fallback provider
-      provider = fallbackProvider;
-      result = await provider.analyze(request);
+      console.log('[AIAnalyzer] Trying fallback provider:', aiSettings.fallbackProvider);
+      try {
+        const fallbackProvider = await this.getProvider(aiSettings.fallbackProvider, aiSettings);
+        result = await fallbackProvider.analyze(request);
+        usedProvider = aiSettings.fallbackProvider;
+        console.log('[AIAnalyzer] ✓ Fallback provider succeeded:', aiSettings.fallbackProvider);
+      } catch (fallbackError) {
+        console.error('[AIAnalyzer] Fallback provider also failed:', fallbackError instanceof Error ? fallbackError.message : String(fallbackError));
+        throw fallbackError;
+      }
     }
 
     // Record cost for budget tracking
@@ -667,7 +657,7 @@ export class AIAnalyzer {
     await costTracker.recordCost({
       id: request.context.correlationId,
       timestamp: Date.now(),
-      provider: provider.type,
+      provider: usedProvider,
       userId: request.userId,
       tokensUsed: result.tokensUsed,
       costUSD: result.costUSD,
@@ -676,7 +666,7 @@ export class AIAnalyzer {
 
     console.log('[AIAnalyzer] Cost recorded', {
       correlationId: request.context.correlationId,
-      provider: provider.type,
+      provider: usedProvider,
       tokensUsed: result.tokensUsed,
       costUSD: result.costUSD.toFixed(4),
     });
@@ -1100,5 +1090,37 @@ export class AIAnalyzer {
     if (lower === 'bitcointaxes') return 'bitcointaxes';
 
     return 'other';
+  }
+
+  /**
+   * Get provider instance - simple if/else based on type
+   */
+  private async getProvider(type: AIProviderType, aiSettings: any): Promise<IAIProvider> {
+    if (type === 'claude') {
+      if (!aiSettings.claudeApiKey) {
+        throw new Error('Claude API key not configured');
+      }
+      return new ClaudeProvider(aiSettings.claudeApiKey, 'claude-3-5-haiku-20241022');
+    }
+
+    if (type === 'openai') {
+      if (!aiSettings.openaiApiKey) {
+        throw new Error('OpenAI API key not configured');
+      }
+      return new OpenAIProvider(aiSettings.openaiApiKey, 'gpt-4o-mini');
+    }
+
+    if (type === 'openai-compatible') {
+      if (!aiSettings.openaiCompatibleApiKey || !aiSettings.openaiCompatibleBaseURL || !aiSettings.openaiCompatibleModel) {
+        throw new Error('OpenAI Compatible not fully configured');
+      }
+      return new OpenAICompatibleProvider({
+        apiKey: aiSettings.openaiCompatibleApiKey,
+        baseURL: aiSettings.openaiCompatibleBaseURL,
+        model: aiSettings.openaiCompatibleModel,
+      });
+    }
+
+    throw new Error(`Unknown provider type: ${type}`);
   }
 }
