@@ -239,8 +239,8 @@ export class AIQuestionsCache {
       expiration: new Date(Date.now() + ttlMs),
     });
 
-    // Track this hash in the set
-    await this.redis.sAdd(trackingKey, [{ member: hash, score: Date.now() }]);
+    // Track this hash in the sorted set (using timestamp as score)
+    await this.redis.zAdd(trackingKey, { member: hash, score: Date.now() });
   }
 
   /**
@@ -251,7 +251,7 @@ export class AIQuestionsCache {
     const trackingKey = UserKeys.aiQuestionsKeys(userId, this.settingsVersion);
 
     await this.redis.del(key);
-    await this.redis.sRem(trackingKey, [hash]);
+    await this.redis.zRem(trackingKey, [hash]);
   }
 
   /**
@@ -259,7 +259,8 @@ export class AIQuestionsCache {
    */
   async deleteAll(userId: string): Promise<number> {
     const trackingKey = UserKeys.aiQuestionsKeys(userId, this.settingsVersion);
-    const hashes = await this.redis.sMembers(trackingKey);
+    // Get all members from sorted set (score range -inf to +inf)
+    const hashes = await this.redis.zRange(trackingKey, 0, -1);
 
     let deleted = 0;
     for (const hashEntry of hashes) {
@@ -277,7 +278,8 @@ export class AIQuestionsCache {
    */
   async getTrackedHashes(userId: string): Promise<string[]> {
     const trackingKey = UserKeys.aiQuestionsKeys(userId, this.settingsVersion);
-    const hashes = await this.redis.sMembers(trackingKey);
+    // Get all members from sorted set
+    const hashes = await this.redis.zRange(trackingKey, 0, -1);
     return hashes.map((h) => h.member);
   }
 }
@@ -294,24 +296,25 @@ export class GlobalTracking {
    * Add user to subreddit tracking set
    */
   async addUser(subreddit: string, userId: string): Promise<void> {
-    const key = GlobalKeys.trackedUsers(this.settingsVersion, subreddit);
-    await this.redis.sAdd(key, [{ member: userId, score: Date.now() }]);
+    const key = GlobalKeys.trackedUsers(subreddit, this.settingsVersion);
+    await this.redis.zAdd(key, { member: userId, score: Date.now() });
   }
 
   /**
    * Remove user from subreddit tracking set
    */
   async removeUser(subreddit: string, userId: string): Promise<void> {
-    const key = GlobalKeys.trackedUsers(this.settingsVersion, subreddit);
-    await this.redis.sRem(key, [userId]);
+    const key = GlobalKeys.trackedUsers(subreddit, this.settingsVersion);
+    await this.redis.zRem(key, [userId]);
   }
 
   /**
    * Get all tracked users for subreddit
    */
   async getUsers(subreddit: string): Promise<string[]> {
-    const key = GlobalKeys.trackedUsers(this.settingsVersion, subreddit);
-    const users = await this.redis.sMembers(key);
+    const key = GlobalKeys.trackedUsers(subreddit, this.settingsVersion);
+    // Get all members from sorted set
+    const users = await this.redis.zRange(key, 0, -1);
     return users.map((u) => u.member);
   }
 
@@ -319,7 +322,7 @@ export class GlobalTracking {
    * Clear all tracked users for subreddit
    */
   async clearUsers(subreddit: string): Promise<void> {
-    const key = GlobalKeys.trackedUsers(this.settingsVersion, subreddit);
+    const key = GlobalKeys.trackedUsers(subreddit, this.settingsVersion);
     await this.redis.del(key);
   }
 }

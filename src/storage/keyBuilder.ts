@@ -249,9 +249,9 @@ export const GlobalKeys = {
 export async function clearUserCache(redis: RedisClient, userId: string, settingsVersion: string = DEFAULT_SETTINGS_VERSION): Promise<void> {
   const sv = settingsVersion || DEFAULT_SETTINGS_VERSION;
 
-  // Clear AI questions (with tracking set)
+  // Clear AI questions (with tracking sorted set)
   const aiKeysSet = UserKeys.aiQuestionsKeys(userId, sv);
-  const aiHashes = await redis.sMembers(aiKeysSet);
+  const aiHashes = await redis.zRange(aiKeysSet, 0, -1);
 
   for (const hashEntry of aiHashes) {
     const hash = hashEntry.member;
@@ -295,8 +295,8 @@ export async function clearSubredditCache(
   let keysDeleted = 0;
 
   // Get all tracked users for this subreddit
-  const trackingKey = GlobalKeys.trackedUsers(sv, subreddit);
-  const userIds = await redis.sMembers(trackingKey);
+  const trackingKey = GlobalKeys.trackedUsers(subreddit, sv);
+  const userIds = await redis.zRange(trackingKey, 0, -1);
 
   // Clear each user's cache
   for (const userEntry of userIds) {
@@ -307,7 +307,7 @@ export async function clearSubredditCache(
 
     // Count AI questions deleted
     const aiKeysSet = UserKeys.aiQuestionsKeys(userId, sv);
-    const aiHashes = await redis.sMembers(aiKeysSet);
+    const aiHashes = await redis.zRange(aiKeysSet, 0, -1);
     keysDeleted += aiHashes.length;
   }
 
