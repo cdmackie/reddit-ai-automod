@@ -287,11 +287,32 @@ export async function getEnabledProviders(context: any): Promise<AIProviderType[
 
   const providers: AIProviderType[] = [];
 
+  console.log('[getEnabledProviders] Provider selection debug:', {
+    primaryProvider: aiSettings.primaryProvider,
+    fallbackProvider: aiSettings.fallbackProvider,
+    availableProviders: Object.keys(effectiveConfig.providers),
+  });
+
   // Add primary provider first (if enabled and has API key)
   if (aiSettings.primaryProvider) {
     const primaryConfig = effectiveConfig.providers[aiSettings.primaryProvider];
-    if (primaryConfig.enabled && 'apiKey' in primaryConfig && primaryConfig.apiKey) {
-      providers.push(aiSettings.primaryProvider);
+
+    if (!primaryConfig) {
+      console.warn('[getEnabledProviders] Primary provider not found in config:', {
+        requestedProvider: aiSettings.primaryProvider,
+        availableProviders: Object.keys(effectiveConfig.providers),
+      });
+    } else {
+      console.log('[getEnabledProviders] Primary provider config:', {
+        provider: aiSettings.primaryProvider,
+        enabled: primaryConfig.enabled,
+        hasApiKey: 'apiKey' in primaryConfig && !!primaryConfig.apiKey,
+      });
+
+      if (primaryConfig.enabled && 'apiKey' in primaryConfig && primaryConfig.apiKey) {
+        providers.push(aiSettings.primaryProvider);
+        console.log('[getEnabledProviders] Added primary provider:', aiSettings.primaryProvider);
+      }
     }
   }
 
@@ -299,8 +320,23 @@ export async function getEnabledProviders(context: any): Promise<AIProviderType[
   if (aiSettings.fallbackProvider && aiSettings.fallbackProvider !== 'none') {
     if (!providers.includes(aiSettings.fallbackProvider)) {
       const fallbackConfig = effectiveConfig.providers[aiSettings.fallbackProvider];
-      if (fallbackConfig.enabled && 'apiKey' in fallbackConfig && fallbackConfig.apiKey) {
-        providers.push(aiSettings.fallbackProvider);
+
+      if (!fallbackConfig) {
+        console.warn('[getEnabledProviders] Fallback provider not found in config:', {
+          requestedProvider: aiSettings.fallbackProvider,
+          availableProviders: Object.keys(effectiveConfig.providers),
+        });
+      } else {
+        console.log('[getEnabledProviders] Fallback provider config:', {
+          provider: aiSettings.fallbackProvider,
+          enabled: fallbackConfig.enabled,
+          hasApiKey: 'apiKey' in fallbackConfig && !!fallbackConfig.apiKey,
+        });
+
+        if (fallbackConfig.enabled && 'apiKey' in fallbackConfig && fallbackConfig.apiKey) {
+          providers.push(aiSettings.fallbackProvider);
+          console.log('[getEnabledProviders] Added fallback provider:', aiSettings.fallbackProvider);
+        }
       }
     }
   }
