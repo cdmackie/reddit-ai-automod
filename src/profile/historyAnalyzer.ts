@@ -213,13 +213,13 @@ export class PostHistoryAnalyzer {
    *
    * This method:
    * 1. Uses rate limiter to prevent hitting API limits
-   * 2. Fetches up to historyLimit items (200) via Reddit API
-   * 3. Separates posts and comments, taking up to 100 of each
+   * 2. Fetches up to 100 posts via getPostsByUser
+   * 3. Fetches up to 100 comments via getCommentsByUser
    * 4. Applies sanitization to reduce token usage for AI analysis
    * 5. Returns combined array of sanitized PostHistoryItem objects
    *
-   * The Reddit API returns an async iterator, so we need to iterate it
-   * and collect items until we reach the limits or run out of items.
+   * By fetching posts and comments separately, we ensure we get up to 100 of each
+   * instead of up to 200 total items that could be skewed (e.g., 176 comments + 24 posts).
    *
    * Sanitization strategy:
    * - Post titles: kept as-is (already short)
@@ -237,54 +237,54 @@ export class PostHistoryAnalyzer {
       const posts: PostHistoryItem[] = [];
       const comments: PostHistoryItem[] = [];
 
-      // Fetch user posts and comments with rate limiting
-      const iterator = await this.rateLimiter.withRetry(async () => {
-        return await this.reddit.getCommentsAndPostsByUser({
+      // Fetch posts separately (up to 100)
+      const postIterator = await this.rateLimiter.withRetry(async () => {
+        return await this.reddit.getPostsByUser({
           username,
-          limit: this.historyLimit,
+          limit: 100,
           sort: 'new',
         });
       });
 
-      // Iterate the async iterator and separate posts/comments
-      for await (const item of iterator) {
-        // Stop if we have 100 posts AND 100 comments
-        if (posts.length >= 100 && comments.length >= 100) {
-          break;
-        }
+      for await (const post of postIterator) {
+        if (posts.length >= 100) break;
 
-        // Type guard: Posts have 'title' property, Comments don't
-        const isComment = 'body' in item && !('title' in item);
+        const sanitizedBody = this.sanitizeAndCompactText(post.body || '', 500);
+        // Combine title (kept as-is) with sanitized body
+        const content = post.title + (sanitizedBody ? ' | ' + sanitizedBody : '');
 
-        if (isComment && comments.length < 100) {
-          // It's a Comment
-          const comment = item as Comment;
-          const sanitizedBody = this.sanitizeAndCompactText(comment.body || '', 300);
+        posts.push({
+          id: post.id,
+          type: 'post',
+          subreddit: post.subredditName,
+          content: content,
+          score: post.score,
+          createdAt: post.createdAt,
+        });
+      }
 
-          comments.push({
-            id: comment.id,
-            type: 'comment',
-            subreddit: comment.subredditName,
-            content: sanitizedBody,
-            score: comment.score,
-            createdAt: comment.createdAt,
-          });
-        } else if (!isComment && posts.length < 100) {
-          // It's a Post
-          const post = item as Post;
-          const sanitizedBody = this.sanitizeAndCompactText(post.body || '', 500);
-          // Combine title (kept as-is) with sanitized body
-          const content = post.title + (sanitizedBody ? ' | ' + sanitizedBody : '');
+      // Fetch comments separately (up to 100)
+      const commentIterator = await this.rateLimiter.withRetry(async () => {
+        return await this.reddit.getCommentsByUser({
+          username,
+          limit: 100,
+          sort: 'new',
+        });
+      });
 
-          posts.push({
-            id: post.id,
-            type: 'post',
-            subreddit: post.subredditName,
-            content: content,
-            score: post.score,
-            createdAt: post.createdAt,
-          });
-        }
+      for await (const comment of commentIterator) {
+        if (comments.length >= 100) break;
+
+        const sanitizedBody = this.sanitizeAndCompactText(comment.body || '', 300);
+
+        comments.push({
+          id: comment.id,
+          type: 'comment',
+          subreddit: comment.subredditName,
+          content: sanitizedBody,
+          score: comment.score,
+          createdAt: comment.createdAt,
+        });
       }
 
       // Combine posts and comments, then sort by date (newest first)

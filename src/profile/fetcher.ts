@@ -143,9 +143,8 @@ export class UserProfileFetcher {
         commentKarma: user.commentKarma,
         postKarma: user.linkKarma,
         totalKarma,
-        // Note: Email verification status may not be available in Devvit User API
-        // This is a placeholder and should be verified with actual API response
-        emailVerified: false, // TODO: Check if Devvit exposes this property
+        // Email verification status from Devvit User API (hasVerifiedEmail field)
+        emailVerified: user.hasVerifiedEmail ?? false,
         isModerator: false, // Will be set to true if user moderates any subreddit (future enhancement)
         hasUserFlair: false, // TODO: Fetch user flair from subreddit context
         hasPremium: false, // TODO: Check if Devvit exposes this property
