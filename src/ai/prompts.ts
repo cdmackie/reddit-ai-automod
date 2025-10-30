@@ -586,7 +586,7 @@ export class PromptManager {
 - Email verified: ${params.profile.emailVerified ? 'Yes' : 'No'}
 - Is moderator: ${params.profile.isModerator ? 'Yes' : 'No'}
 
-POSTING HISTORY (last 20 posts/comments):
+POSTING HISTORY (most recent posts/comments - up to 200 items):
 ${historyResult.sanitizedContent}
 
 CURRENT POST:
@@ -626,6 +626,12 @@ Answer the following questions about this user based on their profile, posting h
 - Include a confidence score from 0-100 (how certain are you?)
 - Provide brief reasoning explaining your answer
 
+ANALYSIS GUIDELINES:
+- Location questions: If a user posts in location-specific subreddits (e.g., r/SeattleWA for Seattle, r/nyc for New York), treat this as strong evidence they live in or have significant connection to that location
+- Behavior patterns: Consistent posting patterns over time are more reliable than isolated incidents
+- Account indicators: Account age, karma, and verification status can indicate legitimacy
+- Content analysis: Look for explicit statements, implied behaviors, and contextual clues
+
 QUESTIONS:
 ${questionsSection}
 
@@ -642,7 +648,8 @@ Important:
 - Base your answers on the user's profile, posting history, and current post
 - Be objective and specific in your reasoning
 - Answer YES or NO based on the available evidence - don't default to NO just because you're uncertain
-- Use the confidence score to indicate your certainty level (lower confidence = less certain)`;
+- Use the confidence score to indicate your certainty level (lower confidence = less certain)
+- When you find evidence that supports a YES answer, state YES with appropriate confidence - don't second-guess clear evidence`;
 
     // Calculate total PII removed
     const totalPiiRemoved =
