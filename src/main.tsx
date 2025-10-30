@@ -23,6 +23,7 @@ import { handleModAction } from './handlers/modAction';
 import { renderCostDashboard } from './dashboard/costDashboardUI';
 import { initializeDefaultRules } from './handlers/appInstall';
 import { getPostAnalysis } from './ui/postAnalysis';
+import { getAnalysisHistory } from './storage/analysisHistory.js';
 import { sendDailyDigest } from './notifications/modmailDigest';
 
 // Configure Devvit with required permissions
@@ -388,30 +389,137 @@ Devvit.addSettings([
 // Register forms
 console.log('[AI Automod] Registering forms...');
 
-// AI Analysis Form - displays detailed analysis for a post/comment
+// AI Analysis Form - displays detailed analysis with separate fields for better readability
 const aiAnalysisForm = Devvit.createForm(
   (data) => {
-    const analysisText = data.analysisText as string;
-    const postId = data.postId as string;
+    const analysis = data.analysis as any;
+
+    if (!analysis) {
+      return {
+        title: '🤖 AI Automod Analysis',
+        description: 'No analysis data available',
+        fields: [],
+        acceptLabel: 'Close',
+      };
+    }
+
+    const actionEmoji = {
+      'REMOVE': '🚫',
+      'FLAG': '🚩',
+      'COMMENT': '💬',
+      'APPROVE': '✅',
+    }[analysis.action] || '❓';
+
+    const date = new Date(analysis.timestamp);
+
+    const fields: any[] = [
+      {
+        type: 'string',
+        name: 'action',
+        label: `${actionEmoji} Action`,
+        disabled: true,
+        defaultValue: analysis.action,
+      },
+      {
+        type: 'string',
+        name: 'rule',
+        label: '📋 Rule',
+        disabled: true,
+        defaultValue: analysis.ruleName,
+      },
+      {
+        type: 'group',
+        label: 'User Information',
+        fields: [
+          {
+            type: 'string',
+            name: 'author',
+            label: '👤 Author',
+            disabled: true,
+            defaultValue: `u/${analysis.authorName}`,
+          },
+          {
+            type: 'string',
+            name: 'trust',
+            label: '🎯 Trust Score',
+            disabled: true,
+            defaultValue: `${analysis.trustScore}/100`,
+          },
+          {
+            type: 'string',
+            name: 'age',
+            label: '📅 Account Age',
+            disabled: true,
+            defaultValue: `${analysis.accountAgeInDays} days`,
+          },
+          {
+            type: 'string',
+            name: 'karma',
+            label: '⭐ Total Karma',
+            disabled: true,
+            defaultValue: analysis.totalKarma.toLocaleString(),
+          },
+        ],
+      },
+    ];
+
+    if (analysis.aiProvider) {
+      fields.push({
+        type: 'group',
+        label: 'AI Analysis',
+        fields: [
+          {
+            type: 'string',
+            name: 'provider',
+            label: '🤖 Provider',
+            disabled: true,
+            defaultValue: analysis.aiProvider,
+          },
+          {
+            type: 'string',
+            name: 'model',
+            label: '🔧 Model',
+            disabled: true,
+            defaultValue: analysis.aiModel || 'Unknown',
+          },
+          ...(analysis.confidence ? [{
+            type: 'string' as const,
+            name: 'confidence',
+            label: '📊 Confidence',
+            disabled: true,
+            defaultValue: `${analysis.confidence}%`,
+          }] : []),
+        ],
+      });
+    }
+
+    if (analysis.aiReasoning || analysis.ruleReason) {
+      fields.push({
+        type: 'paragraph',
+        name: 'reasoning',
+        label: '💭 Reasoning',
+        disabled: true,
+        defaultValue: analysis.aiReasoning || analysis.ruleReason,
+      });
+    }
+
+    fields.push({
+      type: 'string',
+      name: 'timestamp',
+      label: '🕐 Processed',
+      disabled: true,
+      defaultValue: date.toLocaleString(),
+    });
 
     return {
       title: '🤖 AI Automod Analysis',
-      description: `Post: ${postId}`,
-      fields: [
-        {
-          type: 'paragraph',
-          name: 'analysisData',
-          label: 'Analysis Details',
-          helpText: 'Complete AI analysis and decision reasoning',
-          disabled: true,
-          defaultValue: analysisText,
-        },
-      ],
+      description: `Post: ${data.postId}`,
+      fields,
       acceptLabel: 'Close',
     };
   },
   async (event, context) => {
-    // Form submission handler (just closes the form)
+    // Form submission handler (just closes)
   }
 );
 
@@ -463,15 +571,30 @@ Devvit.addMenuItem({
     const postId = event.targetId;
     console.log(`[PostAnalysis] Fetching analysis for post: ${postId}`);
 
-    // Fetch analysis data
-    const analysisText = await getPostAnalysis(context, postId);
-    console.log(`[PostAnalysis] Analysis retrieved, showing form`);
+    try {
+      // Fetch analysis data from Redis
+      const analysis = await getAnalysisHistory(context.redis, postId);
 
-    // Show form with the analysis data
-    context.ui.showForm(aiAnalysisForm, {
-      postId,
-      analysisText,
-    });
+      if (!analysis) {
+        context.ui.showToast({
+          text: 'No AI analysis available for this post.',
+          appearance: 'neutral',
+        });
+        return;
+      }
+
+      // Show form with the analysis data
+      context.ui.showForm(aiAnalysisForm, {
+        postId,
+        analysis,
+      });
+    } catch (error) {
+      console.error('[PostAnalysis] Error fetching analysis:', error);
+      context.ui.showToast({
+        text: 'Error loading analysis. Check logs.',
+        appearance: 'neutral',
+      });
+    }
   },
 });
 console.log('[AI Automod] ✓ Registered: View AI Analysis (post)');
