@@ -91,7 +91,6 @@ export class CostTracker {
   private context: Context;
   private redis: Devvit.Context['redis'];
   private config: typeof DEFAULT_CONFIG;
-  private settingsVersionCache: string | null = null;
 
   /**
    * Private constructor for singleton pattern
@@ -101,17 +100,6 @@ export class CostTracker {
     this.context = context;
     this.redis = context.redis;
     this.config = DEFAULT_CONFIG;
-  }
-
-  /**
-   * Get settings version (cached for the lifecycle of this instance)
-   */
-  private async getSettingsVersion(): Promise<string> {
-    if (!this.settingsVersionCache) {
-      const { getSettingsVersion } = await import('../storage/keyBuilder.js');
-      this.settingsVersionCache = await getSettingsVersion(this.context);
-    }
-    return this.settingsVersionCache;
   }
 
   /**
