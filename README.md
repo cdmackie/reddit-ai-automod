@@ -384,6 +384,52 @@ When you upload the app with `devvit upload`, domains listed in `devvit.json` ar
 
 ---
 
+## Development
+
+### Uploading New Versions
+
+Use the automated upload script that handles version synchronization:
+
+```bash
+# Patch version bump (0.1.85 → 0.1.86) - default
+npm run upload
+
+# Or specify bump type
+npm run upload:patch    # 0.1.85 → 0.1.86
+npm run upload:minor    # 0.1.85 → 0.2.0
+npm run upload:major    # 0.1.85 → 1.0.0
+```
+
+**What the script does:**
+1. Uploads to Reddit with version bump (`devvit upload --bump patch`)
+2. Extracts the new version number from upload response
+3. Updates `README.md` version badge automatically
+4. Updates `package.json` version automatically
+5. Commits the version changes
+6. Pushes to remote repository
+
+**After upload, manually update:**
+- `docs/project-status.md` - Current Version field
+- `docs/resume-prompt.md` - Current Version field
+
+### Other Commands
+
+```bash
+# Development & Testing
+npm run dev              # Start playtest mode
+npm run playtest         # Alias for dev
+npm run typecheck        # Type check without building
+npm run test             # Run tests
+npm run test:watch       # Run tests in watch mode
+npm run test:coverage    # Generate coverage report
+
+# Logs
+npm run logs             # View app logs
+devvit logs AiAutomod    # Direct devvit logs command
+```
+
+---
+
 ## License
 
 AI Automod is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.

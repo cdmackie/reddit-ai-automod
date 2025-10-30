@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "devvit playtest",
     "playtest": "devvit playtest",
-    "upload": "devvit upload",
+    "upload": "bash scripts/upload.sh",
+    "upload:patch": "bash scripts/upload.sh patch",
+    "upload:minor": "bash scripts/upload.sh minor",
+    "upload:major": "bash scripts/upload.sh major",
     "logs": "devvit logs",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
