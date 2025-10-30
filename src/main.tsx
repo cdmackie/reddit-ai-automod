@@ -30,6 +30,7 @@ import { sendDailyDigest } from './notifications/modmailDigest';
 Devvit.configure({
   redditAPI: true, // Access Reddit API
   redis: true,     // Use Redis storage
+  modLog: true,    // Enable mod log entries
   http: {
     // HTTP enabled for AI API calls (Phase 2+)
     fetch: {
