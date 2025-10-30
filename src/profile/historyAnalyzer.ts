@@ -292,9 +292,48 @@ export class PostHistoryAnalyzer {
         b.createdAt.getTime() - a.createdAt.getTime()
       );
 
+      // ===== DATA ACCESS SCOPE VERIFICATION =====
+      console.log(`[HistoryAnalyzer] ===== DATA ACCESS SCOPE VERIFICATION =====`);
+      console.log(`[HistoryAnalyzer] User: ${username}`);
+      console.log(`[HistoryAnalyzer] Total items fetched: ${posts.length + comments.length}`);
+      console.log(`[HistoryAnalyzer] Posts: ${posts.length}, Comments: ${comments.length}`);
+
+      // Calculate subreddit diversity
+      const allItems = [...posts, ...comments];
+      const subreddits = new Set(allItems.map(item => item.subreddit));
+      console.log(`[HistoryAnalyzer] Unique subreddits: ${subreddits.size}`);
+
+      if (subreddits.size > 0) {
+        console.log(`[HistoryAnalyzer] Subreddits found: ${Array.from(subreddits).slice(0, 10).join(', ')}${subreddits.size > 10 ? '...' : ''}`);
+
+        if (subreddits.size === 1) {
+          console.warn(`[HistoryAnalyzer] ⚠️ WARNING: Only 1 subreddit found - data may be scoped to installed subreddit only!`);
+        } else {
+          console.log(`[HistoryAnalyzer] ✅ VERIFIED: Site-wide access working (${subreddits.size} different subreddits)`);
+        }
+      }
+
+      if (allItems.length === 0) {
+        console.warn(`[HistoryAnalyzer] ⚠️ No items fetched - possible private profile or no activity`);
+      }
+
+      console.log(`[HistoryAnalyzer] =========================================`);
+
       return items;
     } catch (error) {
-      console.error(`[HistoryAnalyzer] API error fetching history for ${username}:`, error);
+      // Check if this is a "private profile" or "forbidden" error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isPrivateProfile =
+        errorMessage.toLowerCase().includes('private') ||
+        errorMessage.toLowerCase().includes('forbidden') ||
+        errorMessage.toLowerCase().includes('403');
+
+      if (isPrivateProfile) {
+        console.warn(`[HistoryAnalyzer] User ${username} has a private/hidden profile - cannot access history`);
+      } else {
+        console.error(`[HistoryAnalyzer] API error fetching history for ${username}:`, error);
+      }
+
       return []; // Return empty array on error
     }
   }

@@ -323,6 +323,41 @@ Ask AI to analyze the user and their content:
 
 ---
 
+## Data Access & Privacy
+
+### What We Can Access
+
+**Public User Data:**
+- Account age, karma, and email verification status
+- **Public** post and comment history across Reddit (up to 200 items)
+- Only publicly visible content that any Reddit user can see
+
+**Site-Wide vs Subreddit-Scoped:**
+- ✅ Accesses user's public activity from ALL subreddits (site-wide)
+- Not limited to the subreddit where the app is installed
+- This enables detecting behavior patterns across Reddit
+
+### What We Cannot Access
+
+**Limitations:**
+- ❌ Private or hidden user profiles
+- ❌ Deleted content
+- ❌ Private messages or chats
+- ❌ Restricted subreddit content (quarantined, private subs)
+- ❌ Content the user has hidden from their profile
+
+### Private Profile Handling
+
+If a user has made their profile private:
+- We **cannot** access their post/comment history
+- We fall back to basic account metrics only (age, karma)
+- The moderation decision uses limited data
+- No AI analysis is performed (insufficient context)
+
+**Privacy Note**: This app only accesses data that is already publicly visible on Reddit. We do not access any private information that wouldn't be visible to a regular Reddit user viewing the profile.
+
+---
+
 ## License
 
 MIT License - See [LICENSE](./LICENSE) file for details.

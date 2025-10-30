@@ -6,7 +6,7 @@ Reddit AI Automod is a Devvit-based user profiling & analysis system that uses A
 
 **Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI/DeepSeek/OpenAI-Compatible)
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.49 (ready to deploy)
+**Current Version**: 0.1.50 (ready to deploy)
 **Target Subreddits**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -25,13 +25,12 @@ Reddit AI Automod is a Devvit-based user profiling & analysis system that uses A
 - **Whitelist**: Skip analysis for trusted users
 - **Community Trust**: Automatically whitelist users with good trust scores
 
-### Last Completed (Phase 5.35 - 2025-10-29)
-- Added OpenAI Compatible provider for custom endpoints
-- Supports Groq, Together AI, Z.AI, self-hosted vLLM/Ollama, and other OpenAI-compatible endpoints
-- Configurable base URL, API key, and model name via Devvit settings
-- Acts as last-resort fallback when standard providers unavailable
-- Full IAIProvider interface implementation with analyzeWithQuestions support
-- Version 0.1.49
+### Last Completed (Phase 5.36 - 2025-10-29)
+- Added enhanced logging to verify data access scope (site-wide vs subreddit-scoped)
+- Added detailed subreddit diversity logging - warns if only 1 subreddit found
+- Improved error handling for private/hidden user profiles
+- Added comprehensive "Data Access & Privacy" section to README.md
+- Version 0.1.50
 
 ---
 

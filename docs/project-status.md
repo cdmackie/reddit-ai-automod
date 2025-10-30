@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.49 (ready to deploy)
+**Current Version**: 0.1.50 (ready to deploy)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.35 Complete ✅ | OpenAI Compatible provider for custom endpoints (Groq, Together AI, self-hosted)
+**Status**: Phase 5.36 Complete ✅ | Enhanced logging and private profile handling
 
 ---
 
@@ -32,6 +32,13 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.36 (2025-10-29)
+- [x] Added enhanced logging to verify data access scope (site-wide vs subreddit-scoped)
+- [x] Added detailed subreddit diversity logging in historyAnalyzer.ts
+- [x] Improved error handling for private/hidden user profiles
+- [x] Added comprehensive Data Access & Privacy section to README.md
+- [x] Updated to version 0.1.50
 
 ### Phase 5.35 (2025-10-29)
 - [x] Created OpenAI Compatible provider implementation (openaiCompatible.ts)
@@ -131,6 +138,11 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 ---
 
 ## Recent Decisions
+
+**2025-10-29**: Enhanced logging and private profile handling
+- **Rationale**: Verify data access scope (site-wide vs subreddit-only), better diagnose API issues
+- **Impact**: Clear visibility into whether we're accessing all subreddits or just the installed one
+- **Implementation**: Logs subreddit diversity, warns on single subreddit (potential scope issue), handles private profiles gracefully
 
 **2025-10-29**: OpenAI Compatible provider for custom endpoints
 - **Rationale**: Enable use of alternative OpenAI-compatible providers (Groq, Together AI, self-hosted models)
