@@ -346,4 +346,3 @@ As a subreddit moderator using this App, you are responsible for:
 
 **BY USING AI AUTOMOD, YOU ACKNOWLEDGE THAT YOU HAVE READ, UNDERSTOOD, AND AGREE TO THIS PRIVACY POLICY.**
 
-**Last Updated:** 29 October 2025
