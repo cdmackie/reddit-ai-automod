@@ -6,6 +6,7 @@ A Reddit Devvit app that uses AI to analyze new posters and detect problematic u
 
 [![Version](https://img.shields.io/badge/version-0.1.47-blue)]()
 [![Status](https://img.shields.io/badge/status-Alpha-yellow)]()
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 ---
 
