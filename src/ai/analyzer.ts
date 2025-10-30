@@ -836,42 +836,55 @@ export class AIAnalyzer {
   ): Promise<AIQuestionBatchResult> {
     const startTime = Date.now();
 
-    // Select best available AI provider
-    const selector = ProviderSelector.getInstance(this.context);
-    const provider = await selector.selectProvider();
+    // Get settings
+    const aiSettings = await SettingsService.getAIConfig(this.context);
+    let result: AIQuestionBatchResult;
+    let usedProvider: AIProviderType;
 
-    if (provider === null) {
-      console.error('[AIAnalyzer] No AI provider available', {
-        correlationId: request.context.correlationId,
-      });
-      throw new Error('No AI provider available');
+    // Try primary provider
+    try {
+      console.log('[AIAnalyzer] Trying primary provider for questions:', aiSettings.primaryProvider);
+      const primaryProvider = await this.getProvider(aiSettings.primaryProvider, aiSettings);
+
+      if (!primaryProvider.analyzeWithQuestions) {
+        throw new Error(`Provider ${aiSettings.primaryProvider} does not support question-based analysis`);
+      }
+
+      result = await primaryProvider.analyzeWithQuestions(request);
+      usedProvider = aiSettings.primaryProvider;
+      console.log('[AIAnalyzer] ✓ Primary provider succeeded for questions:', aiSettings.primaryProvider);
+    } catch (primaryError) {
+      // Primary failed, try fallback
+      console.warn('[AIAnalyzer] Primary provider failed for questions:', primaryError instanceof Error ? primaryError.message : String(primaryError));
+
+      if (!aiSettings.fallbackProvider || aiSettings.fallbackProvider === 'none') {
+        console.error('[AIAnalyzer] No fallback configured');
+        throw primaryError;
+      }
+
+      console.log('[AIAnalyzer] Trying fallback provider for questions:', aiSettings.fallbackProvider);
+      try {
+        const fallbackProvider = await this.getProvider(aiSettings.fallbackProvider, aiSettings);
+
+        if (!fallbackProvider.analyzeWithQuestions) {
+          throw new Error(`Provider ${aiSettings.fallbackProvider} does not support question-based analysis`);
+        }
+
+        result = await fallbackProvider.analyzeWithQuestions(request);
+        usedProvider = aiSettings.fallbackProvider;
+        console.log('[AIAnalyzer] ✓ Fallback provider succeeded for questions:', aiSettings.fallbackProvider);
+      } catch (fallbackError) {
+        console.error('[AIAnalyzer] Fallback provider also failed for questions:', fallbackError instanceof Error ? fallbackError.message : String(fallbackError));
+        throw fallbackError;
+      }
     }
-
-    console.log('[AIAnalyzer] Provider selected for questions', {
-      provider: provider.type,
-      model: provider.model,
-      correlationId: request.context.correlationId,
-      questionCount: request.questions.length,
-    });
-
-    // Check if provider supports question-based analysis
-    if (!provider.analyzeWithQuestions) {
-      console.error('[AIAnalyzer] Provider does not support question-based analysis', {
-        provider: provider.type,
-        correlationId: request.context.correlationId,
-      });
-      throw new Error(`Provider ${provider.type} does not support question-based analysis`);
-    }
-
-    // Call provider to analyze with questions
-    const result = await provider.analyzeWithQuestions(request);
 
     // Record cost for budget tracking
     const costTracker = CostTracker.getInstance(this.context);
     await costTracker.recordCost({
       id: request.context.correlationId,
       timestamp: Date.now(),
-      provider: provider.type,
+      provider: usedProvider,
       userId: request.userId,
       tokensUsed: result.tokensUsed,
       costUSD: result.costUSD,
@@ -880,7 +893,7 @@ export class AIAnalyzer {
 
     console.log('[AIAnalyzer] Cost recorded for questions', {
       correlationId: request.context.correlationId,
-      provider: provider.type,
+      provider: usedProvider,
       tokensUsed: result.tokensUsed,
       costUSD: result.costUSD.toFixed(4),
     });

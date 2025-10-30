@@ -154,122 +154,92 @@ export class ClaudeProvider implements IAIProvider {
       subredditType: request.context.subredditType,
     });
 
-    // Retry with exponential backoff
-    let lastError: Error | null = null;
-    for (let attempt = 1; attempt <= this.retryConfig.maxAttempts; attempt++) {
-      try {
-        console.log('Claude analysis attempt', {
-          correlationId,
-          attempt,
-          userId: request.userId,
-        });
+    try {
+      console.log('Claude analysis attempt', {
+        correlationId,
+        userId: request.userId,
+      });
 
-        // Call Claude API with tool use
-        const response = await this.client.messages.create({
-          model: this.model,
-          max_tokens: 1500,
-          temperature: 0.3,
-          messages: [
-            {
-              role: 'user',
-              content: promptData.prompt,
-            },
-          ],
-          tools: [ANALYSIS_TOOL],
-        });
+      // Call Claude API with tool use
+      const response = await this.client.messages.create({
+        model: this.model,
+        max_tokens: 1500,
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'user',
+            content: promptData.prompt,
+          },
+        ],
+        tools: [ANALYSIS_TOOL],
+      });
 
-        // Extract tool use result
-        const toolUse = response.content.find(
-          (block) => block.type === 'tool_use' && block.name === 'analyze_user_profile'
+      // Extract tool use result
+      const toolUse = response.content.find(
+        (block) => block.type === 'tool_use' && block.name === 'analyze_user_profile'
+      );
+
+      if (!toolUse || toolUse.type !== 'tool_use') {
+        throw new AIError(
+          AIErrorType.INVALID_RESPONSE,
+          'Claude response did not contain expected tool use',
+          this.type,
+          correlationId
         );
-
-        if (!toolUse || toolUse.type !== 'tool_use') {
-          throw new AIError(
-            AIErrorType.INVALID_RESPONSE,
-            'Claude response did not contain expected tool use',
-            this.type,
-            correlationId
-          );
-        }
-
-        // Validate response structure
-        const validatedResult = aiResponseValidator.validate(toolUse.input);
-
-        // Calculate actual token usage and cost
-        const inputTokens = response.usage.input_tokens;
-        const outputTokens = response.usage.output_tokens;
-        const costUSD = this.calculateCost(inputTokens, outputTokens);
-        const latencyMs = Date.now() - startTime;
-
-        // Determine cache TTL based on trust score
-        // TODO: Get trust score from ProfileAnalysisResult when integrated
-        const trustScore = 50; // Default medium trust
-        const cacheTTL = getCacheTTLForTrustScore(
-          trustScore,
-          validatedResult.overallRisk === 'CRITICAL'
-        );
-
-        // Return complete result
-        const result: AIAnalysisResult = {
-          ...validatedResult,
-          userId: request.userId,
-          timestamp: Date.now(),
-          provider: this.type,
-          correlationId,
-          promptVersion: request.context.promptVersion,
-          cacheTTL,
-          tokensUsed: inputTokens + outputTokens,
-          costUSD,
-          latencyMs,
-        };
-
-        console.log('Claude analysis success', {
-          correlationId,
-          attempt,
-          tokensUsed: result.tokensUsed,
-          costUSD: result.costUSD,
-          latencyMs,
-        });
-
-        return result;
-      } catch (error) {
-        lastError = error as Error;
-
-        // Classify error type
-        const errorType = this.classifyError(error);
-
-        console.error('Claude analysis error', {
-          correlationId,
-          attempt,
-          errorType,
-          message: lastError.message,
-        });
-
-        // Don't retry on validation errors or non-retryable errors
-        if (errorType === AIErrorType.VALIDATION_ERROR) {
-          throw error;
-        }
-
-        // If not last attempt, wait and retry
-        if (attempt < this.retryConfig.maxAttempts) {
-          const delay = this.calculateBackoff(attempt);
-          console.log('Retrying Claude request', {
-            correlationId,
-            attempt: attempt + 1,
-            delayMs: delay,
-          });
-          await this.sleep(delay);
-        }
       }
-    }
 
-    // All retries exhausted
-    throw new AIError(
-      AIErrorType.PROVIDER_ERROR,
-      `Claude analysis failed after ${this.retryConfig.maxAttempts} attempts: ${lastError?.message}`,
-      this.type,
-      correlationId
-    );
+      // Validate response structure
+      const validatedResult = aiResponseValidator.validate(toolUse.input);
+
+      // Calculate actual token usage and cost
+      const inputTokens = response.usage.input_tokens;
+      const outputTokens = response.usage.output_tokens;
+      const costUSD = this.calculateCost(inputTokens, outputTokens);
+      const latencyMs = Date.now() - startTime;
+
+      // Determine cache TTL based on trust score
+      // TODO: Get trust score from ProfileAnalysisResult when integrated
+      const trustScore = 50; // Default medium trust
+      const cacheTTL = getCacheTTLForTrustScore(
+        trustScore,
+        validatedResult.overallRisk === 'CRITICAL'
+      );
+
+      // Return complete result
+      const result: AIAnalysisResult = {
+        ...validatedResult,
+        userId: request.userId,
+        timestamp: Date.now(),
+        provider: this.type,
+        correlationId,
+        promptVersion: request.context.promptVersion,
+        cacheTTL,
+        tokensUsed: inputTokens + outputTokens,
+        costUSD,
+        latencyMs,
+      };
+
+      console.log('Claude analysis success', {
+        correlationId,
+        tokensUsed: result.tokensUsed,
+        costUSD: result.costUSD,
+        latencyMs,
+      });
+
+      return result;
+    } catch (error) {
+      // Classify error type
+      const errorType = this.classifyError(error);
+
+      console.error('Claude analysis error', {
+        correlationId,
+        errorType,
+        message: error instanceof Error ? error.message : String(error),
+      });
+
+      // Re-throw the error to let analyzer handle fallback
+      throw error;
+    }
   }
 
   /**

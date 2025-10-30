@@ -131,150 +131,120 @@ export class OpenAICompatibleProvider implements IAIProvider {
     // Add JSON format instruction to prompt
     const systemPrompt = `You are a content moderation AI. Respond ONLY with valid JSON matching the specified schema. Do not include any text outside the JSON object.`;
 
-    // Retry with exponential backoff
-    let lastError: Error | null = null;
-    for (let attempt = 1; attempt <= this.retryConfig.maxAttempts; attempt++) {
-      try {
-        console.log('[OpenAICompatible] Analysis attempt', {
-          correlationId,
-          attempt,
-          userId: request.userId,
-          baseURL: this.config.baseURL,
-          model: this.model,
-        });
+    try {
+      console.log('[OpenAICompatible] Analysis attempt', {
+        correlationId,
+        userId: request.userId,
+        baseURL: this.config.baseURL,
+        model: this.model,
+      });
 
-        // Call OpenAI-compatible API with JSON mode
-        const response = await this.client.chat.completions.create({
-          model: this.model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: promptData.prompt },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.3,
-          max_tokens: 1500,
-        });
+      // Call OpenAI-compatible API with JSON mode
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: promptData.prompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+        max_tokens: 1500,
+      });
 
-        // Extract JSON response
-        const content = response.choices[0]?.message?.content;
-        if (!content) {
-          throw new AIError(
-            AIErrorType.INVALID_RESPONSE,
-            'OpenAI Compatible response is empty',
-            this.type,
-            correlationId
-          );
-        }
-
-        // Parse JSON
-        let parsedResponse: unknown;
-        try {
-          parsedResponse = JSON.parse(content);
-        } catch (parseError) {
-          throw new AIError(
-            AIErrorType.INVALID_RESPONSE,
-            `Failed to parse OpenAI Compatible JSON response: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
-            this.type,
-            correlationId
-          );
-        }
-
-        // Validate response structure
-        const validatedResult = aiResponseValidator.validate(parsedResponse);
-
-        // Calculate actual token usage and cost
-        const inputTokens = response.usage?.prompt_tokens || 0;
-        const outputTokens = response.usage?.completion_tokens || 0;
-        const costUSD = this.calculateCost(inputTokens, outputTokens);
-        const latencyMs = Date.now() - startTime;
-
-        // Determine cache TTL based on trust score
-        // TODO: Get trust score from ProfileAnalysisResult when integrated
-        const trustScore = 50; // Default medium trust
-        const cacheTTL = getCacheTTLForTrustScore(
-          trustScore,
-          validatedResult.overallRisk === 'CRITICAL'
+      // Extract JSON response
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new AIError(
+          AIErrorType.INVALID_RESPONSE,
+          'OpenAI Compatible response is empty',
+          this.type,
+          correlationId
         );
-
-        // Return complete result
-        const result: AIAnalysisResult = {
-          ...validatedResult,
-          userId: request.userId,
-          timestamp: Date.now(),
-          provider: this.type,
-          correlationId,
-          promptVersion: request.context.promptVersion,
-          cacheTTL,
-          tokensUsed: inputTokens + outputTokens,
-          costUSD,
-          latencyMs,
-        };
-
-        console.log('[OpenAICompatible] Analysis success', {
-          correlationId,
-          attempt,
-          tokensUsed: result.tokensUsed,
-          costUSD: result.costUSD,
-          latencyMs,
-          baseURL: this.config.baseURL,
-          model: this.model,
-        });
-
-        return result;
-      } catch (error) {
-        lastError = error as Error;
-
-        // Classify error type
-        const errorType = this.classifyError(error);
-
-        // Extract detailed error information
-        const errorDetails: any = {
-          correlationId,
-          attempt,
-          errorType,
-          message: lastError.message,
-          baseURL: this.config.baseURL,
-          model: this.model,
-        };
-
-        // Add detailed error info from API response if available
-        if (error && typeof error === 'object') {
-          const apiError = error as any;
-          if (apiError.status) errorDetails.status = apiError.status;
-          if (apiError.code) errorDetails.code = apiError.code;
-          if (apiError.response) errorDetails.response = apiError.response;
-          if (apiError.error) errorDetails.apiError = apiError.error;
-          // OpenAI SDK may nest the actual error
-          if (apiError.message) errorDetails.fullMessage = apiError.message;
-        }
-
-        console.error('[OpenAICompatible] Analysis error', errorDetails);
-
-        // Don't retry on validation errors or non-retryable errors
-        if (errorType === AIErrorType.VALIDATION_ERROR) {
-          throw error;
-        }
-
-        // If not last attempt, wait and retry
-        if (attempt < this.retryConfig.maxAttempts) {
-          const delay = this.calculateBackoff(attempt);
-          console.log('[OpenAICompatible] Retrying request', {
-            correlationId,
-            attempt: attempt + 1,
-            delayMs: delay,
-          });
-          await this.sleep(delay);
-        }
       }
-    }
 
-    // All retries exhausted
-    throw new AIError(
-      AIErrorType.PROVIDER_ERROR,
-      `OpenAI Compatible analysis failed after ${this.retryConfig.maxAttempts} attempts: ${lastError?.message}`,
-      this.type,
-      correlationId
-    );
+      // Parse JSON
+      let parsedResponse: unknown;
+      try {
+        parsedResponse = JSON.parse(content);
+      } catch (parseError) {
+        throw new AIError(
+          AIErrorType.INVALID_RESPONSE,
+          `Failed to parse OpenAI Compatible JSON response: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+          this.type,
+          correlationId
+        );
+      }
+
+      // Validate response structure
+      const validatedResult = aiResponseValidator.validate(parsedResponse);
+
+      // Calculate actual token usage and cost
+      const inputTokens = response.usage?.prompt_tokens || 0;
+      const outputTokens = response.usage?.completion_tokens || 0;
+      const costUSD = this.calculateCost(inputTokens, outputTokens);
+      const latencyMs = Date.now() - startTime;
+
+      // Determine cache TTL based on trust score
+      // TODO: Get trust score from ProfileAnalysisResult when integrated
+      const trustScore = 50; // Default medium trust
+      const cacheTTL = getCacheTTLForTrustScore(
+        trustScore,
+        validatedResult.overallRisk === 'CRITICAL'
+      );
+
+      // Return complete result
+      const result: AIAnalysisResult = {
+        ...validatedResult,
+        userId: request.userId,
+        timestamp: Date.now(),
+        provider: this.type,
+        correlationId,
+        promptVersion: request.context.promptVersion,
+        cacheTTL,
+        tokensUsed: inputTokens + outputTokens,
+        costUSD,
+        latencyMs,
+      };
+
+      console.log('[OpenAICompatible] Analysis success', {
+        correlationId,
+        tokensUsed: result.tokensUsed,
+        costUSD: result.costUSD,
+        latencyMs,
+        baseURL: this.config.baseURL,
+        model: this.model,
+      });
+
+      return result;
+    } catch (error) {
+      // Classify error type
+      const errorType = this.classifyError(error);
+
+      // Extract detailed error information
+      const errorDetails: any = {
+        correlationId,
+        errorType,
+        message: error instanceof Error ? error.message : String(error),
+        baseURL: this.config.baseURL,
+        model: this.model,
+      };
+
+      // Add detailed error info from API response if available
+      if (error && typeof error === 'object') {
+        const apiError = error as any;
+        if (apiError.status) errorDetails.status = apiError.status;
+        if (apiError.code) errorDetails.code = apiError.code;
+        if (apiError.response) errorDetails.response = apiError.response;
+        if (apiError.error) errorDetails.apiError = apiError.error;
+        // OpenAI SDK may nest the actual error
+        if (apiError.message) errorDetails.fullMessage = apiError.message;
+      }
+
+      console.error('[OpenAICompatible] Analysis error', errorDetails);
+
+      // Re-throw the error to let analyzer handle fallback
+      throw error;
+    }
   }
 
   /**
@@ -303,187 +273,150 @@ export class OpenAICompatibleProvider implements IAIProvider {
     // Add JSON format instruction to prompt
     const systemPrompt = `You are a content moderation AI. Respond ONLY with valid JSON matching the specified schema. Do not include any text outside the JSON object.`;
 
-    // Retry with exponential backoff
-    let lastError: Error | null = null;
-    for (let attempt = 1; attempt <= this.retryConfig.maxAttempts; attempt++) {
-      try {
-        // Log request details before API call
-        console.log('[OpenAICompatible] Sending question analysis request:', {
-          correlationId,
-          userId: request.userId,
-          username: request.username,
-          questionCount: request.questions.length,
-          baseURL: this.config.baseURL,
-          model: this.model,
-          questions: request.questions.map(q => ({
-            id: q.id,
-            question: q.question,
-            hasContext: !!q.context
-          })),
-        });
+    try {
+      // Log request details before API call
+      console.log('[OpenAICompatible] Sending question analysis request:', {
+        correlationId,
+        userId: request.userId,
+        username: request.username,
+        questionCount: request.questions.length,
+        baseURL: this.config.baseURL,
+        model: this.model,
+        questions: request.questions.map(q => ({
+          id: q.id,
+          question: q.question,
+          hasContext: !!q.context
+        })),
+      });
 
-        console.log('[OpenAICompatible] Question analysis attempt', {
-          correlationId,
-          attempt,
-          userId: request.userId,
-          questionCount: request.questions.length,
-          baseURL: this.config.baseURL,
-        });
+      // Call OpenAI-compatible API with JSON mode
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: promptData.prompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+        max_tokens: 1500,
+      });
 
-        // Call OpenAI-compatible API with JSON mode
-        const response = await this.client.chat.completions.create({
-          model: this.model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: promptData.prompt },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.3,
-          max_tokens: 1500,
-        });
-
-        // Extract JSON response
-        const content = response.choices[0]?.message?.content;
-        if (!content) {
-          throw new AIError(
-            AIErrorType.INVALID_RESPONSE,
-            'OpenAI Compatible response is empty',
-            this.type,
-            correlationId
-          );
-        }
-
-        // Parse JSON
-        let parsedResponse: unknown;
-        try {
-          parsedResponse = JSON.parse(content);
-        } catch (parseError) {
-          throw new AIError(
-            AIErrorType.INVALID_RESPONSE,
-            `Failed to parse OpenAI Compatible JSON response: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
-            this.type,
-            correlationId
-          );
-        }
-
-        // Log raw response from API
-        const usage = response.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-        const cost = this.calculateCost(usage.prompt_tokens, usage.completion_tokens);
-
-        console.log('[OpenAICompatible] Received response:', {
-          correlationId,
-          model: this.model,
-          promptTokens: usage.prompt_tokens,
-          completionTokens: usage.completion_tokens,
-          totalTokens: usage.total_tokens,
-          cost: cost.toFixed(4),
-          finishReason: response.choices[0].finish_reason,
-          baseURL: this.config.baseURL,
-        });
-
-        // Validate response structure
-        const validatedResult = aiResponseValidator.validateQuestionBatchResponse(parsedResponse);
-
-        // Log parsed response
-        console.log('[OpenAICompatible] Parsed response:', {
-          correlationId,
-          answersCount: validatedResult.answers?.length || 0,
-          answers: validatedResult.answers?.map(a => ({
-            questionId: a.questionId,
-            answer: a.answer,
-            confidence: a.confidence,
-          }))
-        });
-
-        // Calculate actual token usage and cost
-        const inputTokens = response.usage?.prompt_tokens || 0;
-        const outputTokens = response.usage?.completion_tokens || 0;
-        const costUSD = this.calculateCost(inputTokens, outputTokens);
-        const latencyMs = Date.now() - startTime;
-
-        // Determine cache TTL based on trust score
-        // TODO: Get trust score from ProfileAnalysisResult when integrated
-        const trustScore = 50; // Default medium trust
-        const cacheTTL = getCacheTTLForTrustScore(trustScore, false);
-
-        // Return complete result
-        const result: AIQuestionBatchResult = {
-          userId: request.userId,
-          timestamp: Date.now(),
-          provider: this.type,
-          correlationId,
-          cacheTTL,
-          tokensUsed: inputTokens + outputTokens,
-          costUSD,
-          latencyMs,
-          answers: validatedResult.answers,
-        };
-
-        console.log('[OpenAICompatible] Question analysis success', {
-          correlationId,
-          attempt,
-          questionCount: result.answers.length,
-          tokensUsed: result.tokensUsed,
-          costUSD: result.costUSD,
-          latencyMs,
-          baseURL: this.config.baseURL,
-        });
-
-        return result;
-      } catch (error) {
-        lastError = error as Error;
-
-        // Classify error type
-        const errorType = this.classifyError(error);
-
-        // Extract detailed error information
-        const errorDetails: any = {
-          correlationId,
-          attempt,
-          errorType,
-          message: lastError.message,
-          baseURL: this.config.baseURL,
-          model: this.model,
-        };
-
-        // Add detailed error info from API response if available
-        if (error && typeof error === 'object') {
-          const apiError = error as any;
-          if (apiError.status) errorDetails.status = apiError.status;
-          if (apiError.code) errorDetails.code = apiError.code;
-          if (apiError.response) errorDetails.response = apiError.response;
-          if (apiError.error) errorDetails.apiError = apiError.error;
-          // OpenAI SDK may nest the actual error
-          if (apiError.message) errorDetails.fullMessage = apiError.message;
-        }
-
-        console.error('[OpenAICompatible] Question analysis error', errorDetails);
-
-        // Don't retry on validation errors or non-retryable errors
-        if (errorType === AIErrorType.VALIDATION_ERROR) {
-          throw error;
-        }
-
-        // If not last attempt, wait and retry
-        if (attempt < this.retryConfig.maxAttempts) {
-          const delay = this.calculateBackoff(attempt);
-          console.log('[OpenAICompatible] Retrying question request', {
-            correlationId,
-            attempt: attempt + 1,
-            delayMs: delay,
-          });
-          await this.sleep(delay);
-        }
+      // Extract JSON response
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new AIError(
+          AIErrorType.INVALID_RESPONSE,
+          'OpenAI Compatible response is empty',
+          this.type,
+          correlationId
+        );
       }
-    }
 
-    // All retries exhausted
-    throw new AIError(
-      AIErrorType.PROVIDER_ERROR,
-      `OpenAI Compatible question analysis failed after ${this.retryConfig.maxAttempts} attempts: ${lastError?.message}`,
-      this.type,
-      correlationId
-    );
+      // Parse JSON
+      let parsedResponse: unknown;
+      try {
+        parsedResponse = JSON.parse(content);
+      } catch (parseError) {
+        throw new AIError(
+          AIErrorType.INVALID_RESPONSE,
+          `Failed to parse OpenAI Compatible JSON response: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+          this.type,
+          correlationId
+        );
+      }
+
+      // Log raw response from API
+      const usage = response.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+      const cost = this.calculateCost(usage.prompt_tokens, usage.completion_tokens);
+
+      console.log('[OpenAICompatible] Received response:', {
+        correlationId,
+        model: this.model,
+        promptTokens: usage.prompt_tokens,
+        completionTokens: usage.completion_tokens,
+        totalTokens: usage.total_tokens,
+        cost: cost.toFixed(4),
+        finishReason: response.choices[0].finish_reason,
+        baseURL: this.config.baseURL,
+      });
+
+      // Validate response structure
+      const validatedResult = aiResponseValidator.validateQuestionBatchResponse(parsedResponse);
+
+      // Log parsed response
+      console.log('[OpenAICompatible] Parsed response:', {
+        correlationId,
+        answersCount: validatedResult.answers?.length || 0,
+        answers: validatedResult.answers?.map(a => ({
+          questionId: a.questionId,
+          answer: a.answer,
+          confidence: a.confidence,
+        }))
+      });
+
+      // Calculate actual token usage and cost
+      const inputTokens = response.usage?.prompt_tokens || 0;
+      const outputTokens = response.usage?.completion_tokens || 0;
+      const costUSD = this.calculateCost(inputTokens, outputTokens);
+      const latencyMs = Date.now() - startTime;
+
+      // Determine cache TTL based on trust score
+      // TODO: Get trust score from ProfileAnalysisResult when integrated
+      const trustScore = 50; // Default medium trust
+      const cacheTTL = getCacheTTLForTrustScore(trustScore, false);
+
+      // Return complete result
+      const result: AIQuestionBatchResult = {
+        userId: request.userId,
+        timestamp: Date.now(),
+        provider: this.type,
+        correlationId,
+        cacheTTL,
+        tokensUsed: inputTokens + outputTokens,
+        costUSD,
+        latencyMs,
+        answers: validatedResult.answers,
+      };
+
+      console.log('[OpenAICompatible] Question analysis success', {
+        correlationId,
+        questionCount: result.answers.length,
+        tokensUsed: result.tokensUsed,
+        costUSD: result.costUSD,
+        latencyMs,
+        baseURL: this.config.baseURL,
+      });
+
+      return result;
+    } catch (error) {
+      // Classify error type
+      const errorType = this.classifyError(error);
+
+      // Extract detailed error information
+      const errorDetails: any = {
+        correlationId,
+        errorType,
+        message: error instanceof Error ? error.message : String(error),
+        baseURL: this.config.baseURL,
+        model: this.model,
+      };
+
+      // Add detailed error info from API response if available
+      if (error && typeof error === 'object') {
+        const apiError = error as any;
+        if (apiError.status) errorDetails.status = apiError.status;
+        if (apiError.code) errorDetails.code = apiError.code;
+        if (apiError.response) errorDetails.response = apiError.response;
+        if (apiError.error) errorDetails.apiError = apiError.error;
+        // OpenAI SDK may nest the actual error
+        if (apiError.message) errorDetails.fullMessage = apiError.message;
+      }
+
+      console.error('[OpenAICompatible] Question analysis error', errorDetails);
+
+      // Re-throw the error to let analyzer handle fallback
+      throw error;
+    }
   }
 
   /**
