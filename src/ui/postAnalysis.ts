@@ -26,14 +26,13 @@
  */
 
 import { Context } from '@devvit/public-api';
-import { AuditLogger } from '../storage/audit.js';
-import { AuditLog } from '../types/storage.js';
+import { getAnalysisHistory, AnalysisHistoryEntry } from '../storage/analysisHistory.js';
 
 /**
  * Fetch and format analysis for a specific post
  *
- * Retrieves the audit log for a post and formats it into a human-readable
- * summary suitable for display in a toast.
+ * Retrieves the AI analysis history for a post and formats it into a detailed
+ * summary suitable for display in a toast or form.
  *
  * @param context - Devvit context with redis access
  * @param postId - The Reddit post ID (e.g., "t3_abc123")
@@ -50,60 +49,106 @@ export async function getPostAnalysis(
   postId: string
 ): Promise<string> {
   try {
-    const auditLogger = new AuditLogger(context.redis);
-    const logs = await auditLogger.getLogsForContent(postId);
+    const entry = await getAnalysisHistory(context.redis, postId);
 
-    if (!logs || logs.length === 0) {
-      return 'No analysis available for this post. Post may not have been processed yet.';
+    if (!entry) {
+      return 'No AI analysis available for this post.\n\nPossible reasons:\n• Post was not processed by AI Automod\n• Post was approved without AI analysis\n• Analysis data has expired (90 day retention)';
     }
 
-    // Get the most recent log entry (latest action)
-    const latestLog = logs[logs.length - 1];
-
-    return formatAnalysis(latestLog);
+    return formatAnalysisDetailed(entry);
   } catch (error) {
     console.error('[PostAnalysis] Error fetching analysis:', error);
-    return 'Error loading analysis. Check logs for details.';
+    return 'Error loading AI analysis. Check logs for details.';
   }
 }
 
 /**
- * Format audit log into ultra-concise single-line analysis text
+ * Format analysis history entry into detailed multi-line text
  *
- * Converts an AuditLog entry into a single-line format optimized
- * for toast notifications (which only show ~2 lines).
+ * Converts an AnalysisHistoryEntry into a detailed, readable format
+ * showing all relevant information about the AI decision.
  *
- * Format: {ACTION} {trustScore}/100. ${cost} {time}. {ruleId}.
- * Example: APPROVE 80/100. $0.0012 125ms. simple-rule.
- *
- * @param log - The audit log entry to format
- * @returns Formatted single-line analysis string
+ * @param entry - The analysis history entry to format
+ * @returns Formatted detailed analysis string
  *
  * @internal
  */
-function formatAnalysis(log: AuditLog): string {
-  const metadata = log.metadata as any || {};
+function formatAnalysisDetailed(entry: AnalysisHistoryEntry): string {
+  const lines: string[] = [];
 
-  // Extract and validate metadata with type-safe defaults
-  const trustScore = typeof metadata.trustScore === 'number'
-    ? metadata.trustScore
-    : 'N/A';
+  // Header
+  lines.push(`🤖 AI Automod Analysis`);
+  lines.push('─'.repeat(30));
+  lines.push('');
 
-  const aiCost = typeof metadata.aiCost === 'number'
-    ? `$${metadata.aiCost.toFixed(4)}`
-    : '$0.00';
+  // Action and Rule
+  const actionEmoji = {
+    'REMOVE': '🚫',
+    'FLAG': '🚩',
+    'COMMENT': '💬',
+    'APPROVE': '✅',
+  }[entry.action] || '❓';
 
-  const dryRun = !!metadata.dryRun;
+  lines.push(`${actionEmoji} Action: ${entry.action}`);
+  lines.push(`📋 Rule: ${entry.ruleName}`);
+  lines.push('');
 
-  const executionTime = metadata.executionTime;
-  const timeDisplay = typeof executionTime === 'number'
-    ? `${executionTime}ms`
-    : 'N/A';
+  // User Information
+  lines.push(`👤 User: u/${entry.authorName}`);
+  lines.push(`🎯 Trust Score: ${entry.trustScore}/100`);
+  lines.push(`📅 Account Age: ${entry.accountAgeInDays} days`);
+  lines.push(`⭐ Total Karma: ${entry.totalKarma.toLocaleString()}`);
+  lines.push('');
 
-  const ruleId = log.ruleId || 'default';
+  // AI Analysis
+  if (entry.aiProvider && entry.aiModel) {
+    const providerName = getProviderDisplayName(entry.aiProvider, entry.aiModel);
+    lines.push(`🤖 AI: ${providerName}`);
 
-  // Build single-line format: {ACTION} {trustScore}/100. ${cost} {time}. {ruleId}.
-  const analysis = `${log.action} ${trustScore}/100. ${aiCost} ${timeDisplay}. ${ruleId}.${dryRun ? ' (DRY-RUN)' : ''}`;
+    if (entry.confidence) {
+      lines.push(`📊 Confidence: ${entry.confidence}%`);
+    }
+    lines.push('');
+  }
 
-  return analysis;
+  // Reasoning
+  if (entry.aiReasoning) {
+    lines.push(`💭 AI Reasoning:`);
+    lines.push(entry.aiReasoning);
+    lines.push('');
+  } else if (entry.ruleReason) {
+    lines.push(`💭 Reason:`);
+    lines.push(entry.ruleReason);
+    lines.push('');
+  }
+
+  // Timestamp
+  const date = new Date(entry.timestamp);
+  lines.push(`🕐 Processed: ${date.toLocaleString()}`);
+
+  return lines.join('\n');
+}
+
+/**
+ * Get display-friendly AI provider name
+ */
+function getProviderDisplayName(provider: string, model?: string): string {
+  switch (provider) {
+    case 'claude':
+      return 'Claude 3.5 Haiku';
+    case 'openai':
+      if (model?.includes('gpt-4o-mini')) {
+        return 'OpenAI GPT-4o-mini';
+      } else if (model?.includes('gpt-4')) {
+        return 'OpenAI GPT-4';
+      }
+      return 'OpenAI';
+    case 'openai-compatible':
+      if (model && model !== 'configurable') {
+        return model;
+      }
+      return 'Custom AI';
+    default:
+      return 'AI';
+  }
 }

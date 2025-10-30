@@ -30,7 +30,6 @@ import { sendDailyDigest } from './notifications/modmailDigest';
 Devvit.configure({
   redditAPI: true, // Access Reddit API
   redis: true,     // Use Redis storage
-  modLog: true,    // Enable mod log entries
   http: {
     // HTTP enabled for AI API calls (Phase 2+)
     fetch: {
@@ -367,16 +366,6 @@ Devvit.addSettings([
     scope: 'installation',
   },
 
-  // ===== Mod Log =====
-  {
-    type: 'boolean',
-    name: 'enableModLog',
-    label: '📝 Create Mod Log Entries',
-    helpText: 'Add entries to the mod log when AI Automod takes action (remove/flag/comment). Entries include rule name, trust score, AI confidence, and reasoning for transparency.',
-    defaultValue: true,
-    scope: 'installation',
-  },
-
   // ===== Dry-Run Mode =====
   {
     type: 'boolean',
@@ -395,6 +384,38 @@ Devvit.addSettings([
     scope: 'installation',
   },
 ]);
+
+// Register forms
+console.log('[AI Automod] Registering forms...');
+
+// AI Analysis Form - displays detailed analysis for a post/comment
+const aiAnalysisForm = Devvit.createForm(
+  (data) => {
+    const analysisText = data.analysisText as string;
+    const postId = data.postId as string;
+
+    return {
+      title: '🤖 AI Automod Analysis',
+      description: `Post: ${postId}`,
+      fields: [
+        {
+          type: 'paragraph',
+          name: 'analysisData',
+          label: 'Analysis Details',
+          helpText: 'Complete AI analysis and decision reasoning',
+          disabled: true,
+          defaultValue: analysisText,
+        },
+      ],
+      acceptLabel: 'Close',
+    };
+  },
+  async (event, context) => {
+    // Form submission handler (just closes the form)
+  }
+);
+
+console.log('[AI Automod] ✓ Registered: AI Analysis Form');
 
 // Register menu items
 console.log('[AI Automod] Registering menu items...');
@@ -442,12 +463,14 @@ Devvit.addMenuItem({
     const postId = event.targetId;
     console.log(`[PostAnalysis] Fetching analysis for post: ${postId}`);
 
-    const analysis = await getPostAnalysis(context, postId);
-    console.log(`[PostAnalysis] Analysis retrieved, showing toast`);
+    // Fetch analysis data
+    const analysisText = await getPostAnalysis(context, postId);
+    console.log(`[PostAnalysis] Analysis retrieved, showing form`);
 
-    context.ui.showToast({
-      text: analysis,
-      appearance: 'neutral',
+    // Show form with the analysis data
+    context.ui.showForm(aiAnalysisForm, {
+      postId,
+      analysisText,
     });
   },
 });

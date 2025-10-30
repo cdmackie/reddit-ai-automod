@@ -33,7 +33,7 @@ import { TriggerContext, Post } from '@devvit/public-api';
 import { RuleEvaluationResult, ActionExecutionResult } from '../types/rules.js';
 import { UserProfile } from '../types/profile.js';
 import { DEFAULT_REMOVE_TEMPLATE, DEFAULT_COMMENT_TEMPLATE, formatTemplate } from './templates.js';
-import { addAutomodLogEntry } from './modNotes.js';
+import { saveAnalysisHistory as saveToRedis } from '../storage/analysisHistory.js';
 import { AIQuestionBatchResult } from '../types/ai.js';
 
 /**
@@ -78,19 +78,19 @@ function extractAIReasoning(aiAnalysis: AIQuestionBatchResult | undefined): stri
 }
 
 /**
- * Create mod note after successful action execution
- * Handles all the data extraction and error handling
+ * Save AI analysis history to Redis after successful action execution
+ * Provides audit trail that moderators can view via menu action
  */
-async function createModNote(
+async function saveAnalysisHistory(
   params: ExecuteActionParams,
   action: 'REMOVE' | 'FLAG' | 'COMMENT',
   correlationId: string
 ): Promise<void> {
   const { post, profile, ruleResult, context, aiAnalysis } = params;
 
-  // Don't create mod notes in dry-run mode
+  // Don't save in dry-run mode
   if (params.dryRun) {
-    console.log(`[ActionExecutor:${correlationId}] Skipping mod note creation (dry-run mode)`);
+    console.log(`[ActionExecutor:${correlationId}] Skipping analysis history save (dry-run mode)`);
     return;
   }
 
@@ -100,27 +100,26 @@ async function createModNote(
     const aiModel = aiAnalysis?.model;
     const aiReasoning = extractAIReasoning(aiAnalysis);
 
-    await addAutomodLogEntry(context, {
-      userId: post.authorId || 'unknown',
-      username: post.authorName || '[deleted]',
-      subreddit: post.subredditName,
+    await saveToRedis(context.redis, {
       contentId: post.id,
+      authorName: post.authorName || '[deleted]',
       action,
       ruleName: ruleResult.matchedRule,
+      timestamp: new Date().toISOString(),
       trustScore: Math.round(profile.totalKarma / 100), // Simplified trust score
-      accountAge: profile.accountAgeInDays * 24 * 60 * 60 * 1000, // Convert days to milliseconds
+      accountAgeInDays: profile.accountAgeInDays,
       totalKarma: profile.totalKarma,
-      confidence: ruleResult.confidence,
       aiProvider,
       aiModel,
+      confidence: ruleResult.confidence,
       aiReasoning,
-      reason: ruleResult.reason,
+      ruleReason: ruleResult.reason,
     });
 
-    console.log(`[ActionExecutor:${correlationId}] Mod note created successfully`);
+    console.log(`[ActionExecutor:${correlationId}] Analysis history saved successfully`);
   } catch (error) {
-    // Log error but don't throw - mod note failure shouldn't block action execution
-    console.error(`[ActionExecutor:${correlationId}] Failed to create mod note:`, {
+    // Log error but don't throw - storage failure shouldn't block action execution
+    console.error(`[ActionExecutor:${correlationId}] Failed to save analysis history:`, {
       error: error instanceof Error ? error.message : String(error),
       action,
     });
@@ -284,8 +283,8 @@ async function executeFlagAction(
       reason: ruleResult.reason,
     });
 
-    // Create mod note after successful FLAG
-    await createModNote(params, 'FLAG', correlationId);
+    // Save analysis history after successful FLAG
+    await saveAnalysisHistory(params, 'FLAG', correlationId);
 
     return {
       success: true,
@@ -407,8 +406,8 @@ async function executeRemoveAction(
       commentAdded,
     });
 
-    // Create mod note after successful REMOVE
-    await createModNote(params, 'REMOVE', correlationId);
+    // Save analysis history after successful REMOVE
+    await saveAnalysisHistory(params, 'REMOVE', correlationId);
 
     return {
       success: true,
@@ -512,8 +511,8 @@ async function executeCommentAction(
       commentLength: validatedCommentText.length,
     });
 
-    // Create mod note after successful COMMENT
-    await createModNote(params, 'COMMENT', correlationId);
+    // Save analysis history after successful COMMENT
+    await saveAnalysisHistory(params, 'COMMENT', correlationId);
 
     return {
       success: true,
