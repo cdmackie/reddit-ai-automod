@@ -2,17 +2,17 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.54 (ready to deploy)
+**Current Version**: 0.1.55 (deployed)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.39 Complete ✅ | OpenAI-compatible provider support with debug logging
+**Status**: Phase 5.40 Complete ✅ | Fixed openaiCompatibleBaseURL case sensitivity, removed deepseek
 
 ---
 
 ## Project Overview
 
-Reddit AI Automod is a user profiling & analysis system for Reddit communities. Uses AI (Claude/OpenAI/DeepSeek) to detect problematic posters: romance scammers, dating seekers, underage users, and spammers.
+Reddit AI Automod is a user profiling & analysis system for Reddit communities. Uses AI (Claude/OpenAI/OpenAI-Compatible) to detect problematic posters: romance scammers, dating seekers, underage users, and spammers.
 
-**Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude 3.5 Haiku/OpenAI/DeepSeek)
+**Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude 3.5 Haiku/OpenAI/OpenAI-Compatible)
 **Target Subreddits**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -32,6 +32,18 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.40 (2025-10-29)
+- [x] Fixed case sensitivity bug in configManager.ts (openaiCompatibleBaseURL)
+- [x] Changed lowercase 'openaiCompatibleBaseUrl' to proper case 'openaiCompatibleBaseURL' on lines 120, 124
+- [x] Removed all deepseek references from codebase per updated requirements
+- [x] Removed deepseek provider from AI_CONFIG in config/ai.ts
+- [x] Removed deepseek merging logic from configManager.ts
+- [x] Removed deepseekApiKey from settingsService.ts
+- [x] Removed DeepSeekProvider import from selector.ts
+- [x] Updated provider type annotations to only support: 'claude' | 'openai' | 'openai-compatible'
+- [x] Updated to version 0.1.55
+- [x] Committed and pushed changes (cb771a2)
 
 ### Phase 5.39 (2025-10-29)
 - [x] Fixed openai-compatible provider support (z.ai, Groq, Together AI, etc.)
@@ -166,6 +178,11 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 
 ## Recent Decisions
 
+**2025-10-29**: Fixed openaiCompatibleBaseURL case sensitivity and removed deepseek
+- **Rationale**: Case sensitivity mismatch prevented OpenAI-compatible provider from being enabled. Deepseek support no longer needed per updated requirements - only supporting Claude, OpenAI, and OpenAI-Compatible providers.
+- **Impact**: OpenAI-compatible providers (z.ai, Groq, Together AI) now properly detected and enabled. Cleaner codebase with only three supported provider types.
+- **Implementation**: Changed 'openaiCompatibleBaseUrl' to 'openaiCompatibleBaseURL' in configManager.ts (lines 120, 124). Removed deepseek provider configuration from AI_CONFIG, removed deepseek from ConfigurationManager merging logic, removed deepseekApiKey from settingsService.ts, removed DeepSeekProvider import from selector.ts. Updated all type annotations to reflect three-provider architecture.
+
 **2025-10-29**: OpenAI-compatible provider support with debug logging
 - **Rationale**: Enable support for alternative OpenAI-compatible providers (z.ai, Groq, Together AI, self-hosted) when selected as primary provider. Previous implementation crashed when openai-compatible was selected because ConfigurationManager didn't create the provider config.
 - **Impact**: Users can now use any OpenAI-compatible endpoint, comprehensive debug logging aids troubleshooting, better error handling prevents crashes
@@ -233,9 +250,9 @@ For complete version history, see [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.m
 
 ## Quick Stats
 
-- **Total Versions**: 54 (0.0.1 → 0.1.54)
+- **Total Versions**: 55 (0.0.1 → 0.1.55)
 - **Current Trust System**: Working perfectly in production
-- **AI Providers**: Claude 3.5 Haiku, OpenAI, DeepSeek, OpenAI-Compatible
+- **AI Providers**: Claude 3.5 Haiku, OpenAI, OpenAI-Compatible
 - **Active Subreddits**: 3 target communities
 - **Core Features**: 100% complete
 - **Test Coverage**: Comprehensive (93 tests for content sanitizer alone)
