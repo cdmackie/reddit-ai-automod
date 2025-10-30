@@ -7,23 +7,8 @@ import { initializeDefaultRules } from './handlers/appInstall';
 import { getPostAnalysis } from './ui/postAnalysis';
 import { sendDailyDigest } from './notifications/modmailDigest';
 
-// Configure Devvit with required permissions
-Devvit.configure({
-  redditAPI: true, // Access Reddit API
-  redis: true,     // Use Redis storage
-  http: {
-    // HTTP enabled for AI API calls (Phase 2+)
-    fetch: {
-      allowList: [
-        'api.anthropic.com',
-        'api.openai.com',
-        'api.z.ai',
-        'api.x.ai',
-        'api.groq.com',
-      ],
-    },
-  },
-});
+// Configuration is now managed via devvit.json
+// Removed Devvit.configure() to prevent conflict with devvit.json configuration
 
 /**
  * Settings UI Configuration
