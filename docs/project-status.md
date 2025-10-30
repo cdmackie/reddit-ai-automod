@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.52 (ready to deploy)
+**Current Version**: 0.1.54 (ready to deploy)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phase 5.37 Complete ✅ | Fixed email verification and post/comment fetching
+**Status**: Phase 5.39 Complete ✅ | OpenAI-compatible provider support with debug logging
 
 ---
 
@@ -32,6 +32,24 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.39 (2025-10-29)
+- [x] Fixed openai-compatible provider support (z.ai, Groq, Together AI, etc.)
+- [x] Added openai-compatible provider creation in ConfigurationManager
+- [x] Provider enabled when both API key and base URL configured
+- [x] Added comprehensive debug logging for provider selection
+- [x] Logs available providers, primary/fallback selections, API key status
+- [x] Added null checks to prevent "Cannot read properties of undefined" crash
+- [x] Warnings when requested provider not found in configuration
+- [x] Updated to version 0.1.54
+
+### Phase 5.38 (2025-10-29)
+- [x] Enhanced "Reset Community Trust Scores" menu to clear ALL caches
+- [x] Now deletes profile caches (`user:{userId}:profile`)
+- [x] Now deletes history caches (`user:{userId}:history`)
+- [x] Complete reset for testing: trust scores, tracking, profiles, histories
+- [x] Updated toast message shows all deletion counts
+- [x] Updated to version 0.1.53
 
 ### Phase 5.37 (2025-10-29)
 - [x] Fixed email verification to read `hasVerifiedEmail` field from Devvit User API
@@ -148,6 +166,16 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 
 ## Recent Decisions
 
+**2025-10-29**: OpenAI-compatible provider support with debug logging
+- **Rationale**: Enable support for alternative OpenAI-compatible providers (z.ai, Groq, Together AI, self-hosted) when selected as primary provider. Previous implementation crashed when openai-compatible was selected because ConfigurationManager didn't create the provider config.
+- **Impact**: Users can now use any OpenAI-compatible endpoint, comprehensive debug logging aids troubleshooting, better error handling prevents crashes
+- **Implementation**: Added openai-compatible provider creation in ConfigurationManager (enabled when both API key and base URL configured), null checks in getEnabledProviders(), detailed logging for provider selection diagnostics
+
+**2025-10-29**: Enhanced reset menu to clear all user caches
+- **Rationale**: Reset menu only cleared trust scores and tracking records, but profile and history caches persisted causing "cache hits" during testing
+- **Impact**: Complete reset for testing scenarios, all user data cleared (trust, tracking, profiles, histories)
+- **Implementation**: Delete profile caches (`user:{userId}:profile`) and history caches (`user:{userId}:history`) in addition to existing trust/tracking deletion
+
 **2025-10-29**: Fixed email verification and separated post/comment fetching
 - **Rationale**: Email verification was always showing as `false` because it was hardcoded. Post/comment fetching was skewed towards whichever type the user had more of (e.g., 176 comments + 24 posts = 200 total).
 - **Impact**: More accurate user profiling, better AI analysis context, email verification now reflects actual user status
@@ -205,9 +233,9 @@ For complete version history, see [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.m
 
 ## Quick Stats
 
-- **Total Versions**: 52 (0.0.1 → 0.1.52)
+- **Total Versions**: 54 (0.0.1 → 0.1.54)
 - **Current Trust System**: Working perfectly in production
-- **AI Providers**: Claude 3.5 Haiku, OpenAI, DeepSeek
+- **AI Providers**: Claude 3.5 Haiku, OpenAI, DeepSeek, OpenAI-Compatible
 - **Active Subreddits**: 3 target communities
 - **Core Features**: 100% complete
 - **Test Coverage**: Comprehensive (93 tests for content sanitizer alone)

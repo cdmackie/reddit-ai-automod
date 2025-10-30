@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.54] - 2025-10-29
+
+### Fixed
+- OpenAI-compatible provider (e.g., z.ai, Groq) now properly supported when selected as primary provider
+- Fixed crash: "Cannot read properties of undefined (reading 'enabled')" when using openai-compatible provider
+- Added null checks in `getEnabledProviders()` to prevent crashes when provider config is missing
+
+### Added
+- OpenAI-compatible provider creation in ConfigurationManager
+- Provider is enabled when both API key and base URL are configured in settings
+- Comprehensive debug logging for provider selection diagnostics
+- Logs available providers, primary/fallback selections, and API key configuration status
+- Priority 4 (last resort fallback) for openai-compatible provider
+- Support for custom OpenAI API format endpoints (Groq, Z.AI, Together AI, self-hosted vLLM/Ollama)
+
+### Changed
+- `getEnabledProviders()` now includes detailed logging to trace provider selection
+- Warnings logged when requested provider not found in configuration
+- Better error diagnostics for provider configuration issues
+
+## [0.1.53] - 2025-10-29
+
+### Changed
+- Enhanced "Reset Community Trust Scores" menu to clear ALL user caches
+- Now deletes profile caches (`user:{userId}:profile`) in addition to trust scores
+- Now deletes history caches (`user:{userId}:history`) in addition to tracking records
+- Complete reset for testing: trust scores, tracking, profiles, and post histories
+- Updated toast message shows all deletion counts (trust, tracking, profiles, histories)
+
 ## [0.1.52] - 2025-10-29
 
 ### Fixed
@@ -414,7 +443,9 @@ Complete Devvit settings forms, cost dashboard, rule management with schema vali
 ### Phase 5: Refinement & Optimization (2025-10-28 to 2025-10-29)
 Three-layer pipeline, community trust system, infinite loop fixes, notification improvements, schema simplification, debug logging, post history expansion.
 
-[Unreleased]: https://github.com/cdmackie/redditmod/compare/v0.1.52...HEAD
+[Unreleased]: https://github.com/cdmackie/redditmod/compare/v0.1.54...HEAD
+[0.1.54]: https://github.com/cdmackie/redditmod/compare/v0.1.53...v0.1.54
+[0.1.53]: https://github.com/cdmackie/redditmod/compare/v0.1.52...v0.1.53
 [0.1.52]: https://github.com/cdmackie/redditmod/compare/v0.1.47...v0.1.52
 [0.1.47]: https://github.com/cdmackie/redditmod/compare/v0.1.46...v0.1.47
 [0.1.46]: https://github.com/cdmackie/redditmod/compare/v0.1.45...v0.1.46
