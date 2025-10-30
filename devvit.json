@@ -15,7 +15,14 @@
         "api.groq.com"
       ]
     },
-    "redis": true
+    "redis": true,
+    "media": false,
+    "payments": false,
+    "realtime": false,
+    "reddit": {
+      "enable": true,
+      "asUser": ["SUBMIT_COMMENT"]
+    }
   },
   "marketingAssets": {
     "icon": "assets/icon.png"
