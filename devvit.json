@@ -1,7 +1,9 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
   "name": "ai-automod-app",
-  "blocks": {},
+  "blocks": {
+    "entry": "src/main.tsx"
+  },
   "permissions": {
     "http": {
       "enable": true,
@@ -14,5 +16,8 @@
       ]
     },
     "redis": true
+  },
+  "marketingAssets": {
+    "icon": "assets/icon.png"
   }
 }
