@@ -4,9 +4,9 @@
 
 Reddit AI Automod is a Devvit-based user profiling & analysis system that uses AI (Claude 3.5 Haiku, OpenAI gpt-4o-mini, or DeepSeek V3) to detect problematic posters in Reddit communities: romance scammers, dating seekers, underage users, and spammers.
 
-**Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI/DeepSeek)
+**Stack**: Reddit Devvit (TypeScript), Redis, AI (Claude/OpenAI/DeepSeek/OpenAI-Compatible)
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.48 (ready to deploy)
+**Current Version**: 0.1.49 (ready to deploy)
 **Target Subreddits**: r/FriendsOver40, r/FriendsOver50, r/bitcointaxes
 
 ---
@@ -25,25 +25,27 @@ Reddit AI Automod is a Devvit-based user profiling & analysis system that uses A
 - **Whitelist**: Skip analysis for trusted users
 - **Community Trust**: Automatically whitelist users with good trust scores
 
-### Last Completed (Phases 5.32-5.34 - 2025-10-29)
-- Created userCache.ts helper with approved users and moderators caching
-- Skip processing for approved users (they have explicit subreddit approval)
-- Skip processing for moderators (don't moderate the moderators)
-- Use getAppUser() for bot detection instead of Redis comment tracking
-- Removed comment ID tracking code from executor.ts
-- 5-minute in-memory cache for user lists to reduce API calls
-- Graceful degradation on API failures
+### Last Completed (Phase 5.35 - 2025-10-29)
+- Added OpenAI Compatible provider for custom endpoints
+- Supports Groq, Together AI, Z.AI, self-hosted vLLM/Ollama, and other OpenAI-compatible endpoints
+- Configurable base URL, API key, and model name via Devvit settings
+- Acts as last-resort fallback when standard providers unavailable
+- Full IAIProvider interface implementation with analyzeWithQuestions support
+- Version 0.1.49
 
 ---
 
 ## What's Next
 
-### Immediate Priority (Phase 5.35)
+### Immediate Priority
 
-**Phase 5.35**: OpenAI Compatible Provider
-- Add new provider type supporting custom endpoints
-- Enable use of Groq, Z.AI, self-hosted models, etc.
-- Settings: custom endpoint URL, API key, model name
+All core features complete. System is production-ready.
+
+Future enhancements may include:
+- Performance optimizations (batch processing, caching improvements)
+- Additional AI providers (Google Gemini, Anthropic Claude Opus)
+- Enhanced analytics dashboard
+- User appeal system
 
 ---
 
@@ -82,9 +84,10 @@ Reddit AI Automod is a Devvit-based user profiling & analysis system that uses A
 
 ### AI System
 - `src/ai/analyzer.ts` - Main AI orchestrator
-- `src/ai/providers/claude.ts` - Claude 3.5 Haiku
-- `src/ai/providers/openai.ts` - OpenAI GPT-4o Mini
-- `src/ai/providers/deepseek.ts` - DeepSeek V3
+- `src/ai/claude.ts` - Claude 3.5 Haiku
+- `src/ai/openai.ts` - OpenAI GPT-4o Mini
+- `src/ai/deepseek.ts` - DeepSeek V3
+- `src/ai/openaiCompatible.ts` - Custom OpenAI-compatible endpoints
 
 ### User Profiling
 - `src/profile/fetcher.ts` - Fetch user data

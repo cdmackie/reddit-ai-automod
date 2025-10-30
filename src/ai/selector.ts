@@ -40,10 +40,12 @@ import { IAIProvider } from './provider.js';
 import { ClaudeProvider } from './claude.js';
 import { OpenAIProvider } from './openai.js';
 import { DeepSeekProvider } from './deepseek.js';
+import { OpenAICompatibleProvider } from './openaiCompatible.js';
 import { CircuitBreaker } from './circuitBreaker.js';
 import { AIProviderType, ProviderHealthStatus } from '../types/ai.js';
 import { AI_CONFIG, getEnabledProviders } from '../config/ai.js';
 import { ConfigurationManager } from '../config/configManager.js';
+import { SettingsService } from '../config/settingsService.js';
 
 /**
  * Provider Selector - Intelligent AI provider selection with automatic failover
@@ -156,6 +158,22 @@ export class ProviderSelector {
 
     if (enabledProviders.length === 0) {
       console.error('[ProviderSelector] No enabled providers configured');
+
+      // Check if OpenAI Compatible is configured as last resort
+      const aiSettings = await SettingsService.getAIConfig(this.context);
+      if (aiSettings.openaiCompatibleApiKey && aiSettings.openaiCompatibleBaseURL && aiSettings.openaiCompatibleModel) {
+        console.log('[ProviderSelector] Standard providers unavailable, trying OpenAI Compatible');
+        try {
+          return new OpenAICompatibleProvider({
+            apiKey: aiSettings.openaiCompatibleApiKey,
+            baseURL: aiSettings.openaiCompatibleBaseURL,
+            model: aiSettings.openaiCompatibleModel,
+          });
+        } catch (error) {
+          console.error('[ProviderSelector] Failed to create OpenAI Compatible provider:', error);
+        }
+      }
+
       return null;
     }
 
@@ -193,8 +211,35 @@ export class ProviderSelector {
       }
     }
 
+    // All standard providers unavailable, try OpenAI Compatible as fallback
+    console.log('[ProviderSelector] All standard providers unavailable, checking OpenAI Compatible');
+    const aiSettings = await SettingsService.getAIConfig(this.context);
+    if (aiSettings.openaiCompatibleApiKey && aiSettings.openaiCompatibleBaseURL && aiSettings.openaiCompatibleModel) {
+      try {
+        const provider = new OpenAICompatibleProvider({
+          apiKey: aiSettings.openaiCompatibleApiKey,
+          baseURL: aiSettings.openaiCompatibleBaseURL,
+          model: aiSettings.openaiCompatibleModel,
+        });
+
+        // Do a quick health check
+        const healthy = await provider.healthCheck();
+        if (healthy) {
+          console.log('[ProviderSelector] Selected OpenAI Compatible provider', {
+            baseURL: aiSettings.openaiCompatibleBaseURL,
+            model: aiSettings.openaiCompatibleModel,
+          });
+          return provider;
+        } else {
+          console.warn('[ProviderSelector] OpenAI Compatible provider unhealthy');
+        }
+      } catch (error) {
+        console.error('[ProviderSelector] Error with OpenAI Compatible provider:', error);
+      }
+    }
+
     // All providers unavailable
-    console.error('[ProviderSelector] All providers unavailable');
+    console.error('[ProviderSelector] All providers unavailable (including OpenAI Compatible)');
     return null;
   }
 

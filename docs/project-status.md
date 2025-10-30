@@ -2,9 +2,9 @@
 
 **Last Updated**: 2025-10-29
 **Current Phase**: Phase 5 - Refinement & Optimization
-**Current Version**: 0.1.48 (ready to deploy)
+**Current Version**: 0.1.49 (ready to deploy)
 **Overall Progress**: 99% (Core features complete, trust system working perfectly)
-**Status**: Phases 5.32-5.34 Complete ✅ | Skip processing for approved users, moderators, and bot comments
+**Status**: Phase 5.35 Complete ✅ | OpenAI Compatible provider for custom endpoints (Groq, Together AI, self-hosted)
 
 ---
 
@@ -32,6 +32,15 @@ Reddit AI Automod is a user profiling & analysis system for Reddit communities. 
 ---
 
 ## Recent Completed Tasks
+
+### Phase 5.35 (2025-10-29)
+- [x] Created OpenAI Compatible provider implementation (openaiCompatible.ts)
+- [x] Supports custom OpenAI-compatible endpoints (Groq, Together AI, Z.AI, self-hosted vLLM/Ollama)
+- [x] Configurable base URL, API key, and model name via settings
+- [x] Added to provider selector as last-resort fallback
+- [x] Implements full IAIProvider interface with analyzeWithQuestions support
+- [x] Added settings UI fields for configuration
+- [x] Updated to version 0.1.49
 
 ### Phases 5.32-5.34 (2025-10-29)
 - [x] Created userCache.ts helper with approved users and moderators caching
@@ -97,13 +106,6 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 
 ## Next Steps
 
-### Immediate (Phase 5.35)
-
-1. **Phase 5.35**: Add OpenAI Compatible provider
-   - Support custom API endpoints (LocalAI, Ollama, etc.)
-   - User-configurable base URL and model name
-   - Enable local AI deployment option
-
 ### Future Enhancements
 
 - **Performance Optimizations**
@@ -129,6 +131,11 @@ See [CHANGELOG.md](/home/cdm/redditmod/CHANGELOG.md) for complete version histor
 ---
 
 ## Recent Decisions
+
+**2025-10-29**: OpenAI Compatible provider for custom endpoints
+- **Rationale**: Enable use of alternative OpenAI-compatible providers (Groq, Together AI, self-hosted models)
+- **Impact**: More flexibility for users, cost optimization options, local deployment support
+- **Implementation**: Acts as last-resort fallback after standard providers, fully configurable via settings
 
 **2025-10-29**: Skip processing for approved users and moderators with caching
 - **Rationale**: Approved users and moderators don't need moderation, reduces API calls and processing overhead

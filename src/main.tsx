@@ -221,6 +221,27 @@ Devvit.addSettings([
     scope: 'installation',
   },
   {
+    type: 'string',
+    name: 'openaiCompatibleApiKey',
+    label: '🔌 OpenAI Compatible: API Key (Optional)',
+    helpText: 'API key for custom OpenAI-compatible endpoint (Groq, Together AI, self-hosted vLLM/Ollama, etc.). Used as fallback when standard providers unavailable.',
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'openaiCompatibleBaseURL',
+    label: '🔌 OpenAI Compatible: Base URL (Optional)',
+    helpText: 'Base URL for OpenAI-compatible endpoint. Examples: https://api.groq.com/openai/v1 (Groq), https://api.together.xyz/v1 (Together AI), http://localhost:8000/v1 (vLLM)',
+    scope: 'installation',
+  },
+  {
+    type: 'string',
+    name: 'openaiCompatibleModel',
+    label: '🔌 OpenAI Compatible: Model Name (Optional)',
+    helpText: 'Model to use at the custom endpoint. Examples: llama-3.1-70b-versatile (Groq), meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo (Together AI), meta-llama/Llama-3.1-8B-Instruct (vLLM)',
+    scope: 'installation',
+  },
+  {
     type: 'number',
     name: 'dailyBudgetLimit',
     label: '💰 Daily Budget Limit (USD)',

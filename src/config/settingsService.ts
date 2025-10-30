@@ -116,6 +116,9 @@ export class SettingsService {
         claudeApiKey: settings.claudeApiKey as string | undefined,
         openaiApiKey: settings.openaiApiKey as string | undefined,
         deepseekApiKey: settings.deepseekApiKey as string | undefined,
+        openaiCompatibleApiKey: settings.openaiCompatibleApiKey as string | undefined,
+        openaiCompatibleBaseURL: settings.openaiCompatibleBaseURL as string | undefined,
+        openaiCompatibleModel: settings.openaiCompatibleModel as string | undefined,
         primaryProvider: (primaryProviderValue as 'claude' | 'openai' | 'deepseek') ?? 'claude',
         fallbackProvider: (fallbackProviderValue as 'claude' | 'openai' | 'deepseek' | 'none') ?? 'openai',
       };

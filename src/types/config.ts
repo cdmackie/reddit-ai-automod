@@ -55,6 +55,12 @@ export interface AIProviderConfig {
   openaiApiKey?: string;
   /** DeepSeek API key (optional - from settings) */
   deepseekApiKey?: string;
+  /** OpenAI Compatible API key (optional - from settings) */
+  openaiCompatibleApiKey?: string;
+  /** OpenAI Compatible base URL (optional - from settings) */
+  openaiCompatibleBaseURL?: string;
+  /** OpenAI Compatible model name (optional - from settings) */
+  openaiCompatibleModel?: string;
   /** Primary AI provider to use */
   primaryProvider: 'claude' | 'openai' | 'deepseek';
   /** Fallback provider if primary fails */
