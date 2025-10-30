@@ -42,16 +42,6 @@ Devvit.configure({
  * See SettingsService for type-safe access to these settings.
  */
 Devvit.addSettings([
-  // ===== Cache Version (Force Cache Invalidation) =====
-  {
-    type: 'string',
-    name: 'cacheVersion',
-    label: '🔄 Cache Version',
-    helpText: 'Increment this number (1→2→3...) to force complete cache invalidation for ALL users in this subreddit. Use when testing or after major configuration changes. All cache keys use format v1:{this}:user:... Current: Shows as first number after v1 in Redis keys.',
-    defaultValue: '1',
-    scope: 'installation',
-  },
-
   // ===== Whitelist (Bypass All Moderation) =====
   {
     type: 'string',
@@ -327,6 +317,16 @@ Devvit.addSettings([
     label: '⚡ Real-time: Enable Notifications',
     helpText: 'Send immediate notification after each moderation action (useful for debugging). Recipients configured in \'Notification Recipients\' above.',
     defaultValue: false,
+    scope: 'installation',
+  },
+
+  // ===== Cache Version (Debug - Force Cache Invalidation) =====
+  {
+    type: 'string',
+    name: 'cacheVersion',
+    label: '🔄 Cache Version (Debug)',
+    helpText: 'Increment this number (1→2→3...) to force complete cache invalidation for ALL users in this subreddit. Use when testing or after major configuration changes. All cache keys use format v1:{this}:user:... Current: Shows as first number after v1 in Redis keys.',
+    defaultValue: '1',
     scope: 'installation',
   },
 
