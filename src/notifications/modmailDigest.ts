@@ -127,7 +127,20 @@ export async function sendRealtimeDigest(context: Context, auditLog: AuditLog): 
           });
           console.log(`[ModmailDigest] ✓ PM sent to u/${username}`);
         } catch (error) {
-          console.error(`[ModmailDigest] Error sending PM to u/${username}:`, error);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+
+          // Check for common PM failures
+          if (errorMsg.includes('NOT_WHITELISTED_BY_USER_MESSAGE') ||
+              errorMsg.includes("can't send a message to that user")) {
+            console.error(`[ModmailDigest] ❌ Cannot PM u/${username} - User has restricted PMs to trusted users only.`);
+            console.error(`[ModmailDigest] Solution: Ask u/${username} to either:`);
+            console.error(`[ModmailDigest]   1. Add the bot to their trusted users list, OR`);
+            console.error(`[ModmailDigest]   2. Change notification recipient to "all" to use modmail instead`);
+          } else if (errorMsg.includes('USER_DOESNT_EXIST')) {
+            console.error(`[ModmailDigest] ❌ Cannot PM u/${username} - User doesn't exist`);
+          } else {
+            console.error(`[ModmailDigest] ❌ Error sending PM to u/${username}:`, error);
+          }
           // Continue with other usernames even if one fails
         }
       }
@@ -277,7 +290,20 @@ export async function sendBudgetAlert(
           });
           console.log(`[ModmailDigest] ✓ Budget alert PM sent to u/${username}`);
         } catch (error) {
-          console.error(`[ModmailDigest] Error sending budget alert to u/${username}:`, error);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+
+          // Check for common PM failures
+          if (errorMsg.includes('NOT_WHITELISTED_BY_USER_MESSAGE') ||
+              errorMsg.includes("can't send a message to that user")) {
+            console.error(`[ModmailDigest] ❌ Cannot PM u/${username} - User has restricted PMs to trusted users only.`);
+            console.error(`[ModmailDigest] Solution: Ask u/${username} to either:`);
+            console.error(`[ModmailDigest]   1. Add the bot to their trusted users list, OR`);
+            console.error(`[ModmailDigest]   2. Change notification recipient to "all" to use modmail instead`);
+          } else if (errorMsg.includes('USER_DOESNT_EXIST')) {
+            console.error(`[ModmailDigest] ❌ Cannot PM u/${username} - User doesn't exist`);
+          } else {
+            console.error(`[ModmailDigest] ❌ Error sending budget alert to u/${username}:`, error);
+          }
         }
       }
     } else {
